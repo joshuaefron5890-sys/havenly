@@ -1,18 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 
 export function ListRow({
   title,
   subtitle,
   badge,
+  onPress,
 }: {
   title: string;
   subtitle?: string;
   badge?: string;
+  onPress?: () => void;
 }) {
+  const Container = onPress ? Pressable : View;
   return (
-    <View style={styles.row}>
+    <Container style={styles.row} onPress={onPress}>
       <View style={styles.thumbnail} />
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
@@ -25,7 +28,7 @@ export function ListRow({
       ) : (
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       )}
-    </View>
+    </Container>
   );
 }
 

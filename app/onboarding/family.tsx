@@ -1,0 +1,167 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AddPhotoCircle } from '../../components/AddPhotoCircle';
+import { WizardHeader } from '../../components/WizardHeader';
+import { colors } from '../../theme/colors';
+
+const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity'];
+
+export default function Family() {
+  const [children, setChildren] = useState(1);
+  const [siblings, setSiblings] = useState<string | null>(null);
+
+  return (
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <WizardHeader step={2} title="Tell us about" accent="your family." />
+      <ScrollView contentContainerStyle={styles.content}>
+        <AddPhotoCircle label="Your photo" caption="Shown to matches" />
+
+        <Text style={styles.label}>NUMBER OF CHILDREN</Text>
+        <View style={styles.stepper}>
+          <Pressable style={styles.stepperButton} onPress={() => setChildren(Math.max(1, children - 1))}>
+            <Ionicons name="remove" size={18} color={colors.text} />
+          </Pressable>
+          <Text style={styles.stepperValue}>{children}</Text>
+          <Pressable style={[styles.stepperButton, styles.stepperButtonActive]} onPress={() => setChildren(children + 1)}>
+            <Ionicons name="add" size={18} color={colors.surface} />
+          </Pressable>
+          <Text style={styles.stepperCaption}>child at home</Text>
+        </View>
+
+        <Text style={styles.label}>PARTNER OR CO-PARENT AT HOME?</Text>
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <Pressable style={styles.optionButton}>
+              <Text style={styles.optionText}>Yes</Text>
+            </Pressable>
+          </View>
+          <View style={styles.half}>
+            <Pressable style={styles.optionButton}>
+              <Text style={styles.optionText}>No</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <Text style={styles.label}>ARE SIBLINGS USUALLY INCLUDED?</Text>
+        {SIBLING_OPTIONS.map((option) => (
+          <Pressable key={option} style={styles.radioRow} onPress={() => setSiblings(option)}>
+            <View style={[styles.radio, siblings === option && styles.radioSelected]} />
+            <Text style={styles.optionText}>{option}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/child')}>
+          <Text style={styles.ctaText}>Continue</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  stepperButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperButtonActive: {
+    backgroundColor: colors.accent,
+  },
+  stepperValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  stepperCaption: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  half: {
+    flex: 1,
+  },
+  optionButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  optionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  radioSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
+  },
+  footer: {
+    padding: 20,
+  },
+  cta: {
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  ctaText: {
+    color: colors.surface,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});

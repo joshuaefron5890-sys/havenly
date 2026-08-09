@@ -9,7 +9,11 @@ const FEATURES = [
   { title: 'Get real support', subtitle: 'Resources, helpers & guidance' },
 ];
 
-function enterApp() {
+function joinCommunity() {
+  router.push('/onboarding/account');
+}
+
+function signIn() {
   router.replace('/(tabs)');
 }
 
@@ -36,11 +40,11 @@ export default function Onboarding() {
           ))}
         </View>
 
-        <Pressable style={styles.cta} onPress={enterApp}>
+        <Pressable style={styles.cta} onPress={joinCommunity}>
           <Text style={styles.ctaText}>Join the community</Text>
         </Pressable>
 
-        <Pressable onPress={enterApp}>
+        <Pressable onPress={signIn}>
           <Text style={styles.signIn}>
             Already a member? <Text style={styles.signInAccent}>Sign in</Text>
           </Text>

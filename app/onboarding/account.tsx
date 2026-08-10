@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
-import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogle } from '../../lib/firebase';
+import { auth, beginGoogleSignIn, completeGoogleSignIn, firebaseConfigured, googleSignInSupported } from '../../lib/firebase';
 import { colors } from '../../theme/colors';
 
 const PRONOUNS = ['she/her', 'he/him', 'they/them', 'she/they', 'he/they'];
@@ -48,6 +48,31 @@ export default function Account() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [checkingRedirect, setCheckingRedirect] = useState(true);
+
+  // If this page load is the return leg of a Gmail redirect, finish it here.
+  useEffect(() => {
+    let cancelled = false;
+    completeGoogleSignIn()
+      .then((credential) => {
+        if (cancelled || !credential) return;
+        const [first, ...rest] = (credential.user.displayName ?? '').split(' ');
+        updateOnboardingProfile({ firstName: first ?? '', lastName: rest.join(' ') });
+        router.replace('/onboarding/family');
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        const message = friendlyGoogleError(err?.code ?? '');
+        if (message) setError(message);
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingRedirect(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleContinue = async () => {
     setError(null);
@@ -90,17 +115,23 @@ export default function Account() {
 
     setGoogleSubmitting(true);
     try {
-      const credential = await signInWithGoogle();
-      const [first, ...rest] = (credential.user.displayName ?? '').split(' ');
-      updateOnboardingProfile({ firstName: first ?? '', lastName: rest.join(' ') });
-      router.push('/onboarding/family');
+      // Navigates away to Google; the return leg is handled by the
+      // completeGoogleSignIn() effect above, on next page load.
+      await beginGoogleSignIn();
     } catch (err: any) {
       const message = friendlyGoogleError(err?.code ?? '');
       if (message) setError(message);
-    } finally {
       setGoogleSubmitting(false);
     }
   };
+
+  if (checkingRedirect) {
+    return (
+      <SafeAreaView style={[styles.screen, styles.centered]}>
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -163,6 +194,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     padding: 20,

@@ -2,13 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Photo } from '../../components/Photo';
 import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
 
 export default function HelperDetail() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
+          <Photo source={images.helperMarcus} style={styles.heroImage} />
           <Pressable style={styles.back} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
@@ -81,9 +84,16 @@ const styles = StyleSheet.create({
   hero: {
     height: 200,
     borderRadius: 20,
-    backgroundColor: colors.accentMuted,
     marginBottom: 16,
     padding: 16,
+    overflow: 'hidden',
+  },
+  heroImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   back: {
     width: 36,

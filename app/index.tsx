@@ -1,12 +1,14 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Photo } from '../components/Photo';
 import { colors } from '../theme/colors';
+import { images } from '../theme/images';
 
 const FEATURES = [
-  { title: 'Find your people', subtitle: 'Families who truly get it' },
-  { title: 'Build community', subtitle: 'Events, groups & shared space' },
-  { title: 'Get real support', subtitle: 'Resources, helpers & guidance' },
+  { title: 'Find your people', subtitle: 'Families who truly get it', image: images.featureFindPeople },
+  { title: 'Build community', subtitle: 'Events, groups & shared space', image: images.featureBuildCommunity },
+  { title: 'Get real support', subtitle: 'Resources, helpers & guidance', image: images.featureGetSupport },
 ];
 
 function joinCommunity() {
@@ -21,7 +23,7 @@ export default function Onboarding() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero} />
+        <Photo source={images.onboardingHero} style={styles.hero} />
 
         <Text style={styles.headline}>A community</Text>
         <Text style={styles.headlineAccent}>built around your child.</Text>
@@ -33,7 +35,7 @@ export default function Onboarding() {
         <View style={styles.features}>
           {FEATURES.map((feature) => (
             <View key={feature.title} style={styles.featureCard}>
-              <View style={styles.featureImage} />
+              <Photo source={feature.image} style={styles.featureImage} />
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
             </View>

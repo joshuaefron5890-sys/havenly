@@ -1,12 +1,14 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Photo } from '../../components/Photo';
 import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
 
 const SUGGESTED_FAMILIES = [
-  { name: 'The Nakamura Family', subtitle: 'Ages 2 & 5 · 0.4 mi away', tags: ['Playground', 'Nature Walks'] },
-  { name: 'The Osei Family', subtitle: 'Ages 3 & 3 · 0.9 mi away', tags: ['Arts & Crafts', 'Music'] },
-  { name: 'The Reyes Family', subtitle: 'Age 4 · 1.2 mi away', tags: ['Playground', 'Swimming'] },
+  { name: 'The Nakamura Family', subtitle: 'Ages 2 & 5 · 0.4 mi away', tags: ['Playground', 'Nature Walks'], image: images.familyNakamura },
+  { name: 'The Osei Family', subtitle: 'Ages 3 & 3 · 0.9 mi away', tags: ['Arts & Crafts', 'Music'], image: images.familyOsei },
+  { name: 'The Reyes Family', subtitle: 'Age 4 · 1.2 mi away', tags: ['Playground', 'Swimming'], image: images.familyReyes },
 ];
 
 export default function Matches() {
@@ -14,6 +16,7 @@ export default function Matches() {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
+          <Photo source={images.matchesHero} style={styles.heroImage} />
           <View style={styles.heroBadge}>
             <Text style={styles.heroBadgeText}>3 families found nearby!</Text>
           </View>
@@ -25,7 +28,7 @@ export default function Matches() {
 
         {SUGGESTED_FAMILIES.map((family) => (
           <View key={family.name} style={styles.card}>
-            <View style={styles.avatar} />
+            <Photo source={family.image} style={styles.avatar} />
             <View style={styles.cardBody}>
               <Text style={styles.cardTitle}>{family.name}</Text>
               <Text style={styles.cardSubtitle}>{family.subtitle}</Text>
@@ -64,11 +67,18 @@ const styles = StyleSheet.create({
   hero: {
     height: 160,
     borderRadius: 20,
-    backgroundColor: colors.accentMuted,
     marginBottom: 16,
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingTop: 16,
+    overflow: 'hidden',
+  },
+  heroImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   heroBadge: {
     backgroundColor: colors.surface,

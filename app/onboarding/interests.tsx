@@ -1,29 +1,30 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ImageSourcePropType, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Photo } from '../../components/Photo';
 import { WizardHeader } from '../../components/WizardHeader';
 import { colors } from '../../theme/colors';
 
-const INTERESTS = [
-  'Minecraft',
-  'Roblox',
-  'Pokémon',
-  'LEGO',
-  'Board games',
-  'Arts & crafts',
-  'Drawing',
-  'Music',
-  'Cats',
-  'Dogs',
-  'Other animals',
-  'Dinosaurs',
-  'Science',
-  'Space',
-  'Reading',
-  'Swimming',
-  'Building things',
-  'Soccer',
+const INTERESTS: { label: string; image?: ImageSourcePropType }[] = [
+  { label: 'Minecraft' },
+  { label: 'Roblox' },
+  { label: 'Pokémon' },
+  { label: 'LEGO' },
+  { label: 'Board games' },
+  { label: 'Arts & crafts' },
+  { label: 'Drawing' },
+  { label: 'Music' },
+  { label: 'Cats' },
+  { label: 'Dogs' },
+  { label: 'Other animals' },
+  { label: 'Dinosaurs' },
+  { label: 'Science' },
+  { label: 'Space' },
+  { label: 'Reading' },
+  { label: 'Swimming' },
+  { label: 'Building things' },
+  { label: 'Soccer' },
 ];
 
 export default function Interests() {
@@ -39,15 +40,15 @@ export default function Interests() {
       <Text style={styles.caption}>Tap to select anything they're into.</Text>
       <ScrollView contentContainerStyle={styles.grid}>
         {INTERESTS.map((interest) => {
-          const isSelected = selected.includes(interest);
+          const isSelected = selected.includes(interest.label);
           return (
             <Pressable
-              key={interest}
+              key={interest.label}
               style={[styles.tile, isSelected && styles.tileSelected]}
-              onPress={() => toggle(interest)}
+              onPress={() => toggle(interest.label)}
             >
-              <View style={styles.thumbnail} />
-              <Text style={styles.tileLabel}>{interest}</Text>
+              <Photo source={interest.image} style={styles.thumbnail} />
+              <Text style={styles.tileLabel}>{interest.label}</Text>
             </Pressable>
           );
         })}

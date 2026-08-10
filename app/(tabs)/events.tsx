@@ -5,6 +5,7 @@ import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
 
 export default function Events() {
   return (
@@ -17,13 +18,14 @@ export default function Events() {
           title="Playground meetup"
           subtitle="Sat, Aug 16 · Nakamura Family"
           badge="Confirmed"
+          image={images.playdatePlayground}
           onPress={() => router.push('/playdate/1')}
         />
-        <ListRow title="Museum morning" subtitle="Sun, Aug 17 · Osei Family" badge="Unconfirmed" />
+        <ListRow title="Museum morning" subtitle="Sun, Aug 17 · Osei Family" badge="Unconfirmed" image={images.playdateMuseum} />
 
         <SectionHeader title="Events you're going to" />
-        <ListRow title="Parent's Night Out" subtitle="RISE · 350 Jay St, Brooklyn" badge="31 going" />
-        <ListRow title="Mom's Night Out" subtitle="South School · Park Slope" badge="Confirmed" />
+        <ListRow title="Parent's Night Out" subtitle="RISE · 350 Jay St, Brooklyn" badge="31 going" image={images.eventParentsNightOut} />
+        <ListRow title="Mom's Night Out" subtitle="South School · Park Slope" badge="Confirmed" image={images.eventMomsNightOut} />
       </ScrollView>
     </SafeAreaView>
   );

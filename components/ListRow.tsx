@@ -1,22 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ImageSourcePropType, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
+import { Photo } from './Photo';
 
 export function ListRow({
   title,
   subtitle,
   badge,
+  image,
   onPress,
 }: {
   title: string;
   subtitle?: string;
   badge?: string;
+  image?: ImageSourcePropType;
   onPress?: () => void;
 }) {
   const Container = onPress ? Pressable : View;
   return (
     <Container style={styles.row} onPress={onPress}>
-      <View style={styles.thumbnail} />
+      <Photo source={image} style={styles.thumbnail} />
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}

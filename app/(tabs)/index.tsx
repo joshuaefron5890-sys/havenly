@@ -6,17 +6,18 @@ import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
 
 const TABS = ['My List · 6', 'Discover'] as const;
 
 const SUGGESTED_FAMILIES = [
-  { name: 'Yuki', subtitle: 'Hana, 5 · Leo, 2 · 0.4 mi', match: 94 },
-  { name: 'Abena', subtitle: 'Kwame, 3 · Ama, 3 · 0.9 mi', match: 88 },
+  { name: 'Yuki', subtitle: 'Hana, 5 · Leo, 2 · 0.4 mi', match: 94, image: images.familyYuki },
+  { name: 'Abena', subtitle: 'Kwame, 3 · Ama, 3 · 0.9 mi', match: 88, image: images.familyAbena },
 ];
 
 const SUGGESTED_PLAYDATES = [
-  { title: 'Sensory Storytime', subtitle: 'Sat, Aug 16 · Brooklyn Public Library', reason: "Low-stimulation and structured — great for Mia's focus" },
-  { title: 'Outdoor Art Morning', subtitle: 'Sun, Aug 17 · Prospect Park', reason: 'Open-air creativity — matches drawing love' },
+  { title: 'Sensory Storytime', subtitle: 'Sat, Aug 16 · Brooklyn Public Library', reason: "Low-stimulation and structured — great for Mia's focus", image: images.playdateSensoryStorytime },
+  { title: 'Outdoor Art Morning', subtitle: 'Sun, Aug 17 · Prospect Park', reason: 'Open-air creativity — matches drawing love', image: images.playdateOutdoorArt },
 ];
 
 export default function ForYou() {
@@ -44,37 +45,38 @@ export default function ForYou() {
           <>
             <SectionHeader title="Suggested families" action="Browse all" />
             {SUGGESTED_FAMILIES.map((family) => (
-              <ListRow key={family.name} title={family.name} subtitle={family.subtitle} badge={`${family.match}%`} />
+              <ListRow key={family.name} title={family.name} subtitle={family.subtitle} badge={`${family.match}%`} image={family.image} />
             ))}
 
             <SectionHeader title="Suggested playdates" action="See more" />
             {SUGGESTED_PLAYDATES.map((playdate) => (
-              <ListRow key={playdate.title} title={playdate.title} subtitle={`${playdate.subtitle} — ${playdate.reason}`} />
+              <ListRow key={playdate.title} title={playdate.title} subtitle={`${playdate.subtitle} — ${playdate.reason}`} image={playdate.image} />
             ))}
 
             <SectionHeader title="For Mia — products" action="View all" />
-            <ListRow title="Harkla Weighted Blanket" subtitle="$89" />
-            <ListRow title="Noise-cancelling headphones" subtitle="$45" />
+            <ListRow title="Harkla Weighted Blanket" subtitle="$89" image={images.productWeightedBlanket} />
+            <ListRow title="Noise-cancelling headphones" subtitle="$45" image={images.productHeadphones} />
           </>
         ) : (
           <>
             <SectionHeader title="Families" action="Browse all" />
-            <ListRow title="Yuki" subtitle="Hana, 5 · Leo, 2 · 0.4 mi" />
+            <ListRow title="Yuki" subtitle="Hana, 5 · Leo, 2 · 0.4 mi" image={images.familyYuki} />
 
             <SectionHeader title="Playdates" action="View in Events" />
             <ListRow
               title="Playground meetup"
               subtitle="Sat, Aug 16 · Nakamura Family"
               badge="Confirmed"
+              image={images.playdatePlayground}
               onPress={() => router.push('/playdate/1')}
             />
 
             <SectionHeader title="Products" />
-            <ListRow title="Harkla Weighted Blanket" subtitle="$89" />
-            <ListRow title="Rubik's Cube 3×3" subtitle="$12" />
+            <ListRow title="Harkla Weighted Blanket" subtitle="$89" image={images.productWeightedBlanket} />
+            <ListRow title="Rubik's Cube 3×3" subtitle="$12" image={images.productRubiksCube} />
 
             <SectionHeader title="Seminars" />
-            <ListRow title="ADHD & Playdates: What Actually Helps" subtitle="Sep 14 · Zoom" />
+            <ListRow title="ADHD & Playdates: What Actually Helps" subtitle="Sep 14 · Zoom" image={images.seminarAdhdPlaydates} />
 
             <SectionHeader title="Podcasts" />
             <ListRow title="Coming soon" subtitle="More content on the way" />

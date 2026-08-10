@@ -3,14 +3,16 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Photo } from '../../components/Photo';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
 
 const FILTERS = ['All', 'Available Now', 'Sitters', 'Nannies', 'Behavioral'];
 
 const HELPERS = [
-  { id: '1', name: 'Marcus T.', role: 'BCBA · 7 yrs · 0.6 mi', rate: '$45/hr', rating: '4.9', reviews: 38, tags: ['Behavioral Support', 'Sitter'] },
-  { id: '2', name: 'Available OT', role: 'OT · 5 yrs · 1.1 mi', rate: '$55/hr', rating: '4.8', reviews: 24, tags: ['Occupational Therapy', 'Sitter'] },
+  { id: '1', name: 'Marcus T.', role: 'BCBA · 7 yrs · 0.6 mi', rate: '$45/hr', rating: '4.9', reviews: 38, tags: ['Behavioral Support', 'Sitter'], image: images.helperMarcus },
+  { id: '2', name: 'Available OT', role: 'OT · 5 yrs · 1.1 mi', rate: '$55/hr', rating: '4.8', reviews: 24, tags: ['Occupational Therapy', 'Sitter'], image: images.helperOt },
 ];
 
 export default function GetHelp() {
@@ -45,7 +47,7 @@ export default function GetHelp() {
 
         {HELPERS.map((helper) => (
           <Pressable key={helper.id} style={styles.card} onPress={() => router.push(`/helper/${helper.id}`)}>
-            <View style={styles.avatar} />
+            <Photo source={helper.image} style={styles.avatar} />
             <View style={styles.cardBody}>
               <View style={styles.cardTop}>
                 <Text style={styles.cardName}>{helper.name}</Text>

@@ -49,16 +49,20 @@ export default function Account() {
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [checkingRedirect, setCheckingRedirect] = useState(true);
+  const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
 
-  // If this page load is the return leg of a Gmail redirect, finish it here.
+  // If this page load is the return leg of a Gmail redirect, pre-fill the
+  // name fields and swap email/password for a "Connected" indicator —
+  // the account already exists, so just let them confirm and continue.
   useEffect(() => {
     let cancelled = false;
     completeGoogleSignIn()
       .then((credential) => {
         if (cancelled || !credential) return;
         const [first, ...rest] = (credential.user.displayName ?? '').split(' ');
-        updateOnboardingProfile({ firstName: first ?? '', lastName: rest.join(' ') });
-        router.replace('/onboarding/family');
+        setFirstName(first ?? '');
+        setLastName(rest.join(' '));
+        setConnectedGmail(credential.user.email);
       })
       .catch((err: any) => {
         if (cancelled) return;
@@ -76,8 +80,19 @@ export default function Account() {
 
   const handleContinue = async () => {
     setError(null);
-    if (!firstName || !lastName || !email || !password) {
-      setError('Fill in your name, email, and password to continue.');
+    if (!firstName || !lastName) {
+      setError('Add your first and last name to continue.');
+      return;
+    }
+
+    if (connectedGmail) {
+      updateOnboardingProfile({ firstName, lastName, pronouns: pronoun });
+      router.push('/onboarding/family');
+      return;
+    }
+
+    if (!email || !password) {
+      setError('Fill in your email and password to continue.');
       return;
     }
     if (password.length < 6) {
@@ -145,21 +160,33 @@ export default function Account() {
             <FieldInput label="Last name" placeholder="Chen" value={lastName} onChangeText={setLastName} />
           </View>
         </View>
-        <FieldInput
-          label="Email"
-          placeholder="jamie@email.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <FieldInput
-          label="Password"
-          placeholder="6+ characters"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        {connectedGmail ? (
+          <View style={styles.connectedRow}>
+            <Ionicons name="checkmark-circle" size={22} color={colors.positive} />
+            <View style={styles.connectedTextWrap}>
+              <Text style={styles.connectedTitle}>Connected with Gmail</Text>
+              <Text style={styles.connectedEmail}>{connectedGmail}</Text>
+            </View>
+          </View>
+        ) : (
+          <>
+            <FieldInput
+              label="Email"
+              placeholder="jamie@email.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <FieldInput
+              label="Password"
+              placeholder="6+ characters"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </>
+        )}
 
         <Text style={styles.label}>
           PRONOUNS<Text style={styles.optional}> · optional</Text>
@@ -177,14 +204,16 @@ export default function Account() {
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={handleContinue} disabled={submitting}>
           <Text style={styles.ctaText}>{submitting ? 'Creating account…' : 'Continue'}</Text>
         </Pressable>
-        <Pressable
-          style={[styles.googleButton, googleSubmitting && styles.ctaDisabled]}
-          onPress={handleGoogleSignUp}
-          disabled={googleSubmitting}
-        >
-          <Ionicons name="logo-google" size={18} color={colors.text} style={styles.googleIcon} />
-          <Text style={styles.googleText}>{googleSubmitting ? 'Signing up…' : 'Sign up with Gmail'}</Text>
-        </Pressable>
+        {!connectedGmail && (
+          <Pressable
+            style={[styles.googleButton, googleSubmitting && styles.ctaDisabled]}
+            onPress={handleGoogleSignUp}
+            disabled={googleSubmitting}
+          >
+            <Ionicons name="logo-google" size={18} color={colors.text} style={styles.googleIcon} />
+            <Text style={styles.googleText}>{googleSubmitting ? 'Signing up…' : 'Sign up with Gmail'}</Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -225,6 +254,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  connectedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.positiveMuted,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  connectedTextWrap: {
+    flex: 1,
+  },
+  connectedTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  connectedEmail: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   error: {
     fontSize: 13,

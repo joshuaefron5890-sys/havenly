@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../components/FieldInput';
-import { auth, firebaseConfigured } from '../lib/firebase';
+import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogle } from '../lib/firebase';
 import { colors } from '../theme/colors';
 
 function friendlyError(code: string): string {
@@ -24,11 +24,24 @@ function friendlyError(code: string): string {
   }
 }
 
+function friendlyGoogleError(code: string): string | null {
+  switch (code) {
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return null;
+    case 'auth/unauthorized-domain':
+      return 'This site isn’t authorized for Google sign-in yet — add it under Firebase Auth → Settings → Authorized domains.';
+    default:
+      return 'Something went wrong signing in with Gmail. Please try again.';
+  }
+}
+
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const handleSignIn = async () => {
     setError(null);
@@ -48,6 +61,28 @@ export default function SignIn() {
       setError(friendlyError(err?.code ?? ''));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    if (!firebaseConfigured || !auth) {
+      setError('Sign-in isn’t configured yet.');
+      return;
+    }
+    if (!googleSignInSupported()) {
+      setError('Sign in with Gmail isn’t available on this platform yet — use email for now.');
+      return;
+    }
+    setGoogleSubmitting(true);
+    try {
+      await signInWithGoogle();
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      const message = friendlyGoogleError(err?.code ?? '');
+      if (message) setError(message);
+    } finally {
+      setGoogleSubmitting(false);
     }
   };
 
@@ -84,6 +119,15 @@ export default function SignIn() {
 
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={handleSignIn} disabled={submitting}>
           <Text style={styles.ctaText}>{submitting ? 'Signing in…' : 'Sign in'}</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.googleButton, googleSubmitting && styles.ctaDisabled]}
+          onPress={handleGoogleSignIn}
+          disabled={googleSubmitting}
+        >
+          <Ionicons name="logo-google" size={18} color={colors.text} style={styles.googleIcon} />
+          <Text style={styles.googleText}>{googleSubmitting ? 'Signing in…' : 'Sign in with Gmail'}</Text>
         </Pressable>
 
         <Pressable onPress={() => router.replace('/onboarding/account')}>
@@ -153,6 +197,24 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: 16,
     fontWeight: '700',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  googleIcon: {
+    marginRight: 8,
+  },
+  googleText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
   },
   switch: {
     textAlign: 'center',

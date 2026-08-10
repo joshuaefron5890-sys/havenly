@@ -1,6 +1,7 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
+import { Auth, getAuth, GoogleAuthProvider, signInWithPopup, UserCredential } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -28,3 +29,21 @@ if (firebaseConfigured) {
 }
 
 export { app, auth, db };
+
+// Firebase's popup-based Google sign-in only works in a real browser — on
+// native this needs expo-auth-session + platform OAuth client IDs, a
+// separate piece of work not done yet.
+export function googleSignInSupported(): boolean {
+  return Platform.OS === 'web';
+}
+
+export async function signInWithGoogle(): Promise<UserCredential> {
+  if (!auth) {
+    throw new Error('not-configured');
+  }
+  if (!googleSignInSupported()) {
+    throw new Error('not-supported-native');
+  }
+  const provider = new GoogleAuthProvider();
+  return signInWithPopup(auth, provider);
+}

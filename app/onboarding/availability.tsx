@@ -5,16 +5,23 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { colors } from '../../theme/colors';
 
 const WEEKDAYS = ['Before school', 'After school', 'Evenings'];
 const WEEKENDS = ['Saturday morning', 'Saturday afternoon', 'Saturday evening', 'Sunday morning', 'Sunday afternoon', 'Sunday evening'];
 
 export default function Availability() {
+  const { updateProfile } = useOnboarding();
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (option: string) => {
     setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  };
+
+  const handleContinue = () => {
+    updateProfile({ availability: selected });
+    router.push('/onboarding/calendar');
   };
 
   return (
@@ -45,7 +52,7 @@ export default function Availability() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/calendar')}>
+        <Pressable style={styles.cta} onPress={handleContinue}>
           <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
       </View>

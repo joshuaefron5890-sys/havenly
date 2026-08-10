@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../components/Photo';
+import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 
@@ -16,10 +18,26 @@ function joinCommunity() {
 }
 
 function signIn() {
-  router.replace('/(tabs)');
+  router.push('/sign-in');
 }
 
 export default function Onboarding() {
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/(tabs)');
+    }
+  }, [loading, user]);
+
+  if (loading || user) {
+    return (
+      <SafeAreaView style={[styles.screen, styles.centered]}>
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -60,6 +78,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     padding: 20,

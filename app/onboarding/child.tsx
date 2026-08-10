@@ -6,6 +6,7 @@ import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { colors } from '../../theme/colors';
 
 const NEURODIVERGENCE_OPTIONS = [
@@ -22,10 +23,19 @@ const NEURODIVERGENCE_OPTIONS = [
 ];
 
 export default function Child() {
+  const { updateProfile } = useOnboarding();
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
+  const [grade, setGrade] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (option: string) => {
     setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  };
+
+  const handleContinue = () => {
+    updateProfile({ child: { name, age, grade, neurodivergence: selected } });
+    router.push('/onboarding/play-style');
   };
 
   return (
@@ -36,13 +46,13 @@ export default function Child() {
 
         <View style={styles.row}>
           <View style={styles.grow}>
-            <FieldInput label="Child's name" placeholder="Mia" />
+            <FieldInput label="Child's name" placeholder="Mia" value={name} onChangeText={setName} />
           </View>
           <View style={styles.small}>
-            <FieldInput label="Age" placeholder="6" />
+            <FieldInput label="Age" placeholder="6" value={age} onChangeText={setAge} keyboardType="number-pad" />
           </View>
         </View>
-        <FieldInput label="Grade" placeholder="e.g. 1st grade" optional />
+        <FieldInput label="Grade" placeholder="e.g. 1st grade" optional value={grade} onChangeText={setGrade} />
 
         <Text style={styles.label}>NEURODIVERGENCE · SELECT ANY</Text>
         <View style={styles.chips}>
@@ -53,7 +63,7 @@ export default function Child() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/play-style')}>
+        <Pressable style={styles.cta} onPress={handleContinue}>
           <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
       </View>

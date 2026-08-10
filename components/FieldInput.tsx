@@ -1,14 +1,26 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardTypeOptions, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../theme/colors';
 
 export function FieldInput({
   label,
   placeholder,
   optional,
+  value,
+  onChangeText,
+  secureTextEntry,
+  keyboardType,
+  autoCapitalize,
+  error,
 }: {
   label: string;
   placeholder?: string;
   optional?: boolean;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: KeyboardTypeOptions;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  error?: string;
 }) {
   return (
     <View style={styles.wrapper}>
@@ -16,7 +28,17 @@ export function FieldInput({
         {label}
         {optional ? <Text style={styles.optional}> · optional</Text> : null}
       </Text>
-      <TextInput style={styles.input} placeholder={placeholder} placeholderTextColor={colors.textMuted} />
+      <TextInput
+        style={[styles.input, error && styles.inputError]}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+      />
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
@@ -45,5 +67,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: colors.text,
+  },
+  inputError: {
+    borderColor: colors.error,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 6,
   },
 });

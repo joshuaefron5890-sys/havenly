@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { colors } from '../../theme/colors';
 
 const PERSONALITY = [
@@ -18,11 +19,17 @@ const PERSONALITY = [
 const SOUNDS_GOOD = ['Coffee', 'Dinner', 'Walking', 'Family BBQs', 'Day trips', 'Kids activities together', 'Talking parenting'];
 
 export default function AboutYou() {
+  const { updateProfile } = useOnboarding();
   const [personality, setPersonality] = useState<string | null>(null);
   const [soundsGood, setSoundsGood] = useState<string[]>([]);
 
   const toggle = (option: string) => {
     setSoundsGood((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  };
+
+  const handleContinue = () => {
+    updateProfile({ personality, soundsGoodTo: soundsGood });
+    router.push('/onboarding/availability');
   };
 
   return (
@@ -48,7 +55,7 @@ export default function AboutYou() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/availability')}>
+        <Pressable style={styles.cta} onPress={handleContinue}>
           <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
       </View>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { colors } from '../../theme/colors';
 
 const GOALS = [
@@ -21,10 +22,16 @@ const GOALS = [
 ];
 
 export default function Goals() {
+  const { updateProfile } = useOnboarding();
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (option: string) => {
     setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  };
+
+  const handleContinue = () => {
+    updateProfile({ goals: selected });
+    router.push('/onboarding/about-you');
   };
 
   return (
@@ -43,7 +50,7 @@ export default function Goals() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/about-you')}>
+        <Pressable style={styles.cta} onPress={handleContinue}>
           <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
       </View>

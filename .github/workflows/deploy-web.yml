@@ -34,6 +34,17 @@ jobs:
         env:
           EXPO_NO_TELEMETRY: 1
           EXPO_OFFLINE: 1
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
+          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          EXPO_PUBLIC_FIREBASE_APP_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+
+      # GitHub Pages has no server-side rewrites, so a direct load of any
+      # route other than / (e.g. /sign-in) 404s unless the 404 page is the
+      # same SPA shell — expo-router then picks up the real route client-side.
+      - run: cp dist/index.html dist/404.html
 
       - uses: actions/configure-pages@v5
         with:

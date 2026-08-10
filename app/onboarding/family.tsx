@@ -5,13 +5,21 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { colors } from '../../theme/colors';
 
 const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity'];
 
 export default function Family() {
+  const { updateProfile } = useOnboarding();
   const [children, setChildren] = useState(1);
+  const [partnerAtHome, setPartnerAtHome] = useState<boolean | null>(null);
   const [siblings, setSiblings] = useState<string | null>(null);
+
+  const handleContinue = () => {
+    updateProfile({ numChildren: children, partnerAtHome, siblingsIncluded: siblings });
+    router.push('/onboarding/child');
+  };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -34,13 +42,19 @@ export default function Family() {
         <Text style={styles.label}>PARTNER OR CO-PARENT AT HOME?</Text>
         <View style={styles.row}>
           <View style={styles.half}>
-            <Pressable style={styles.optionButton}>
-              <Text style={styles.optionText}>Yes</Text>
+            <Pressable
+              style={[styles.optionButton, partnerAtHome === true && styles.optionButtonSelected]}
+              onPress={() => setPartnerAtHome(true)}
+            >
+              <Text style={[styles.optionText, partnerAtHome === true && styles.optionTextSelected]}>Yes</Text>
             </Pressable>
           </View>
           <View style={styles.half}>
-            <Pressable style={styles.optionButton}>
-              <Text style={styles.optionText}>No</Text>
+            <Pressable
+              style={[styles.optionButton, partnerAtHome === false && styles.optionButtonSelected]}
+              onPress={() => setPartnerAtHome(false)}
+            >
+              <Text style={[styles.optionText, partnerAtHome === false && styles.optionTextSelected]}>No</Text>
             </Pressable>
           </View>
         </View>
@@ -55,7 +69,7 @@ export default function Family() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/child')}>
+        <Pressable style={styles.cta} onPress={handleContinue}>
           <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
       </View>
@@ -122,10 +136,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
+  optionButtonSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentMuted,
+  },
   optionText: {
     fontSize: 15,
     fontWeight: '600',
     color: colors.text,
+  },
+  optionTextSelected: {
+    color: colors.accent,
   },
   radioRow: {
     flexDirection: 'row',

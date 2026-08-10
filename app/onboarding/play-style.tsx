@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { colors } from '../../theme/colors';
 
 const PLAY_STYLES = [
@@ -20,11 +21,17 @@ const PLAY_STYLES = [
 const PLAYDATE_LENGTHS = ['< 1 hour', '1–2 hours', '2–3 hours', 'Half a day', 'It depends'];
 
 export default function PlayStyle() {
+  const { updateProfile } = useOnboarding();
   const [styles_, setStyles] = useState<string[]>([]);
   const [length, setLength] = useState<string | null>(null);
 
   const toggle = (option: string) => {
     setStyles((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  };
+
+  const handleContinue = () => {
+    updateProfile({ playStyle: styles_, energyLevel: 0.5, idealPlaydateLength: length });
+    router.push('/onboarding/interests');
   };
 
   return (
@@ -56,7 +63,7 @@ export default function PlayStyle() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/interests')}>
+        <Pressable style={styles.cta} onPress={handleContinue}>
           <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
       </View>

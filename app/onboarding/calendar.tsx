@@ -1,16 +1,43 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
+import { auth, db } from '../../lib/firebase';
 import { colors } from '../../theme/colors';
 
 const CALENDARS = ['Google Calendar', 'Apple Calendar', 'Outlook Calendar'];
 
-function finish() {
-  router.replace('/onboarding/matches');
-}
-
 export default function Calendar() {
+  const { profile } = useOnboarding();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const finish = async () => {
+    setError(null);
+    const uid = auth?.currentUser?.uid;
+    if (!uid || !db) {
+      setError('You need to be signed in to save your profile.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await setDoc(
+        doc(db, 'users', uid),
+        { ...profile, onboardingComplete: true, createdAt: serverTimestamp() },
+        { merge: true }
+      );
+      router.replace('/onboarding/matches');
+    } catch {
+      setError('Couldn’t save your profile — check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <WizardHeader step={9} title="Connect your" accent="calendar." />
@@ -29,13 +56,15 @@ export default function Calendar() {
             <Text style={styles.connect}>Connect →</Text>
           </View>
         ))}
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={finish}>
-          <Text style={styles.ctaText}>Find My Matches</Text>
+        <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={finish} disabled={submitting}>
+          {submitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.ctaText}>Find My Matches</Text>}
         </Pressable>
-        <Pressable onPress={finish}>
+        <Pressable onPress={finish} disabled={submitting}>
           <Text style={styles.skip}>Skip for now</Text>
         </Pressable>
       </View>
@@ -91,6 +120,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.accent,
   },
+  error: {
+    fontSize: 13,
+    color: colors.error,
+    marginTop: 10,
+  },
   footer: {
     padding: 20,
   },
@@ -100,6 +134,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 12,
+  },
+  ctaDisabled: {
+    opacity: 0.6,
   },
   ctaText: {
     color: colors.surface,

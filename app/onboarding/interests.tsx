@@ -4,6 +4,7 @@ import { ImageSourcePropType, Pressable, ScrollView, StyleSheet, Text, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { colors } from '../../theme/colors';
 
 const INTERESTS: { label: string; image?: ImageSourcePropType }[] = [
@@ -28,10 +29,16 @@ const INTERESTS: { label: string; image?: ImageSourcePropType }[] = [
 ];
 
 export default function Interests() {
+  const { updateProfile } = useOnboarding();
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (option: string) => {
     setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  };
+
+  const handleContinue = () => {
+    updateProfile({ interests: selected });
+    router.push('/onboarding/goals');
   };
 
   return (
@@ -55,7 +62,7 @@ export default function Interests() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.cta} onPress={() => router.push('/onboarding/goals')}>
+        <Pressable style={styles.cta} onPress={handleContinue}>
           <Text style={styles.ctaText}>Continue</Text>
         </Pressable>
       </View>

@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../components/FieldInput';
-import { auth, beginGoogleSignIn, completeGoogleSignIn, firebaseConfigured, googleSignInSupported } from '../lib/firebase';
+import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleAccessToken } from '../lib/firebase';
+import { requestGoogleAccessToken } from '../lib/googleIdentity';
 import { colors } from '../theme/colors';
 
 function friendlyError(code: string): string {
@@ -24,8 +25,9 @@ function friendlyError(code: string): string {
   }
 }
 
-function friendlyGoogleError(code: string): string | null {
-  switch (code) {
+function friendlyGoogleError(reason: string): string | null {
+  switch (reason) {
+    case 'popup_closed':
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
       return null;
@@ -42,29 +44,6 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const [checkingRedirect, setCheckingRedirect] = useState(true);
-
-  // If this page load is the return leg of a Gmail redirect, finish it here.
-  useEffect(() => {
-    let cancelled = false;
-    completeGoogleSignIn()
-      .then((credential) => {
-        if (cancelled || !credential) return;
-        router.replace('/(tabs)');
-      })
-      .catch((err: any) => {
-        if (cancelled) return;
-        const message = friendlyGoogleError(err?.code ?? '');
-        if (message) setError(message);
-      })
-      .finally(() => {
-        if (!cancelled) setCheckingRedirect(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleSignIn = async () => {
     setError(null);
@@ -99,23 +78,16 @@ export default function SignIn() {
     }
     setGoogleSubmitting(true);
     try {
-      // Navigates away to Google; the return leg is handled by the
-      // completeGoogleSignIn() effect above, on next page load.
-      await beginGoogleSignIn();
+      const accessToken = await requestGoogleAccessToken();
+      await signInWithGoogleAccessToken(accessToken);
+      router.replace('/(tabs)');
     } catch (err: any) {
-      const message = friendlyGoogleError(err?.code ?? '');
+      const message = friendlyGoogleError(err?.code ?? err?.message ?? '');
       if (message) setError(message);
+    } finally {
       setGoogleSubmitting(false);
     }
   };
-
-  if (checkingRedirect) {
-    return (
-      <SafeAreaView style={[styles.screen, styles.centered]}>
-        <ActivityIndicator color={colors.accent} />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>

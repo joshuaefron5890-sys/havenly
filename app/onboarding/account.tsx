@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
-import { auth, beginGoogleSignIn, completeGoogleSignIn, firebaseConfigured, googleSignInSupported } from '../../lib/firebase';
+import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleAccessToken } from '../../lib/firebase';
+import { requestGoogleAccessToken } from '../../lib/googleIdentity';
 import { colors } from '../../theme/colors';
 
 const PRONOUNS = ['she/her', 'he/him', 'they/them', 'she/they', 'he/they'];
@@ -26,8 +27,9 @@ function friendlyError(code: string): string {
   }
 }
 
-function friendlyGoogleError(code: string): string | null {
-  switch (code) {
+function friendlyGoogleError(reason: string): string | null {
+  switch (reason) {
+    case 'popup_closed':
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
       return null;
@@ -48,45 +50,7 @@ export default function Account() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const [checkingRedirect, setCheckingRedirect] = useState(true);
   const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
-  // TEMPORARY: shows exactly what the redirect check resolved to, so we can
-  // diagnose the Gmail sign-up flow without needing devtools. Remove once
-  // the redirect issue is confirmed fixed.
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
-
-  // If this page load is the return leg of a Gmail redirect, pre-fill the
-  // name fields and swap email/password for a "Connected" indicator —
-  // the account already exists, so just let them confirm and continue.
-  useEffect(() => {
-    let cancelled = false;
-    completeGoogleSignIn()
-      .then((credential) => {
-        if (cancelled) return;
-        if (!credential) {
-          setDebugInfo('DEBUG: redirect check found no credential (getRedirectResult → null)');
-          return;
-        }
-        setDebugInfo(`DEBUG: got credential — email=${credential.user.email} name=${credential.user.displayName}`);
-        const [first, ...rest] = (credential.user.displayName ?? '').split(' ');
-        setFirstName(first ?? '');
-        setLastName(rest.join(' '));
-        setConnectedGmail(credential.user.email);
-      })
-      .catch((err: any) => {
-        if (cancelled) return;
-        setDebugInfo(`DEBUG: redirect check threw — code=${err?.code} message=${err?.message}`);
-        const message = friendlyGoogleError(err?.code ?? '');
-        if (message) setError(message);
-      })
-      .finally(() => {
-        if (!cancelled) setCheckingRedirect(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleContinue = async () => {
     setError(null);
@@ -140,28 +104,23 @@ export default function Account() {
 
     setGoogleSubmitting(true);
     try {
-      // Navigates away to Google; the return leg is handled by the
-      // completeGoogleSignIn() effect above, on next page load.
-      await beginGoogleSignIn();
+      const accessToken = await requestGoogleAccessToken();
+      const credential = await signInWithGoogleAccessToken(accessToken);
+      const [first, ...rest] = (credential.user.displayName ?? '').split(' ');
+      setFirstName(first ?? '');
+      setLastName(rest.join(' '));
+      setConnectedGmail(credential.user.email);
     } catch (err: any) {
-      const message = friendlyGoogleError(err?.code ?? '');
+      const message = friendlyGoogleError(err?.code ?? err?.message ?? '');
       if (message) setError(message);
+    } finally {
       setGoogleSubmitting(false);
     }
   };
 
-  if (checkingRedirect) {
-    return (
-      <SafeAreaView style={[styles.screen, styles.centered]}>
-        <ActivityIndicator color={colors.accent} />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <WizardHeader step={1} title="Create your" accent="account." />
-      {debugInfo ? <Text style={styles.debug}>{debugInfo}</Text> : null}
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <View style={styles.half}>
@@ -242,15 +201,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
-  },
-  debug: {
-    fontSize: 11,
-    color: colors.surface,
-    backgroundColor: colors.error,
-    padding: 8,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    borderRadius: 8,
   },
   row: {
     flexDirection: 'row',

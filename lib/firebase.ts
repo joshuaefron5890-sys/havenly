@@ -1,5 +1,5 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, getRedirectResult, GoogleAuthProvider, signInWithRedirect, signOut, UserCredential } from 'firebase/auth';
+import { Auth, getAuth, GoogleAuthProvider, signInWithCredential, signOut, UserCredential } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
@@ -36,27 +36,15 @@ export function googleSignInSupported(): boolean {
   return Platform.OS === 'web';
 }
 
-// Uses signInWithRedirect rather than signInWithPopup: popup sign-in depends
-// on window.opener communication back to the main tab, which modern Chrome's
-// default cross-origin-opener policy blocks — and GitHub Pages can't set the
-// response header that would fix it (no server config on static hosting).
-// Redirect avoids that entirely by navigating away and back instead.
-export async function beginGoogleSignIn(): Promise<void> {
+// Exchanges a Google OAuth access token (from lib/googleIdentity.ts, obtained
+// via Google Identity Services directly rather than Firebase's redirect
+// relay) for a signed-in Firebase user.
+export async function signInWithGoogleAccessToken(accessToken: string): Promise<UserCredential> {
   if (!auth) {
     throw new Error('not-configured');
   }
-  if (!googleSignInSupported()) {
-    throw new Error('not-supported-native');
-  }
-  await signInWithRedirect(auth, new GoogleAuthProvider());
-}
-
-// Call on mount of any screen that has a "Sign in/up with Gmail" button —
-// resolves to the sign-in result if this page load is the return leg of a
-// redirect, or null on a normal load.
-export async function completeGoogleSignIn(): Promise<UserCredential | null> {
-  if (!auth) return null;
-  return getRedirectResult(auth);
+  const credential = GoogleAuthProvider.credential(null, accessToken);
+  return signInWithCredential(auth, credential);
 }
 
 export async function signOutUser(): Promise<void> {

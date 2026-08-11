@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
+import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleAccessToken } from '../../lib/firebase';
 import { requestGoogleAccessToken } from '../../lib/googleIdentity';
@@ -14,16 +15,6 @@ import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const PRONOUNS = ['she/her', 'he/him', 'they/them', 'she/they', 'he/they'];
-
-// The signed-in Gmail address, if the current Firebase session actually has
-// Google linked as a sign-in method — not just "some account exists", since
-// an email/password account is also signed in immediately after step 1.
-function currentGoogleEmail(): string | null {
-  const user = auth?.currentUser;
-  if (!user) return null;
-  const isGoogleUser = user.providerData.some((p) => p.providerId === 'google.com');
-  return isGoogleUser ? user.email : null;
-}
 
 function friendlyError(code: string): string {
   switch (code) {
@@ -52,6 +43,7 @@ function friendlyGoogleError(reason: string): string | null {
 }
 
 export default function Account() {
+  const { user, loading: authLoading } = useAuth();
   const { profile, updateProfile: updateOnboardingProfile } = useOnboarding();
   const [firstName, setFirstName] = useState(profile.firstName);
   const [lastName, setLastName] = useState(profile.lastName);
@@ -61,7 +53,17 @@ export default function Account() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const [connectedGmail, setConnectedGmail] = useState<string | null>(currentGoogleEmail);
+  const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
+
+  // auth.currentUser isn't populated synchronously on a fresh page load —
+  // Firebase restores the session from storage asynchronously, so this has
+  // to react to the auth context settling rather than check it once at
+  // mount (which, on a refresh, would almost always still read as signed out).
+  useEffect(() => {
+    if (authLoading) return;
+    const isGoogleUser = user?.providerData.some((p) => p.providerId === 'google.com');
+    setConnectedGmail(isGoogleUser ? (user?.email ?? null) : null);
+  }, [authLoading, user]);
 
   const handleContinue = async () => {
     setError(null);
@@ -130,6 +132,14 @@ export default function Account() {
       setGoogleSubmitting(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <SafeAreaView style={[styles.screen, styles.centered]}>
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>

@@ -2,30 +2,32 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Photo } from '../../components/Photo';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
 
-const INTERESTS: { label: string; emoji: string }[] = [
-  { label: 'Minecraft', emoji: '⛏️' },
-  { label: 'Roblox', emoji: '🎮' },
-  { label: 'Pokémon', emoji: '⚡' },
-  { label: 'LEGO', emoji: '🧱' },
-  { label: 'Board games', emoji: '🎲' },
-  { label: 'Arts & crafts', emoji: '🎨' },
-  { label: 'Drawing', emoji: '✏️' },
-  { label: 'Music', emoji: '🎵' },
-  { label: 'Cats', emoji: '🐱' },
-  { label: 'Dogs', emoji: '🐶' },
-  { label: 'Other animals', emoji: '🐾' },
-  { label: 'Dinosaurs', emoji: '🦕' },
-  { label: 'Science', emoji: '🔬' },
-  { label: 'Space', emoji: '🚀' },
-  { label: 'Reading', emoji: '📚' },
-  { label: 'Swimming', emoji: '🏊' },
-  { label: 'Building things', emoji: '🔨' },
-  { label: 'Soccer', emoji: '⚽' },
+const INTERESTS = [
+  { label: 'Minecraft', image: images.interestMinecraft },
+  { label: 'Roblox', image: images.interestRoblox },
+  { label: 'Pokémon', image: images.interestPokemon },
+  { label: 'LEGO', image: images.interestLego },
+  { label: 'Board games', image: images.interestBoardGames },
+  { label: 'Arts & crafts', image: images.interestArtsCrafts },
+  { label: 'Drawing', image: images.interestDrawing },
+  { label: 'Music', image: images.interestMusic },
+  { label: 'Cats', image: images.interestCats },
+  { label: 'Dogs', image: images.interestDogs },
+  { label: 'Other animals', image: images.interestOtherAnimals },
+  { label: 'Dinosaurs', image: images.interestDinosaurs },
+  { label: 'Science', image: images.interestScience },
+  { label: 'Space', image: images.interestSpace },
+  { label: 'Reading', image: images.interestReading },
+  { label: 'Swimming', image: images.interestSwimming },
+  { label: 'Building things', image: images.interestBuildingThings },
+  { label: 'Soccer', image: images.interestSoccer },
 ];
 
 export default function Interests() {
@@ -56,9 +58,7 @@ export default function Interests() {
               style={[styles.tile, isSelected && styles.tileSelected]}
               onPress={() => toggle(interest.label)}
             >
-              <View style={styles.thumbnail}>
-                <Text style={styles.emoji}>{interest.emoji}</Text>
-              </View>
+              <Photo source={interest.image} style={styles.thumbnail} />
               <Text style={styles.tileLabel}>{interest.label}</Text>
             </Pressable>
           );
@@ -105,11 +105,6 @@ const styles = StyleSheet.create({
   thumbnail: {
     height: 70,
     backgroundColor: colors.accentMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emoji: {
-    fontSize: 32,
   },
   tileLabel: {
     fontSize: 12,

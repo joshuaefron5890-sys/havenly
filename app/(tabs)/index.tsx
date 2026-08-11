@@ -26,7 +26,7 @@ export default function ForYou() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader eyebrow="Haven.ly" title="For you, Sarah." showSettings={isDiscover} />
+      <ScreenHeader eyebrow="Haven.ly" title="For you, Sarah." />
 
       <View style={styles.toggle}>
         {TABS.map((tab) => (

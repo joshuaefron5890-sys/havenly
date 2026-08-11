@@ -1,5 +1,5 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, getRedirectResult, GoogleAuthProvider, signInWithRedirect, UserCredential } from 'firebase/auth';
+import { Auth, getAuth, getRedirectResult, GoogleAuthProvider, signInWithRedirect, signOut, UserCredential } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
@@ -57,4 +57,9 @@ export async function beginGoogleSignIn(): Promise<void> {
 export async function completeGoogleSignIn(): Promise<UserCredential | null> {
   if (!auth) return null;
   return getRedirectResult(auth);
+}
+
+export async function signOutUser(): Promise<void> {
+  if (!auth) return;
+  await signOut(auth);
 }

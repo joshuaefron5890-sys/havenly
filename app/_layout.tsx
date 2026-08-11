@@ -12,6 +12,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="sign-in" />
+            <Stack.Screen name="profile" />
             <Stack.Screen name="(tabs)" />
           </Stack>
         </ResponsiveContainer>

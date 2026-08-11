@@ -1,16 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
+import { SettingsMenu } from './SettingsMenu';
 
-export function ScreenHeader({
-  eyebrow,
-  title,
-  showSettings,
-}: {
-  eyebrow?: string;
-  title: string;
-  showSettings?: boolean;
-}) {
+export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title: string }) {
   return (
     <View style={styles.row}>
       <View>
@@ -20,7 +13,7 @@ export function ScreenHeader({
       <View style={styles.icons}>
         <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
         <View style={styles.avatar} />
-        {showSettings ? <Ionicons name="settings-outline" size={22} color={colors.text} /> : null}
+        <SettingsMenu />
       </View>
     </View>
   );

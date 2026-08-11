@@ -14,10 +14,10 @@ export type SiblingProfile = {
   name: string;
   age: string;
   gender: string;
-  interests: string;
+  grade: string;
 };
 
-export const emptySiblingProfile: SiblingProfile = { name: '', age: '', gender: '', interests: '' };
+export const emptySiblingProfile: SiblingProfile = { name: '', age: '', gender: '', grade: '' };
 
 export type OnboardingProfile = {
   firstName: string;

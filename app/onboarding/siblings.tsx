@@ -83,13 +83,7 @@ export default function Siblings() {
           </View>
         </View>
         <FieldInput label="Gender" placeholder="e.g. Girl" optional value={current.gender} onChangeText={(gender) => updateCurrent({ gender })} />
-        <FieldInput
-          label="Interests"
-          placeholder="e.g. soccer, drawing, dinosaurs"
-          optional
-          value={current.interests}
-          onChangeText={(interests) => updateCurrent({ interests })}
-        />
+        <FieldInput label="Grade" placeholder="e.g. 4th grade" optional value={current.grade} onChangeText={(grade) => updateCurrent({ grade })} />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>

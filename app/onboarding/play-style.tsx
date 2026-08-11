@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
-import { useOnboarding } from '../../contexts/OnboardingContext';
+import { ChildProfile, useOnboarding } from '../../contexts/OnboardingContext';
 import { stepBeforePlayStyle } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
@@ -22,56 +22,89 @@ const PLAY_STYLES = [
 
 const PLAYDATE_LENGTHS = ['< 1 hour', '1–2 hours', '2–3 hours', 'Half a day', 'It depends'];
 
+// "How does Ava like to play?" for one neurodivergent child, "How do Ava and
+// Ben like to play?" for more than one — the question (and the fields below)
+// repeat once per neurodivergent child, since play style is personal to them.
+function playHeading(names: string[]): { title: string; accent: string } {
+  const clean = names.map((n) => n.trim()).filter(Boolean);
+  if (clean.length === 0) return { title: 'How do they', accent: 'like to play?' };
+  if (clean.length === 1) return { title: `How does ${clean[0]}`, accent: 'like to play?' };
+  const joined = clean.length === 2 ? clean.join(' and ') : `${clean.slice(0, -1).join(', ')}, and ${clean[clean.length - 1]}`;
+  return { title: `How do ${joined}`, accent: 'like to play?' };
+}
+
 export default function PlayStyle() {
   const { profile, updateProfile } = useOnboarding();
-  const [styles_, setStyles] = useState<string[]>(profile.playStyle);
-  const [length, setLength] = useState<string | null>(profile.idealPlaydateLength);
+  const [childrenData, setChildrenData] = useState<ChildProfile[]>(profile.children);
 
-  const toggle = (option: string) => {
-    setStyles((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  const toggleStyle = (index: number, option: string) => {
+    setChildrenData((prev) =>
+      prev.map((c, i) => {
+        if (i !== index) return c;
+        const next = c.playStyle.includes(option) ? c.playStyle.filter((o) => o !== option) : [...c.playStyle, option];
+        return { ...c, playStyle: next };
+      })
+    );
+  };
+
+  const setLength = (index: number, length: string) => {
+    setChildrenData((prev) => prev.map((c, i) => (i === index ? { ...c, idealPlaydateLength: length } : c)));
   };
 
   const handleContinue = () => {
-    const patch = { playStyle: styles_, energyLevel: 0.5, idealPlaydateLength: length };
+    const patch = { children: childrenData };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/interests');
     router.push('/onboarding/interests');
   };
 
+  const heading = playHeading(childrenData.map((c) => c.name));
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <WizardHeader
         step={5}
-        title="How do they"
-        accent="like to play?"
+        title={heading.title}
+        accent={heading.accent}
         backTo={stepBeforePlayStyle({
           numChildren: profile.numChildren,
           numNeurodivergentChildren: profile.numNeurodivergentChildren,
         })}
       />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>PLAY STYLE · SELECT ALL THAT APPLY</Text>
-        <View style={styles.chips}>
-          {PLAY_STYLES.map((option) => (
-            <Chip key={option} label={option} selected={styles_.includes(option)} onPress={() => toggle(option)} />
-          ))}
-        </View>
+        {childrenData.length === 0 ? (
+          <Text style={styles.empty}>No neurodivergent child info yet — head back and add one to personalize this.</Text>
+        ) : (
+          childrenData.map((child, index) => (
+            <View key={index} style={index > 0 && styles.childSection}>
+              {childrenData.length > 1 ? <Text style={styles.childName}>{child.name || `Child ${index + 1}`}</Text> : null}
 
-        <Text style={styles.label}>ENERGY LEVEL</Text>
-        <View style={styles.energyRow}>
-          <Text style={styles.energyCaption}>Calm & quiet</Text>
-          <Text style={styles.energyCaption}>High energy</Text>
-        </View>
-        <View style={styles.energyTrack}>
-          <View style={styles.energyFill} />
-        </View>
+              <Text style={styles.label}>PLAY STYLE · SELECT ALL THAT APPLY</Text>
+              <View style={styles.chips}>
+                {PLAY_STYLES.map((option) => (
+                  <Chip
+                    key={option}
+                    label={option}
+                    selected={child.playStyle.includes(option)}
+                    onPress={() => toggleStyle(index, option)}
+                  />
+                ))}
+              </View>
 
-        <Text style={styles.label}>IDEAL PLAYDATE LENGTH</Text>
-        <View style={styles.chips}>
-          {PLAYDATE_LENGTHS.map((option) => (
-            <Chip key={option} label={option} selected={length === option} onPress={() => setLength(option)} />
-          ))}
-        </View>
+              <Text style={styles.label}>IDEAL PLAYDATE LENGTH</Text>
+              <View style={styles.chips}>
+                {PLAYDATE_LENGTHS.map((option) => (
+                  <Chip
+                    key={option}
+                    label={option}
+                    selected={child.idealPlaydateLength === option}
+                    onPress={() => setLength(index, option)}
+                  />
+                ))}
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -92,6 +125,22 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 0,
   },
+  empty: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  childSection: {
+    marginTop: 28,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  childName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
   label: {
     fontSize: 12,
     fontWeight: '700',
@@ -104,26 +153,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  energyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  energyCaption: {
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  energyTrack: {
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: colors.border,
-  },
-  energyFill: {
-    width: '50%',
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: colors.accent,
   },
   footer: {
     padding: 20,

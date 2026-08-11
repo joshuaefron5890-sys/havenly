@@ -7,6 +7,7 @@ import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { stepAfterFamily } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
@@ -68,8 +69,7 @@ export default function Family() {
       familyPhotoUrl,
     };
     updateProfile(patch);
-    // Nothing to fill in per-child if none of them are neurodivergent.
-    const nextStep = neurodivergentChildren > 0 ? '/onboarding/child' : '/onboarding/play-style';
+    const nextStep = stepAfterFamily({ numChildren: children, numNeurodivergentChildren: neurodivergentChildren });
     saveOnboardingStep(patch, nextStep);
     router.push(nextStep);
   };

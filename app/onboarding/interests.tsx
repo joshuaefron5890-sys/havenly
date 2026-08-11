@@ -47,7 +47,7 @@ export default function Interests() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={5} title="What are they" accent="really into?" backTo="/onboarding/play-style" />
+      <WizardHeader step={6} title="What are they" accent="really into?" backTo="/onboarding/play-style" />
       <Text style={styles.caption}>Tap to select anything they're into.</Text>
       <ScrollView contentContainerStyle={styles.grid}>
         {INTERESTS.map((interest) => {

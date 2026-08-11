@@ -37,7 +37,7 @@ export default function AboutYou() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={7} title="Now, a little" accent="about you." backTo="/onboarding/goals" />
+      <WizardHeader step={8} title="Now, a little" accent="about you." backTo="/onboarding/goals" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>AT A GET-TOGETHER, YOU'RE USUALLY...</Text>
         {PERSONALITY.map((option) => {

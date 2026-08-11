@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 
 export function WizardHeader({
   step,

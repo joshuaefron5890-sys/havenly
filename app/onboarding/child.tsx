@@ -8,6 +8,7 @@ import { FieldInput } from '../../components/FieldInput';
 import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { ChildProfile, emptyChildProfile, useOnboarding } from '../../contexts/OnboardingContext';
+import { stepAfterChild } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
@@ -85,8 +86,12 @@ export default function Child() {
     }
     const patch = { children: childrenData };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/play-style');
-    router.push('/onboarding/play-style');
+    const nextStep = stepAfterChild({
+      numChildren: profile.numChildren,
+      numNeurodivergentChildren: profile.numNeurodivergentChildren,
+    });
+    saveOnboardingStep(patch, nextStep);
+    router.push(nextStep);
   };
 
   const handleBack = () => {
@@ -102,10 +107,13 @@ export default function Child() {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <WizardHeader
         step={3}
-        title="About"
-        accent={total > 1 ? `child ${childIndex + 1} of ${total}.` : 'your little one.'}
+        title="About your"
+        accent={total > 1 ? `neurodivergent child ${childIndex + 1} of ${total}.` : 'neurodivergent child.'}
         onBack={handleBack}
       />
+      <Text style={styles.caption}>
+        This helps us match you with families who understand your child's needs — we'll ask about siblings next.
+      </Text>
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
           label={total > 1 ? `Child ${childIndex + 1}'s photo` : "Child's photo"}
@@ -166,6 +174,12 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
+  },
+  caption: {
+    fontSize: 13,
+    color: colors.textMuted,
+    paddingHorizontal: 20,
+    marginBottom: 12,
   },
   photoError: {
     fontSize: 12,

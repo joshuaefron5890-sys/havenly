@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { stepBeforePlayStyle } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
@@ -39,7 +40,15 @@ export default function PlayStyle() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={4} title="How do they" accent="like to play?" backTo="/onboarding/child" />
+      <WizardHeader
+        step={5}
+        title="How do they"
+        accent="like to play?"
+        backTo={stepBeforePlayStyle({
+          numChildren: profile.numChildren,
+          numNeurodivergentChildren: profile.numNeurodivergentChildren,
+        })}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>PLAY STYLE · SELECT ALL THAT APPLY</Text>
         <View style={styles.chips}>

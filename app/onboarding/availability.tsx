@@ -29,7 +29,7 @@ export default function Availability() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={8} title="When do playdates" accent="usually work?" backTo="/onboarding/about-you" />
+      <WizardHeader step={9} title="When do playdates" accent="usually work?" backTo="/onboarding/about-you" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>WEEKDAYS</Text>
         <View style={styles.chips}>

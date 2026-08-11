@@ -10,6 +10,15 @@ export type ChildProfile = {
 
 export const emptyChildProfile: ChildProfile = { name: '', age: '', grade: '', neurodivergence: [], photoUrl: null };
 
+export type SiblingProfile = {
+  name: string;
+  age: string;
+  gender: string;
+  interests: string;
+};
+
+export const emptySiblingProfile: SiblingProfile = { name: '', age: '', gender: '', interests: '' };
+
 export type OnboardingProfile = {
   firstName: string;
   lastName: string;
@@ -22,6 +31,9 @@ export type OnboardingProfile = {
   // One entry per neurodivergent child (numNeurodivergentChildren of them) —
   // only their name is required, everything else is optional per child.
   children: ChildProfile[];
+  // One entry per non-neurodivergent sibling (numChildren - numNeurodivergentChildren
+  // of them) — just the basics, only name is required.
+  siblingProfiles: SiblingProfile[];
   playStyle: string[];
   energyLevel: number;
   idealPlaydateLength: string | null;
@@ -42,6 +54,7 @@ const initialProfile: OnboardingProfile = {
   partnerAtHome: null,
   siblingsIncluded: null,
   children: [],
+  siblingProfiles: [],
   playStyle: [],
   energyLevel: 0.5,
   idealPlaydateLength: null,

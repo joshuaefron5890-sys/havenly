@@ -39,7 +39,7 @@ export default function Goals() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={6} title="What are you" accent="hoping to find?" backTo="/onboarding/interests" />
+      <WizardHeader step={7} title="What are you" accent="hoping to find?" backTo="/onboarding/interests" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>SELECT ALL THAT APPLY</Text>
         {GOALS.map((goal) => {

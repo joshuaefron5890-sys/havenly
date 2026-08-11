@@ -10,7 +10,7 @@ export function photoUploadSupported(): boolean {
 
 // Opens the browser's native file picker and resolves with the picked file,
 // or null if the user closed the dialog without choosing one.
-function pickImageFile(): Promise<File | null> {
+export function pickImageFile(): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -20,21 +20,15 @@ function pickImageFile(): Promise<File | null> {
   });
 }
 
-// Picks an image and uploads it to Storage under users/{uid}/{pathSuffix},
-// resolving with its public download URL (or null if the user cancelled).
-export async function pickAndUploadPhoto(pathSuffix: string): Promise<string | null> {
-  if (!photoUploadSupported()) {
-    throw new Error('not-supported-native');
-  }
+// Uploads an already-cropped/resized image blob (see PhotoCropperModal) to
+// Storage under users/{uid}/{pathSuffix}, resolving with its download URL.
+export async function uploadPhotoBlob(blob: Blob, pathSuffix: string): Promise<string> {
   const uid = auth?.currentUser?.uid;
   if (!uid || !app) {
     throw new Error('not-configured');
   }
-  const file = await pickImageFile();
-  if (!file) return null;
-
   const storage = getStorage(app);
   const fileRef = ref(storage, `users/${uid}/${pathSuffix}`);
-  await uploadBytes(fileRef, file);
+  await uploadBytes(fileRef, blob);
   return getDownloadURL(fileRef);
 }

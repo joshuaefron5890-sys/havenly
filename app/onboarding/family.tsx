@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../../components/AddPhotoCircle';
+import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
-import { photoUploadSupported, pickAndUploadPhoto } from '../../lib/photoUpload';
+import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
 
 const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity'];
@@ -18,6 +19,7 @@ export default function Family() {
   const [partnerAtHome, setPartnerAtHome] = useState<boolean | null>(profile.partnerAtHome);
   const [siblings, setSiblings] = useState<string | null>(profile.siblingsIncluded);
   const [familyPhotoUrl, setFamilyPhotoUrl] = useState<string | null>(profile.familyPhotoUrl);
+  const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
@@ -27,10 +29,16 @@ export default function Family() {
       setPhotoError('Photo upload isn’t available on this platform yet.');
       return;
     }
+    const file = await pickImageFile();
+    if (file) setPickedPhoto(file);
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setPickedPhoto(null);
     setUploadingPhoto(true);
     try {
-      const url = await pickAndUploadPhoto('family-photo.jpg');
-      if (url) setFamilyPhotoUrl(url);
+      const url = await uploadPhotoBlob(blob, 'family-photo.jpg');
+      setFamilyPhotoUrl(url);
     } catch {
       setPhotoError('Couldn’t upload that photo — check your connection and try again.');
     } finally {
@@ -57,6 +65,7 @@ export default function Family() {
           onPress={handlePickPhoto}
         />
         {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+        <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
 
         <Text style={styles.label}>NUMBER OF CHILDREN</Text>
         <View style={styles.stepper}>

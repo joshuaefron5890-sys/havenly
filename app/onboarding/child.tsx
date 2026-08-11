@@ -5,10 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
+import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
-import { photoUploadSupported, pickAndUploadPhoto } from '../../lib/photoUpload';
+import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
 
 const NEURODIVERGENCE_OPTIONS = [
@@ -31,6 +32,7 @@ export default function Child() {
   const [grade, setGrade] = useState(profile.child.grade);
   const [selected, setSelected] = useState<string[]>(profile.child.neurodivergence);
   const [photoUrl, setPhotoUrl] = useState<string | null>(profile.child.photoUrl);
+  const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
@@ -44,10 +46,16 @@ export default function Child() {
       setPhotoError('Photo upload isn’t available on this platform yet.');
       return;
     }
+    const file = await pickImageFile();
+    if (file) setPickedPhoto(file);
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setPickedPhoto(null);
     setUploadingPhoto(true);
     try {
-      const url = await pickAndUploadPhoto('child-photo.jpg');
-      if (url) setPhotoUrl(url);
+      const url = await uploadPhotoBlob(blob, 'child-photo.jpg');
+      setPhotoUrl(url);
     } catch {
       setPhotoError('Couldn’t upload that photo — check your connection and try again.');
     } finally {
@@ -74,6 +82,7 @@ export default function Child() {
           onPress={handlePickPhoto}
         />
         {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+        <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
 
         <View style={styles.row}>
           <View style={styles.grow}>

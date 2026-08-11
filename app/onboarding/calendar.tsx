@@ -119,8 +119,9 @@ export default function Calendar() {
               <Text style={styles.connectedText}>Connected</Text>
             </View>
           ) : (
-            <Pressable onPress={handleConnectGoogle}>
-              <Text style={styles.connect}>Connect →</Text>
+            <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
+              <Ionicons name="link-outline" size={16} color={colors.accent} />
+              <Text style={styles.connect}>Connect</Text>
             </Pressable>
           )}
         </View>
@@ -134,15 +135,19 @@ export default function Calendar() {
               <Text style={styles.connectedText}>Connected</Text>
             </View>
           ) : (
-            <Pressable onPress={openAppleModal}>
-              <Text style={styles.connect}>Connect →</Text>
+            <Pressable style={styles.connectBadge} onPress={openAppleModal}>
+              <Ionicons name="link-outline" size={16} color={colors.accent} />
+              <Text style={styles.connect}>Connect</Text>
             </Pressable>
           )}
         </View>
 
         <View style={styles.calendarRow}>
           <Text style={styles.calendarName}>Outlook Calendar</Text>
-          <Text style={styles.connect}>Connect →</Text>
+          <View style={styles.connectBadge}>
+            <Ionicons name="link-outline" size={16} color={colors.accent} />
+            <Text style={styles.connect}>Connect</Text>
+          </View>
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -252,6 +257,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.accent,
+  },
+  connectBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   connectedBadge: {
     flexDirection: 'row',

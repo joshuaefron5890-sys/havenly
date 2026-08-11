@@ -50,6 +50,10 @@ export default function Account() {
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [checkingRedirect, setCheckingRedirect] = useState(true);
   const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
+  // TEMPORARY: shows exactly what the redirect check resolved to, so we can
+  // diagnose the Gmail sign-up flow without needing devtools. Remove once
+  // the redirect issue is confirmed fixed.
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   // If this page load is the return leg of a Gmail redirect, pre-fill the
   // name fields and swap email/password for a "Connected" indicator —
@@ -58,7 +62,12 @@ export default function Account() {
     let cancelled = false;
     completeGoogleSignIn()
       .then((credential) => {
-        if (cancelled || !credential) return;
+        if (cancelled) return;
+        if (!credential) {
+          setDebugInfo('DEBUG: redirect check found no credential (getRedirectResult → null)');
+          return;
+        }
+        setDebugInfo(`DEBUG: got credential — email=${credential.user.email} name=${credential.user.displayName}`);
         const [first, ...rest] = (credential.user.displayName ?? '').split(' ');
         setFirstName(first ?? '');
         setLastName(rest.join(' '));
@@ -66,6 +75,7 @@ export default function Account() {
       })
       .catch((err: any) => {
         if (cancelled) return;
+        setDebugInfo(`DEBUG: redirect check threw — code=${err?.code} message=${err?.message}`);
         const message = friendlyGoogleError(err?.code ?? '');
         if (message) setError(message);
       })
@@ -151,6 +161,7 @@ export default function Account() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <WizardHeader step={1} title="Create your" accent="account." />
+      {debugInfo ? <Text style={styles.debug}>{debugInfo}</Text> : null}
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <View style={styles.half}>
@@ -231,6 +242,15 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
+  },
+  debug: {
+    fontSize: 11,
+    color: colors.surface,
+    backgroundColor: colors.error,
+    padding: 8,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 8,
   },
   row: {
     flexDirection: 'row',

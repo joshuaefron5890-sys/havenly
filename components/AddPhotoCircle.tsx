@@ -1,13 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 
-export function AddPhotoCircle({ label, caption }: { label: string; caption: string }) {
+export function AddPhotoCircle({
+  label,
+  caption,
+  imageUri,
+  uploading,
+  onPress,
+}: {
+  label: string;
+  caption: string;
+  imageUri?: string | null;
+  uploading?: boolean;
+  onPress?: () => void;
+}) {
   return (
     <View style={styles.wrapper}>
-      <Pressable style={styles.circle}>
-        <Ionicons name="person" size={22} color={colors.accent} />
-        <Text style={styles.addLabel}>ADD PHOTO</Text>
+      <Pressable style={styles.circle} onPress={onPress} disabled={uploading}>
+        {uploading ? (
+          <ActivityIndicator color={colors.accent} />
+        ) : imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.image} />
+        ) : (
+          <>
+            <Ionicons name="person" size={22} color={colors.accent} />
+            <Text style={styles.addLabel}>ADD PHOTO</Text>
+          </>
+        )}
       </Pressable>
       <Text style={styles.title}>{label}</Text>
       <Text style={styles.caption}>{caption}</Text>
@@ -31,6 +51,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
   addLabel: {
     fontSize: 10,

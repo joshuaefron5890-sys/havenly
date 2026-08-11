@@ -4,6 +4,7 @@ export type OnboardingProfile = {
   firstName: string;
   lastName: string;
   pronouns: string | null;
+  familyPhotoUrl: string | null;
   numChildren: number;
   partnerAtHome: boolean | null;
   siblingsIncluded: string | null;
@@ -12,6 +13,7 @@ export type OnboardingProfile = {
     age: string;
     grade: string;
     neurodivergence: string[];
+    photoUrl: string | null;
   };
   playStyle: string[];
   energyLevel: number;
@@ -27,10 +29,11 @@ const initialProfile: OnboardingProfile = {
   firstName: '',
   lastName: '',
   pronouns: null,
+  familyPhotoUrl: null,
   numChildren: 1,
   partnerAtHome: null,
   siblingsIncluded: null,
-  child: { name: '', age: '', grade: '', neurodivergence: [] },
+  child: { name: '', age: '', grade: '', neurodivergence: [], photoUrl: null },
   playStyle: [],
   energyLevel: 0.5,
   idealPlaydateLength: null,

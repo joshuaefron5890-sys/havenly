@@ -7,18 +7,39 @@ import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
+import { photoUploadSupported, pickAndUploadPhoto } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
 
 const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity'];
 
 export default function Family() {
-  const { updateProfile } = useOnboarding();
+  const { profile, updateProfile } = useOnboarding();
   const [children, setChildren] = useState(1);
   const [partnerAtHome, setPartnerAtHome] = useState<boolean | null>(null);
   const [siblings, setSiblings] = useState<string | null>(null);
+  const [familyPhotoUrl, setFamilyPhotoUrl] = useState<string | null>(profile.familyPhotoUrl);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const handlePickPhoto = async () => {
+    setPhotoError(null);
+    if (!photoUploadSupported()) {
+      setPhotoError('Photo upload isn’t available on this platform yet.');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const url = await pickAndUploadPhoto('family-photo.jpg');
+      if (url) setFamilyPhotoUrl(url);
+    } catch {
+      setPhotoError('Couldn’t upload that photo — check your connection and try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleContinue = () => {
-    const patch = { numChildren: children, partnerAtHome, siblingsIncluded: siblings };
+    const patch = { numChildren: children, partnerAtHome, siblingsIncluded: siblings, familyPhotoUrl };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/child');
     router.push('/onboarding/child');
@@ -28,7 +49,14 @@ export default function Family() {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <WizardHeader step={2} title="Tell us about" accent="your family." />
       <ScrollView contentContainerStyle={styles.content}>
-        <AddPhotoCircle label="Your photo" caption="Shown to matches" />
+        <AddPhotoCircle
+          label="Your photo"
+          caption="Shown to matches"
+          imageUri={familyPhotoUrl}
+          uploading={uploadingPhoto}
+          onPress={handlePickPhoto}
+        />
+        {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
 
         <Text style={styles.label}>NUMBER OF CHILDREN</Text>
         <View style={styles.stepper}>
@@ -88,6 +116,13 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
+  },
+  photoError: {
+    fontSize: 12,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 16,
   },
   label: {
     fontSize: 12,

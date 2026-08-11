@@ -15,6 +15,16 @@ import { colors } from '../../theme/colors';
 
 const PRONOUNS = ['she/her', 'he/him', 'they/them', 'she/they', 'he/they'];
 
+// The signed-in Gmail address, if the current Firebase session actually has
+// Google linked as a sign-in method — not just "some account exists", since
+// an email/password account is also signed in immediately after step 1.
+function currentGoogleEmail(): string | null {
+  const user = auth?.currentUser;
+  if (!user) return null;
+  const isGoogleUser = user.providerData.some((p) => p.providerId === 'google.com');
+  return isGoogleUser ? user.email : null;
+}
+
 function friendlyError(code: string): string {
   switch (code) {
     case 'auth/email-already-in-use':
@@ -51,7 +61,7 @@ export default function Account() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
-  const [connectedGmail, setConnectedGmail] = useState<string | null>(null);
+  const [connectedGmail, setConnectedGmail] = useState<string | null>(currentGoogleEmail);
 
   const handleContinue = async () => {
     setError(null);

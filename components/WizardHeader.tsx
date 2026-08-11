@@ -5,11 +5,33 @@ import { colors } from '../theme/colors';
 
 const TOTAL_STEPS = 9;
 
-export function WizardHeader({ step, title, accent }: { step: number; title: string; accent: string }) {
+export function WizardHeader({
+  step,
+  title,
+  accent,
+  backTo,
+}: {
+  step: number;
+  title: string;
+  accent: string;
+  // Explicit previous-step route. Falls back to router.back() when omitted,
+  // but that's unreliable after resuming onboarding mid-wizard (which lands
+  // on a step via router.replace, so there's no real "back" in history to
+  // pop to) — every step past the first should pass this.
+  backTo?: string;
+}) {
+  const handleBack = () => {
+    if (backTo) {
+      router.replace(backTo as any);
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={styles.back} onPress={handleBack}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <View style={styles.track}>

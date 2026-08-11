@@ -14,9 +14,9 @@ const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends o
 
 export default function Family() {
   const { profile, updateProfile } = useOnboarding();
-  const [children, setChildren] = useState(1);
-  const [partnerAtHome, setPartnerAtHome] = useState<boolean | null>(null);
-  const [siblings, setSiblings] = useState<string | null>(null);
+  const [children, setChildren] = useState(profile.numChildren);
+  const [partnerAtHome, setPartnerAtHome] = useState<boolean | null>(profile.partnerAtHome);
+  const [siblings, setSiblings] = useState<string | null>(profile.siblingsIncluded);
   const [familyPhotoUrl, setFamilyPhotoUrl] = useState<string | null>(profile.familyPhotoUrl);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export default function Family() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={2} title="Tell us about" accent="your family." />
+      <WizardHeader step={2} title="Tell us about" accent="your family." backTo="/onboarding/account" />
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
           label="Your photo"

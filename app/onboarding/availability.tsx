@@ -13,8 +13,8 @@ const WEEKDAYS = ['Before school', 'After school', 'Evenings'];
 const WEEKENDS = ['Saturday morning', 'Saturday afternoon', 'Saturday evening', 'Sunday morning', 'Sunday afternoon', 'Sunday evening'];
 
 export default function Availability() {
-  const { updateProfile } = useOnboarding();
-  const [selected, setSelected] = useState<string[]>([]);
+  const { profile, updateProfile } = useOnboarding();
+  const [selected, setSelected] = useState<string[]>(profile.availability);
 
   const toggle = (option: string) => {
     setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
@@ -29,7 +29,7 @@ export default function Availability() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={8} title="When do playdates" accent="usually work?" />
+      <WizardHeader step={8} title="When do playdates" accent="usually work?" backTo="/onboarding/about-you" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>WEEKDAYS</Text>
         <View style={styles.chips}>

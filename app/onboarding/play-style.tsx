@@ -22,9 +22,9 @@ const PLAY_STYLES = [
 const PLAYDATE_LENGTHS = ['< 1 hour', '1–2 hours', '2–3 hours', 'Half a day', 'It depends'];
 
 export default function PlayStyle() {
-  const { updateProfile } = useOnboarding();
-  const [styles_, setStyles] = useState<string[]>([]);
-  const [length, setLength] = useState<string | null>(null);
+  const { profile, updateProfile } = useOnboarding();
+  const [styles_, setStyles] = useState<string[]>(profile.playStyle);
+  const [length, setLength] = useState<string | null>(profile.idealPlaydateLength);
 
   const toggle = (option: string) => {
     setStyles((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
@@ -39,7 +39,7 @@ export default function PlayStyle() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={4} title="How do they" accent="like to play?" />
+      <WizardHeader step={4} title="How do they" accent="like to play?" backTo="/onboarding/child" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>PLAY STYLE · SELECT ALL THAT APPLY</Text>
         <View style={styles.chips}>

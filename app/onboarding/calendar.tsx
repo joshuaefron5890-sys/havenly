@@ -40,7 +40,7 @@ export default function Calendar() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={9} title="Connect your" accent="calendar." />
+      <WizardHeader step={9} title="Connect your" accent="calendar." backTo="/onboarding/availability" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.note}>
           <Text style={styles.noteTitle}>Let us do the scheduling work.</Text>

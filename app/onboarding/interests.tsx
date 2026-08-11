@@ -30,8 +30,8 @@ const INTERESTS: { label: string; image?: ImageSourcePropType }[] = [
 ];
 
 export default function Interests() {
-  const { updateProfile } = useOnboarding();
-  const [selected, setSelected] = useState<string[]>([]);
+  const { profile, updateProfile } = useOnboarding();
+  const [selected, setSelected] = useState<string[]>(profile.interests);
 
   const toggle = (option: string) => {
     setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
@@ -46,7 +46,7 @@ export default function Interests() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={5} title="What are they" accent="really into?" />
+      <WizardHeader step={5} title="What are they" accent="really into?" backTo="/onboarding/play-style" />
       <Text style={styles.caption}>Tap to select anything they're into.</Text>
       <ScrollView contentContainerStyle={styles.grid}>
         {INTERESTS.map((interest) => {

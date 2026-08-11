@@ -23,8 +23,8 @@ const GOALS = [
 ];
 
 export default function Goals() {
-  const { updateProfile } = useOnboarding();
-  const [selected, setSelected] = useState<string[]>([]);
+  const { profile, updateProfile } = useOnboarding();
+  const [selected, setSelected] = useState<string[]>(profile.goals);
 
   const toggle = (option: string) => {
     setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
@@ -39,7 +39,7 @@ export default function Goals() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={6} title="What are you" accent="hoping to find?" />
+      <WizardHeader step={6} title="What are you" accent="hoping to find?" backTo="/onboarding/interests" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>SELECT ALL THAT APPLY</Text>
         {GOALS.map((goal) => {

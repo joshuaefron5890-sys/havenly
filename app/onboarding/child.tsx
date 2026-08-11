@@ -26,10 +26,10 @@ const NEURODIVERGENCE_OPTIONS = [
 
 export default function Child() {
   const { profile, updateProfile } = useOnboarding();
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [grade, setGrade] = useState('');
-  const [selected, setSelected] = useState<string[]>([]);
+  const [name, setName] = useState(profile.child.name);
+  const [age, setAge] = useState(profile.child.age);
+  const [grade, setGrade] = useState(profile.child.grade);
+  const [selected, setSelected] = useState<string[]>(profile.child.neurodivergence);
   const [photoUrl, setPhotoUrl] = useState<string | null>(profile.child.photoUrl);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export default function Child() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={3} title="About your" accent="little one." />
+      <WizardHeader step={3} title="About your" accent="little one." backTo="/onboarding/family" />
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
           label="Child's photo"

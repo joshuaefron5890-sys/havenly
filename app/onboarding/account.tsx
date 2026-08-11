@@ -42,12 +42,12 @@ function friendlyGoogleError(reason: string): string | null {
 }
 
 export default function Account() {
-  const { updateProfile: updateOnboardingProfile } = useOnboarding();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const { profile, updateProfile: updateOnboardingProfile } = useOnboarding();
+  const [firstName, setFirstName] = useState(profile.firstName);
+  const [lastName, setLastName] = useState(profile.lastName);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [pronoun, setPronoun] = useState<string | null>(null);
+  const [pronoun, setPronoun] = useState<string | null>(profile.pronouns);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);

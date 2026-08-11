@@ -20,9 +20,9 @@ const PERSONALITY = [
 const SOUNDS_GOOD = ['Coffee', 'Dinner', 'Walking', 'Family BBQs', 'Day trips', 'Kids activities together', 'Talking parenting'];
 
 export default function AboutYou() {
-  const { updateProfile } = useOnboarding();
-  const [personality, setPersonality] = useState<string | null>(null);
-  const [soundsGood, setSoundsGood] = useState<string[]>([]);
+  const { profile, updateProfile } = useOnboarding();
+  const [personality, setPersonality] = useState<string | null>(profile.personality);
+  const [soundsGood, setSoundsGood] = useState<string[]>(profile.soundsGoodTo);
 
   const toggle = (option: string) => {
     setSoundsGood((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
@@ -37,7 +37,7 @@ export default function AboutYou() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={7} title="Now, a little" accent="about you." />
+      <WizardHeader step={7} title="Now, a little" accent="about you." backTo="/onboarding/goals" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>AT A GET-TOGETHER, YOU'RE USUALLY...</Text>
         {PERSONALITY.map((option) => {

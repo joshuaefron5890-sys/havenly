@@ -16,6 +16,9 @@ const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends o
 export default function Family() {
   const { profile, updateProfile } = useOnboarding();
   const [children, setChildren] = useState(profile.numChildren);
+  const [neurodivergentChildren, setNeurodivergentChildren] = useState(
+    Math.min(profile.numNeurodivergentChildren, profile.numChildren)
+  );
   const [partnerAtHome, setPartnerAtHome] = useState<boolean | null>(profile.partnerAtHome);
   const [siblings, setSiblings] = useState<string | null>(profile.siblingsIncluded);
   const [familyPhotoUrl, setFamilyPhotoUrl] = useState<string | null>(profile.familyPhotoUrl);
@@ -46,11 +49,29 @@ export default function Family() {
     }
   };
 
+  const updateChildren = (next: number) => {
+    const clamped = Math.max(1, next);
+    setChildren(clamped);
+    setNeurodivergentChildren((nd) => Math.min(nd, clamped));
+  };
+
+  const updateNeurodivergentChildren = (next: number) => {
+    setNeurodivergentChildren(Math.max(0, Math.min(next, children)));
+  };
+
   const handleContinue = () => {
-    const patch = { numChildren: children, partnerAtHome, siblingsIncluded: siblings, familyPhotoUrl };
+    const patch = {
+      numChildren: children,
+      numNeurodivergentChildren: neurodivergentChildren,
+      partnerAtHome,
+      siblingsIncluded: siblings,
+      familyPhotoUrl,
+    };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/child');
-    router.push('/onboarding/child');
+    // Nothing to fill in per-child if none of them are neurodivergent.
+    const nextStep = neurodivergentChildren > 0 ? '/onboarding/child' : '/onboarding/play-style';
+    saveOnboardingStep(patch, nextStep);
+    router.push(nextStep);
   };
 
   return (
@@ -69,14 +90,32 @@ export default function Family() {
 
         <Text style={styles.label}>NUMBER OF CHILDREN</Text>
         <View style={styles.stepper}>
-          <Pressable style={styles.stepperButton} onPress={() => setChildren(Math.max(1, children - 1))}>
+          <Pressable style={styles.stepperButton} onPress={() => updateChildren(children - 1)}>
             <Ionicons name="remove" size={18} color={colors.text} />
           </Pressable>
           <Text style={styles.stepperValue}>{children}</Text>
-          <Pressable style={[styles.stepperButton, styles.stepperButtonActive]} onPress={() => setChildren(children + 1)}>
+          <Pressable style={[styles.stepperButton, styles.stepperButtonActive]} onPress={() => updateChildren(children + 1)}>
             <Ionicons name="add" size={18} color={colors.surface} />
           </Pressable>
           <Text style={styles.stepperCaption}>child at home</Text>
+        </View>
+
+        <Text style={styles.label}>HOW MANY OF THEM ARE NEURODIVERGENT?</Text>
+        <View style={styles.stepper}>
+          <Pressable
+            style={styles.stepperButton}
+            onPress={() => updateNeurodivergentChildren(neurodivergentChildren - 1)}
+          >
+            <Ionicons name="remove" size={18} color={colors.text} />
+          </Pressable>
+          <Text style={styles.stepperValue}>{neurodivergentChildren}</Text>
+          <Pressable
+            style={[styles.stepperButton, styles.stepperButtonActive]}
+            onPress={() => updateNeurodivergentChildren(neurodivergentChildren + 1)}
+          >
+            <Ionicons name="add" size={18} color={colors.surface} />
+          </Pressable>
+          <Text style={styles.stepperCaption}>neurodivergent child{neurodivergentChildren === 1 ? '' : 'ren'}</Text>
         </View>
 
         <Text style={styles.label}>PARTNER OR CO-PARENT AT HOME?</Text>

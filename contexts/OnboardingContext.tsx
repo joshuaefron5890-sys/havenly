@@ -1,20 +1,27 @@
 import { createContext, PropsWithChildren, useContext, useMemo, useState } from 'react';
 
+export type ChildProfile = {
+  name: string;
+  age: string;
+  grade: string;
+  neurodivergence: string[];
+  photoUrl: string | null;
+};
+
+export const emptyChildProfile: ChildProfile = { name: '', age: '', grade: '', neurodivergence: [], photoUrl: null };
+
 export type OnboardingProfile = {
   firstName: string;
   lastName: string;
   pronouns: string | null;
   familyPhotoUrl: string | null;
   numChildren: number;
+  numNeurodivergentChildren: number;
   partnerAtHome: boolean | null;
   siblingsIncluded: string | null;
-  child: {
-    name: string;
-    age: string;
-    grade: string;
-    neurodivergence: string[];
-    photoUrl: string | null;
-  };
+  // One entry per neurodivergent child (numNeurodivergentChildren of them) —
+  // only their name is required, everything else is optional per child.
+  children: ChildProfile[];
   playStyle: string[];
   energyLevel: number;
   idealPlaydateLength: string | null;
@@ -31,9 +38,10 @@ const initialProfile: OnboardingProfile = {
   pronouns: null,
   familyPhotoUrl: null,
   numChildren: 1,
+  numNeurodivergentChildren: 1,
   partnerAtHome: null,
   siblingsIncluded: null,
-  child: { name: '', age: '', grade: '', neurodivergence: [], photoUrl: null },
+  children: [],
   playStyle: [],
   energyLevel: 0.5,
   idealPlaydateLength: null,

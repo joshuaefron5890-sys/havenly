@@ -10,6 +10,7 @@ export function WizardHeader({
   title,
   accent,
   backTo,
+  onBack,
 }: {
   step: number;
   title: string;
@@ -19,9 +20,15 @@ export function WizardHeader({
   // on a step via router.replace, so there's no real "back" in history to
   // pop to) — every step past the first should pass this.
   backTo?: string;
+  // Takes priority over backTo — for a screen that cycles through several
+  // sub-steps itself (e.g. one per child), so "back" should step within the
+  // screen instead of always leaving it.
+  onBack?: () => void;
 }) {
   const handleBack = () => {
-    if (backTo) {
+    if (onBack) {
+      onBack();
+    } else if (backTo) {
       router.replace(backTo as any);
     } else {
       router.back();

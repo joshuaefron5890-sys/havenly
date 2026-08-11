@@ -7,7 +7,7 @@ import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
 import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
-import { useOnboarding } from '../../contexts/OnboardingContext';
+import { ChildProfile, emptyChildProfile, useOnboarding } from '../../contexts/OnboardingContext';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
@@ -27,17 +27,27 @@ const NEURODIVERGENCE_OPTIONS = [
 
 export default function Child() {
   const { profile, updateProfile } = useOnboarding();
-  const [name, setName] = useState(profile.child.name);
-  const [age, setAge] = useState(profile.child.age);
-  const [grade, setGrade] = useState(profile.child.grade);
-  const [selected, setSelected] = useState<string[]>(profile.child.neurodivergence);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(profile.child.photoUrl);
+  const total = Math.max(1, profile.numNeurodivergentChildren);
+  const [childIndex, setChildIndex] = useState(0);
+  const [childrenData, setChildrenData] = useState<ChildProfile[]>(() =>
+    Array.from({ length: total }, (_, i) => profile.children[i] ?? { ...emptyChildProfile })
+  );
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggle = (option: string) => {
-    setSelected((prev) => (prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]));
+  const current = childrenData[childIndex];
+
+  const updateCurrent = (patch: Partial<ChildProfile>) => {
+    setChildrenData((prev) => prev.map((c, i) => (i === childIndex ? { ...c, ...patch } : c)));
+  };
+
+  const toggleNeurodivergence = (option: string) => {
+    const next = current.neurodivergence.includes(option)
+      ? current.neurodivergence.filter((o) => o !== option)
+      : [...current.neurodivergence, option];
+    updateCurrent({ neurodivergence: next });
   };
 
   const handlePickPhoto = async () => {
@@ -54,8 +64,8 @@ export default function Child() {
     setPickedPhoto(null);
     setUploadingPhoto(true);
     try {
-      const url = await uploadPhotoBlob(blob, 'child-photo.jpg');
-      setPhotoUrl(url);
+      const url = await uploadPhotoBlob(blob, `child-photo-${childIndex}.jpg`);
+      updateCurrent({ photoUrl: url });
     } catch {
       setPhotoError('Couldn’t upload that photo — check your connection and try again.');
     } finally {
@@ -64,20 +74,43 @@ export default function Child() {
   };
 
   const handleContinue = () => {
-    const patch = { child: { name, age, grade, neurodivergence: selected, photoUrl } };
+    setError(null);
+    if (!current.name.trim()) {
+      setError('Add a name to continue.');
+      return;
+    }
+    if (childIndex + 1 < total) {
+      setChildIndex(childIndex + 1);
+      return;
+    }
+    const patch = { children: childrenData };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/play-style');
     router.push('/onboarding/play-style');
   };
 
+  const handleBack = () => {
+    if (childIndex > 0) {
+      setError(null);
+      setChildIndex(childIndex - 1);
+    } else {
+      router.replace('/onboarding/family');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={3} title="About your" accent="little one." backTo="/onboarding/family" />
+      <WizardHeader
+        step={3}
+        title="About"
+        accent={total > 1 ? `child ${childIndex + 1} of ${total}.` : 'your little one.'}
+        onBack={handleBack}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
-          label="Child's photo"
-          caption="Tap to add"
-          imageUri={photoUrl}
+          label={total > 1 ? `Child ${childIndex + 1}'s photo` : "Child's photo"}
+          caption="Tap to add · optional"
+          imageUri={current.photoUrl}
           uploading={uploadingPhoto}
           onPress={handlePickPhoto}
         />
@@ -86,25 +119,39 @@ export default function Child() {
 
         <View style={styles.row}>
           <View style={styles.grow}>
-            <FieldInput label="Child's name" placeholder="Mia" value={name} onChangeText={setName} />
+            <FieldInput label="Child's name" placeholder="Mia" value={current.name} onChangeText={(name) => updateCurrent({ name })} />
           </View>
           <View style={styles.small}>
-            <FieldInput label="Age" placeholder="6" value={age} onChangeText={setAge} keyboardType="number-pad" />
+            <FieldInput
+              label="Age"
+              placeholder="6"
+              optional
+              value={current.age}
+              onChangeText={(age) => updateCurrent({ age })}
+              keyboardType="number-pad"
+            />
           </View>
         </View>
-        <FieldInput label="Grade" placeholder="e.g. 1st grade" optional value={grade} onChangeText={setGrade} />
+        <FieldInput label="Grade" placeholder="e.g. 1st grade" optional value={current.grade} onChangeText={(grade) => updateCurrent({ grade })} />
 
         <Text style={styles.label}>NEURODIVERGENCE · SELECT ANY</Text>
         <View style={styles.chips}>
           {NEURODIVERGENCE_OPTIONS.map((option) => (
-            <Chip key={option} label={option} selected={selected.includes(option)} onPress={() => toggle(option)} />
+            <Chip
+              key={option}
+              label={option}
+              selected={current.neurodivergence.includes(option)}
+              onPress={() => toggleNeurodivergence(option)}
+            />
           ))}
         </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>{childIndex + 1 < total ? 'Next child' : 'Continue'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -148,6 +195,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  error: {
+    fontSize: 13,
+    color: colors.error,
+    marginTop: 16,
   },
   footer: {
     padding: 20,

@@ -50,7 +50,7 @@ export default function Family() {
       <WizardHeader step={2} title="Tell us about" accent="your family." backTo="/onboarding/account" />
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
-          label="Your photo"
+          label="Family photo"
           caption="Shown to matches"
           imageUri={familyPhotoUrl}
           uploading={uploadingPhoto}

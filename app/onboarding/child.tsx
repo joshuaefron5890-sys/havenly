@@ -7,6 +7,7 @@ import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const NEURODIVERGENCE_OPTIONS = [
@@ -34,7 +35,9 @@ export default function Child() {
   };
 
   const handleContinue = () => {
-    updateProfile({ child: { name, age, grade, neurodivergence: selected } });
+    const patch = { child: { name, age, grade, neurodivergence: selected } };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/onboarding/play-style');
     router.push('/onboarding/play-style');
   };
 

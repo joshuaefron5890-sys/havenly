@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const WEEKDAYS = ['Before school', 'After school', 'Evenings'];
@@ -20,7 +21,9 @@ export default function Availability() {
   };
 
   const handleContinue = () => {
-    updateProfile({ availability: selected });
+    const patch = { availability: selected };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/onboarding/calendar');
     router.push('/onboarding/calendar');
   };
 

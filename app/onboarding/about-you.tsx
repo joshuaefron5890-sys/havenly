@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const PERSONALITY = [
@@ -28,7 +29,9 @@ export default function AboutYou() {
   };
 
   const handleContinue = () => {
-    updateProfile({ personality, soundsGoodTo: soundsGood });
+    const patch = { personality, soundsGoodTo: soundsGood };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/onboarding/availability');
     router.push('/onboarding/availability');
   };
 

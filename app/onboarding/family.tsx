@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity'];
@@ -17,7 +18,9 @@ export default function Family() {
   const [siblings, setSiblings] = useState<string | null>(null);
 
   const handleContinue = () => {
-    updateProfile({ numChildren: children, partnerAtHome, siblingsIncluded: siblings });
+    const patch = { numChildren: children, partnerAtHome, siblingsIncluded: siblings };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/onboarding/child');
     router.push('/onboarding/child');
   };
 

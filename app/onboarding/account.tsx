@@ -10,6 +10,7 @@ import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleAccessToken } from '../../lib/firebase';
 import { requestGoogleAccessToken } from '../../lib/googleIdentity';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const PRONOUNS = ['she/her', 'he/him', 'they/them', 'she/they', 'he/they'];
@@ -61,6 +62,7 @@ export default function Account() {
 
     if (connectedGmail) {
       updateOnboardingProfile({ firstName, lastName, pronouns: pronoun });
+      saveOnboardingStep({ firstName, lastName, pronouns: pronoun }, '/onboarding/family');
       router.push('/onboarding/family');
       return;
     }
@@ -83,6 +85,7 @@ export default function Account() {
       const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await updateProfile(credential.user, { displayName: `${firstName} ${lastName}`.trim() });
       updateOnboardingProfile({ firstName, lastName, pronouns: pronoun });
+      saveOnboardingStep({ firstName, lastName, pronouns: pronoun }, '/onboarding/family');
       router.push('/onboarding/family');
     } catch (err: any) {
       setError(friendlyError(err?.code ?? ''));

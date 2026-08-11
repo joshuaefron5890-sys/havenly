@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
+import { useOnboarding } from '../contexts/OnboardingContext';
+import { routeSignedInUser } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 
@@ -23,11 +25,15 @@ function signIn() {
 
 export default function Onboarding() {
   const { user, loading } = useAuth();
+  const { updateProfile } = useOnboarding();
 
+  // A signed-in user should never see the landing page — but they also
+  // shouldn't get dumped into the tabs if they never finished onboarding.
+  // Resume them at whichever step they last saved progress on instead.
   useEffect(() => {
-    if (!loading && user) {
-      router.replace('/(tabs)');
-    }
+    if (loading || !user) return;
+    routeSignedInUser(user.uid, updateProfile);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user]);
 
   if (loading || user) {

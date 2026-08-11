@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const PLAY_STYLES = [
@@ -30,7 +31,9 @@ export default function PlayStyle() {
   };
 
   const handleContinue = () => {
-    updateProfile({ playStyle: styles_, energyLevel: 0.5, idealPlaydateLength: length });
+    const patch = { playStyle: styles_, energyLevel: 0.5, idealPlaydateLength: length };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/onboarding/interests');
     router.push('/onboarding/interests');
   };
 

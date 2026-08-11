@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const GOALS = [
@@ -30,7 +31,9 @@ export default function Goals() {
   };
 
   const handleContinue = () => {
-    updateProfile({ goals: selected });
+    const patch = { goals: selected };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/onboarding/about-you');
     router.push('/onboarding/about-you');
   };
 

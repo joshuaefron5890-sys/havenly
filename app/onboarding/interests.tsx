@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
 const INTERESTS: { label: string; image?: ImageSourcePropType }[] = [
@@ -37,7 +38,9 @@ export default function Interests() {
   };
 
   const handleContinue = () => {
-    updateProfile({ interests: selected });
+    const patch = { interests: selected };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/onboarding/goals');
     router.push('/onboarding/goals');
   };
 

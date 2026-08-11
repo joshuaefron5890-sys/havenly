@@ -5,8 +5,10 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../components/FieldInput';
+import { useOnboarding } from '../contexts/OnboardingContext';
 import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleAccessToken } from '../lib/firebase';
 import { requestGoogleAccessToken } from '../lib/googleIdentity';
+import { routeSignedInUser } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 
 function friendlyError(code: string): string {
@@ -39,6 +41,7 @@ function friendlyGoogleError(reason: string): string | null {
 }
 
 export default function SignIn() {
+  const { updateProfile } = useOnboarding();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +60,8 @@ export default function SignIn() {
     }
     setSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace('/(tabs)');
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      await routeSignedInUser(credential.user.uid, updateProfile);
     } catch (err: any) {
       setError(friendlyError(err?.code ?? ''));
     } finally {
@@ -79,8 +82,8 @@ export default function SignIn() {
     setGoogleSubmitting(true);
     try {
       const accessToken = await requestGoogleAccessToken();
-      await signInWithGoogleAccessToken(accessToken);
-      router.replace('/(tabs)');
+      const credential = await signInWithGoogleAccessToken(accessToken);
+      await routeSignedInUser(credential.user.uid, updateProfile);
     } catch (err: any) {
       const message = friendlyGoogleError(err?.code ?? err?.message ?? '');
       if (message) setError(message);

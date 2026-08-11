@@ -2,11 +2,14 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { FieldInput } from '../../components/FieldInput';
+import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { emptySiblingProfile, SiblingProfile, useOnboarding } from '../../contexts/OnboardingContext';
 import { numSiblings, stepBeforeSiblings } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
+import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
 
 export default function Siblings() {
@@ -19,12 +22,38 @@ export default function Siblings() {
   const [siblingsData, setSiblingsData] = useState<SiblingProfile[]>(() =>
     Array.from({ length: total }, (_, i) => profile.siblingProfiles[i] ?? { ...emptySiblingProfile })
   );
+  const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const current = siblingsData[siblingIndex];
 
   const updateCurrent = (patch: Partial<SiblingProfile>) => {
     setSiblingsData((prev) => prev.map((s, i) => (i === siblingIndex ? { ...s, ...patch } : s)));
+  };
+
+  const handlePickPhoto = async () => {
+    setPhotoError(null);
+    if (!photoUploadSupported()) {
+      setPhotoError('Photo upload isn’t available on this platform yet.');
+      return;
+    }
+    const file = await pickImageFile();
+    if (file) setPickedPhoto(file);
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    setPickedPhoto(null);
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadPhotoBlob(blob, `sibling-photo-${siblingIndex}.jpg`);
+      updateCurrent({ photoUrl: url });
+    } catch {
+      setPhotoError('Couldn’t upload that photo — check your connection and try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleContinue = () => {
@@ -67,6 +96,16 @@ export default function Siblings() {
       />
       <Text style={styles.caption}>Just the basics — this helps us find playdates that work for the whole family.</Text>
       <ScrollView contentContainerStyle={styles.content}>
+        <AddPhotoCircle
+          label={total > 1 ? `Sibling ${siblingIndex + 1}'s photo` : "Sibling's photo"}
+          caption="Tap to add · optional"
+          imageUri={current.photoUrl}
+          uploading={uploadingPhoto}
+          onPress={handlePickPhoto}
+        />
+        {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+        <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
+
         <View style={styles.row}>
           <View style={styles.grow}>
             <FieldInput label="Sibling's name" placeholder="Sam" value={current.name} onChangeText={(name) => updateCurrent({ name })} />
@@ -111,6 +150,13 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
+  },
+  photoError: {
+    fontSize: 12,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',

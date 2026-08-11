@@ -1,6 +1,7 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth, GoogleAuthProvider, signInWithCredential, signOut, UserCredential } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
+import { Functions, getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
 
 const firebaseConfig = {
@@ -17,6 +18,7 @@ export const firebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfi
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
+let functions: Functions | undefined;
 
 // NOTE: uses plain getAuth() on every platform for now, so native builds
 // default to in-memory session persistence (signed out on app restart).
@@ -26,9 +28,10 @@ if (firebaseConfigured) {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  functions = getFunctions(app);
 }
 
-export { app, auth, db };
+export { app, auth, db, functions };
 
 // Web-only for now — native Google auth needs expo-auth-session + platform
 // OAuth client IDs, a separate piece of work not done yet.

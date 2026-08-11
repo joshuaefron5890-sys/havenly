@@ -50,6 +50,8 @@ export type OnboardingProfile = {
   personality: string | null;
   soundsGoodTo: string[];
   availability: string[];
+  googleCalendarConnected: boolean;
+  appleCalendarConnected: boolean;
 };
 
 const initialProfile: OnboardingProfile = {
@@ -68,6 +70,8 @@ const initialProfile: OnboardingProfile = {
   personality: null,
   soundsGoodTo: [],
   availability: [],
+  googleCalendarConnected: false,
+  appleCalendarConnected: false,
 };
 
 type OnboardingContextValue = {

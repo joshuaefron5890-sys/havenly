@@ -30,12 +30,7 @@ function loadGsiScript(): Promise<void> {
   return scriptLoadPromise;
 }
 
-// Uses Google Identity Services directly (a popup Google's own script opens
-// and closes itself, same-origin) instead of Firebase's signInWithRedirect,
-// which relays the result through havenly-cd19f.firebaseapp.com — a hop that
-// doesn't reliably return a result back to an app that isn't hosted on
-// Firebase Hosting itself.
-export function requestGoogleAccessToken(): Promise<string> {
+function requestAccessTokenForScope(scope: string): Promise<string> {
   if (Platform.OS !== 'web') {
     return Promise.reject(new Error('not-supported-native'));
   }
@@ -44,7 +39,7 @@ export function requestGoogleAccessToken(): Promise<string> {
       new Promise<string>((resolve, reject) => {
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID,
-          scope: 'openid email profile',
+          scope,
           callback: (response: any) => {
             if (response.error) {
               reject(new Error(response.error));
@@ -59,4 +54,20 @@ export function requestGoogleAccessToken(): Promise<string> {
         client.requestAccessToken();
       })
   );
+}
+
+// Uses Google Identity Services directly (a popup Google's own script opens
+// and closes itself, same-origin) instead of Firebase's signInWithRedirect,
+// which relays the result through havenly-cd19f.firebaseapp.com — a hop that
+// doesn't reliably return a result back to an app that isn't hosted on
+// Firebase Hosting itself.
+export function requestGoogleAccessToken(): Promise<string> {
+  return requestAccessTokenForScope('openid email profile');
+}
+
+// calendar.freebusy is the narrowest Calendar scope Google offers — it only
+// ever returns busy/free intervals, never event titles or guests, matching
+// the "we only ever see free or busy" promise made on the calendar step.
+export function requestGoogleCalendarAccessToken(): Promise<string> {
+  return requestAccessTokenForScope('https://www.googleapis.com/auth/calendar.freebusy');
 }

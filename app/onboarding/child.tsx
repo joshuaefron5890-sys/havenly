@@ -31,7 +31,7 @@ export default function Child() {
   const total = Math.max(1, profile.numNeurodivergentChildren);
   const [childIndex, setChildIndex] = useState(0);
   const [childrenData, setChildrenData] = useState<ChildProfile[]>(() =>
-    Array.from({ length: total }, (_, i) => profile.children[i] ?? { ...emptyChildProfile })
+    Array.from({ length: total }, (_, i) => ({ ...emptyChildProfile, ...profile.children[i] }))
   );
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);

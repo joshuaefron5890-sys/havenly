@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
-import { ChildProfile, useOnboarding } from '../../contexts/OnboardingContext';
+import { ChildProfile, emptyChildProfile, useOnboarding } from '../../contexts/OnboardingContext';
 import { stepBeforePlayStyle } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
@@ -35,7 +35,9 @@ function playHeading(names: string[]): { title: string; accent: string } {
 
 export default function PlayStyle() {
   const { profile, updateProfile } = useOnboarding();
-  const [childrenData, setChildrenData] = useState<ChildProfile[]>(profile.children);
+  const [childrenData, setChildrenData] = useState<ChildProfile[]>(() =>
+    profile.children.map((c) => ({ ...emptyChildProfile, ...c }))
+  );
 
   const toggleStyle = (index: number, option: string) => {
     setChildrenData((prev) =>

@@ -20,7 +20,7 @@ export default function Siblings() {
   );
   const [siblingIndex, setSiblingIndex] = useState(0);
   const [siblingsData, setSiblingsData] = useState<SiblingProfile[]>(() =>
-    Array.from({ length: total }, (_, i) => profile.siblingProfiles[i] ?? { ...emptySiblingProfile })
+    Array.from({ length: total }, (_, i) => ({ ...emptySiblingProfile, ...profile.siblingProfiles[i] }))
   );
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);

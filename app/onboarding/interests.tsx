@@ -7,28 +7,7 @@ import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
-import { images } from '../../theme/images';
-
-const INTERESTS = [
-  { label: 'Minecraft', image: images.interestMinecraft },
-  { label: 'Roblox', image: images.interestRoblox },
-  { label: 'Pokémon', image: images.interestPokemon },
-  { label: 'LEGO', image: images.interestLego },
-  { label: 'Board games', image: images.interestBoardGames },
-  { label: 'Arts & crafts', image: images.interestArtsCrafts },
-  { label: 'Drawing', image: images.interestDrawing },
-  { label: 'Music', image: images.interestMusic },
-  { label: 'Cats', image: images.interestCats },
-  { label: 'Dogs', image: images.interestDogs },
-  { label: 'Other animals', image: images.interestOtherAnimals },
-  { label: 'Dinosaurs', image: images.interestDinosaurs },
-  { label: 'Science', image: images.interestScience },
-  { label: 'Space', image: images.interestSpace },
-  { label: 'Reading', image: images.interestReading },
-  { label: 'Swimming', image: images.interestSwimming },
-  { label: 'Building things', image: images.interestBuildingThings },
-  { label: 'Soccer', image: images.interestSoccer },
-];
+import { INTERESTS } from '../../theme/interests';
 
 export default function Interests() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();

@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Chip } from '../components/Chip';
 import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
@@ -11,6 +10,8 @@ import { signOutUser } from '../lib/firebase';
 import { numSiblings } from '../lib/onboardingFlow';
 import { loadOnboardingProgress } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
+import { images } from '../theme/images';
+import { INTERESTS } from '../theme/interests';
 
 function initials(name: string | null | undefined, email: string | null | undefined): string {
   const source = name?.trim() || email || '';
@@ -44,12 +45,21 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TagList({ items }: { items: string[] }) {
+function TagText({ items }: { items: string[] }) {
   if (!items.length) return <Text style={styles.empty}>Not set yet</Text>;
+  return <Text style={styles.fieldValue}>{items.join(', ')}</Text>;
+}
+
+function InterestGrid({ labels }: { labels: string[] }) {
+  if (!labels.length) return <Text style={styles.empty}>Not set yet</Text>;
+  const selected = INTERESTS.filter((interest) => labels.includes(interest.label));
   return (
-    <View style={styles.chips}>
-      {items.map((item) => (
-        <Chip key={item} label={item} selected />
+    <View style={styles.interestGrid}>
+      {selected.map((interest) => (
+        <View key={interest.label} style={styles.interestTile}>
+          <Photo source={interest.image} style={styles.interestThumb} />
+          <Text style={styles.interestLabel}>{interest.label}</Text>
+        </View>
       ))}
     </View>
   );
@@ -174,7 +184,7 @@ export default function Profile() {
                   <Text style={styles.personMeta}>
                     {[child.age && `Age ${child.age}`, child.grade].filter(Boolean).join(' · ') || 'No details yet'}
                   </Text>
-                  {child.neurodivergence.length > 0 ? <TagList items={child.neurodivergence} /> : null}
+                  {child.neurodivergence.length > 0 ? <TagText items={child.neurodivergence} /> : null}
                 </View>
               </View>
             ))}
@@ -208,7 +218,7 @@ export default function Profile() {
                 {profile.children.length > 1 ? (
                   <Text style={styles.personName}>{child.name || `Child ${i + 1}`}</Text>
                 ) : null}
-                <TagList items={child.playStyle} />
+                <TagText items={child.playStyle} />
                 <Field label="Ideal playdate length" value={child.idealPlaydateLength ?? ''} />
               </View>
             ))}
@@ -216,30 +226,36 @@ export default function Profile() {
         )}
 
         <SectionCard title="Interests" editHref="/onboarding/interests?edit=1">
-          <TagList items={profile.interests} />
+          <InterestGrid labels={profile.interests} />
         </SectionCard>
 
         <SectionCard title="Goals" editHref="/onboarding/goals?edit=1">
-          <TagList items={profile.goals} />
+          <TagText items={profile.goals} />
         </SectionCard>
 
         <SectionCard title="About you" editHref="/onboarding/about-you?edit=1">
           <Field label="At a get-together, you're usually..." value={profile.personality ?? ''} />
           <Text style={styles.fieldLabel}>What sounds good to you</Text>
-          <TagList items={profile.soundsGoodTo} />
+          <TagText items={profile.soundsGoodTo} />
         </SectionCard>
 
         <SectionCard title="Availability" editHref="/onboarding/availability?edit=1">
-          <TagList items={profile.availability} />
+          <TagText items={profile.availability} />
         </SectionCard>
 
         <SectionCard title="Calendar" editHref="/onboarding/calendar?edit=1">
           <View style={styles.calendarRow}>
-            <Text style={styles.fieldValue}>Google Calendar</Text>
+            <View style={styles.calendarLabel}>
+              <Image source={images.googleLogo} style={styles.brandIcon} />
+              <Text style={styles.fieldValue}>Google Calendar</Text>
+            </View>
             {profile.googleCalendarConnected ? <ConnectedBadge /> : <Text style={styles.empty}>Not connected</Text>}
           </View>
           <View style={styles.calendarRow}>
-            <Text style={styles.fieldValue}>Apple Calendar</Text>
+            <View style={styles.calendarLabel}>
+              <Ionicons name="logo-apple" size={16} color={colors.text} />
+              <Text style={styles.fieldValue}>Apple Calendar</Text>
+            </View>
             {profile.appleCalendarConnected ? <ConnectedBadge /> : <Text style={styles.empty}>Not connected</Text>}
           </View>
         </SectionCard>
@@ -342,7 +358,7 @@ const styles = StyleSheet.create({
   },
   familyPhoto: {
     width: '100%',
-    height: 140,
+    aspectRatio: 1,
     borderRadius: 12,
     marginBottom: 12,
     backgroundColor: colors.accentMuted,
@@ -366,10 +382,36 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontStyle: 'italic',
   },
-  chips: {
+  interestGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 10,
+  },
+  interestTile: {
+    width: 64,
+    alignItems: 'center',
+  },
+  interestThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.accentMuted,
+    marginBottom: 4,
+  },
+  interestLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  calendarLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+  },
+  brandIcon: {
+    width: 16,
+    height: 16,
   },
   personRow: {
     flexDirection: 'row',

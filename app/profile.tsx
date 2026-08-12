@@ -6,7 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
+import { SlotCheck, upcomingSlots } from '../lib/availabilityWindows';
 import { signOutUser } from '../lib/firebase';
+import { getGoogleFreeBusy } from '../lib/googleCalendar';
 import { numSiblings } from '../lib/onboardingFlow';
 import { loadOnboardingProgress } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
@@ -74,6 +76,20 @@ function ConnectedBadge() {
   );
 }
 
+function groupSlotsByDay(slots: SlotCheck[]): { dateLabel: string; slots: SlotCheck[] }[] {
+  const groups: { dateLabel: string; slots: SlotCheck[] }[] = [];
+  for (const slot of slots) {
+    const dateLabel = slot.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const existing = groups.find((g) => g.dateLabel === dateLabel);
+    if (existing) {
+      existing.slots.push(slot);
+    } else {
+      groups.push({ dateLabel, slots: [slot] });
+    }
+  }
+  return groups;
+}
+
 export default function Profile() {
   const { user, loading: authLoading } = useAuth();
   const { profile, updateProfile } = useOnboarding();
@@ -103,6 +119,41 @@ export default function Profile() {
       cancelled = true;
     };
   }, [authLoading, user]);
+
+  const [slots, setSlots] = useState<SlotCheck[] | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+
+  // Cross-checks the real, live Google Calendar connection against the
+  // preferred playdate windows picked during onboarding — separate from the
+  // rest of this screen since it needs a network call, not just the
+  // already-hydrated profile.
+  useEffect(() => {
+    if (hydrating) return;
+    if (!profile.googleCalendarConnected || profile.availability.length === 0) {
+      setSlots(null);
+      return;
+    }
+    let cancelled = false;
+    setSlotsLoading(true);
+    setSlotsError(null);
+    const now = new Date();
+    const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    getGoogleFreeBusy(now.toISOString(), weekOut.toISOString())
+      .then((busy) => {
+        if (cancelled) return;
+        setSlots(upcomingSlots(profile.availability, busy));
+      })
+      .catch(() => {
+        if (!cancelled) setSlotsError('Couldn’t check your calendar right now — try again later.');
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrating, profile.googleCalendarConnected, profile.availability.length]);
 
   const logOut = async () => {
     await signOutUser();
@@ -259,6 +310,45 @@ export default function Profile() {
             {profile.appleCalendarConnected ? <ConnectedBadge /> : <Text style={styles.empty}>Not connected</Text>}
           </View>
         </SectionCard>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My playdate availability</Text>
+          <Text style={styles.availabilitySubtitle}>
+            Checked against your connected calendar and preferred playdate times.
+          </Text>
+          {!profile.googleCalendarConnected ? (
+            <Text style={styles.empty}>Connect Google Calendar above to see this.</Text>
+          ) : profile.availability.length === 0 ? (
+            <Text style={styles.empty}>Set your preferred playdate times to see this.</Text>
+          ) : slotsLoading ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : slotsError ? (
+            <Text style={styles.availabilityError}>{slotsError}</Text>
+          ) : !slots || slots.length === 0 ? (
+            <Text style={styles.empty}>No upcoming preferred times in the next week.</Text>
+          ) : (
+            groupSlotsByDay(slots).map((group) => (
+              <View key={group.dateLabel} style={styles.availabilityDay}>
+                <Text style={styles.availabilityDate}>{group.dateLabel}</Text>
+                {group.slots.map((slot) => (
+                  <View key={slot.label} style={styles.availabilitySlotRow}>
+                    <Text style={styles.fieldValue}>{slot.label}</Text>
+                    <View style={styles.availabilityStatus}>
+                      <Ionicons
+                        name={slot.free ? 'checkmark-circle' : 'close-circle'}
+                        size={16}
+                        color={slot.free ? colors.positive : colors.error}
+                      />
+                      <Text style={[styles.availabilityStatusText, slot.free ? styles.freeText : styles.busyText]}>
+                        {slot.free ? 'Free' : 'Busy'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))
+          )}
+        </View>
 
         <Pressable style={styles.logoutButton} onPress={logOut}>
           <Ionicons name="log-out-outline" size={18} color={colors.error} style={styles.logoutIcon} />
@@ -459,6 +549,46 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.positive,
+  },
+  availabilitySubtitle: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginBottom: 14,
+  },
+  availabilityError: {
+    fontSize: 13,
+    color: colors.error,
+  },
+  availabilityDay: {
+    marginBottom: 14,
+  },
+  availabilityDate: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.3,
+    marginBottom: 6,
+  },
+  availabilitySlotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  availabilityStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  availabilityStatusText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  freeText: {
+    color: colors.positive,
+  },
+  busyText: {
+    color: colors.error,
   },
   logoutButton: {
     flexDirection: 'row',

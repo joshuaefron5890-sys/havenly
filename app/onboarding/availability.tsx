@@ -6,11 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { WEEKDAY_LABELS, WEEKEND_LABELS } from '../../lib/availabilityWindows';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
-
-const WEEKDAYS = ['Before school', 'After school', 'Evenings'];
-const WEEKENDS = ['Saturday morning', 'Saturday afternoon', 'Saturday evening', 'Sunday morning', 'Sunday afternoon', 'Sunday evening'];
 
 export default function Availability() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
@@ -41,14 +39,14 @@ export default function Availability() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>WEEKDAYS</Text>
         <View style={styles.chips}>
-          {WEEKDAYS.map((option) => (
+          {WEEKDAY_LABELS.map((option) => (
             <Chip key={option} label={option} selected={selected.includes(option)} onPress={() => toggle(option)} />
           ))}
         </View>
 
         <Text style={styles.label}>WEEKENDS</Text>
         <View style={styles.chips}>
-          {WEEKENDS.map((option) => (
+          {WEEKEND_LABELS.map((option) => (
             <Chip key={option} label={option} selected={selected.includes(option)} onPress={() => toggle(option)} />
           ))}
         </View>

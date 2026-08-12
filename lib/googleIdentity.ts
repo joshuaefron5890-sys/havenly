@@ -65,9 +65,42 @@ export function requestGoogleAccessToken(): Promise<string> {
   return requestAccessTokenForScope('openid email profile');
 }
 
-// calendar.freebusy is the narrowest Calendar scope Google offers — it only
-// ever returns busy/free intervals, never event titles or guests, matching
-// the "we only ever see free or busy" promise made on the calendar step.
-export function requestGoogleCalendarAccessToken(): Promise<string> {
-  return requestAccessTokenForScope('https://www.googleapis.com/auth/calendar.freebusy');
+// The token-client flow (requestAccessTokenForScope) only ever returns a
+// short-lived access token with no way to renew it once the popup closes —
+// fine for one-off sign-in, useless for "check this family's free/busy
+// whenever a match is being computed." This uses the authorization-code
+// flow instead: the code it returns gets exchanged server-side (functions/
+// index.js, which holds the client secret) for a refresh token, which is
+// what actually lets the backend query the calendar later without the user
+// being present.
+export function requestGoogleCalendarAuthCode(): Promise<string> {
+  if (Platform.OS !== 'web') {
+    return Promise.reject(new Error('not-supported-native'));
+  }
+  return loadGsiScript().then(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        const client = window.google.accounts.oauth2.initCodeClient({
+          client_id: CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/calendar.freebusy',
+          ux_mode: 'popup',
+          access_type: 'offline',
+          // Google only issues a refresh token on a user's first consent
+          // for a given scope unless the consent screen is forced again —
+          // without this, reconnecting later would silently fail to renew it.
+          prompt: 'consent',
+          callback: (response: any) => {
+            if (response.error) {
+              reject(new Error(response.error));
+              return;
+            }
+            resolve(response.code);
+          },
+          error_callback: (err: any) => {
+            reject(new Error(err?.type ?? 'google-oauth-error'));
+          },
+        });
+        client.requestCode();
+      })
+  );
 }

@@ -1,10 +1,19 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { XMLParser } = require('fast-xml-parser');
 
 admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
+
+// Same OAuth client Firebase auto-created for the Google auth provider
+// (lib/googleIdentity.ts reuses its client ID client-side). The client
+// secret that pairs with it can only ever be used server-side — set via
+// `firebase functions:secrets:set GOOGLE_OAUTH_CLIENT_SECRET`, copied from
+// Google Cloud Console > APIs & Services > Credentials > this OAuth client.
+const GOOGLE_CLIENT_ID = '315662747088-dr7k9f6sbk4gs431v4j2c06hoob92mkm.apps.googleusercontent.com';
+const googleClientSecret = defineSecret('GOOGLE_OAUTH_CLIENT_SECRET');
 
 const xmlParser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
 
@@ -116,4 +125,109 @@ exports.connectAppleCalendar = onCall(async (request) => {
     );
 
   return { connected: true };
+});
+
+// Exchanges an authorization code (from the client's initCodeClient popup)
+// for tokens. The refresh token is what makes the connection "live" — it
+// lets refreshGoogleAccessToken mint a fresh access token later, on demand,
+// without the user being present, unlike the short-lived access token the
+// old implicit-flow client-side approach relied on.
+exports.connectGoogleCalendar = onCall({ secrets: [googleClientSecret] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const code = typeof request.data?.code === 'string' ? request.data.code : '';
+  if (!code) {
+    throw new HttpsError('invalid-argument', 'Missing authorization code.');
+  }
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: googleClientSecret.value(),
+      // Google's fixed placeholder redirect_uri for JS popup-mode code
+      // clients — there's no real redirect endpoint to register for these.
+      redirect_uri: 'postmessage',
+      grant_type: 'authorization_code',
+    }),
+  });
+  const tokenJson = await tokenRes.json();
+  if (!tokenRes.ok || !tokenJson.refresh_token) {
+    throw new HttpsError('unknown', tokenJson.error_description || 'Google did not return a refresh token.');
+  }
+
+  // Stored scoped to this user's own document, same security-rule boundary
+  // as the rest of their profile — mirrors how the Apple app-specific
+  // password is stored, for the same reason (no way to re-query later
+  // without persisting a re-usable credential).
+  await admin
+    .firestore()
+    .collection('users')
+    .doc(request.auth.uid)
+    .set(
+      {
+        googleCalendarConnected: true,
+        googleCalendar: {
+          refreshToken: tokenJson.refresh_token,
+          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+      },
+      { merge: true }
+    );
+
+  return { connected: true };
+});
+
+async function refreshGoogleAccessToken(refreshToken, clientSecret) {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      refresh_token: refreshToken,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: clientSecret,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new HttpsError('unknown', json.error_description || 'Could not refresh Google access token.');
+  }
+  return json.access_token;
+}
+
+// Uses the stored refresh token to fetch live free/busy blocks — the call
+// a future matching feature would make to compare two families' calendars,
+// without either of them needing to be online at the time.
+exports.getGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const timeMin = typeof request.data?.timeMin === 'string' ? request.data.timeMin : '';
+  const timeMax = typeof request.data?.timeMax === 'string' ? request.data.timeMax : '';
+  if (!timeMin || !timeMax) {
+    throw new HttpsError('invalid-argument', 'timeMin and timeMax are required.');
+  }
+
+  const userSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const refreshToken = userSnap.data()?.googleCalendar?.refreshToken;
+  if (!refreshToken) {
+    throw new HttpsError('failed-precondition', 'Google Calendar is not connected.');
+  }
+
+  const accessToken = await refreshGoogleAccessToken(refreshToken, googleClientSecret.value());
+  const freeBusyRes = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timeMin, timeMax, items: [{ id: 'primary' }] }),
+  });
+  const freeBusyJson = await freeBusyRes.json();
+  if (!freeBusyRes.ok) {
+    throw new HttpsError('unknown', 'Could not fetch calendar availability.');
+  }
+
+  return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });

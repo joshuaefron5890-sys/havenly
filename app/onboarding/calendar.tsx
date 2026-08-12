@@ -9,8 +9,8 @@ import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { connectAppleCalendar } from '../../lib/appleCalendar';
 import { auth, db } from '../../lib/firebase';
-import { verifyGoogleCalendarAccess } from '../../lib/googleCalendar';
-import { requestGoogleCalendarAccessToken } from '../../lib/googleIdentity';
+import { connectGoogleCalendarBackend } from '../../lib/googleCalendar';
+import { requestGoogleCalendarAuthCode } from '../../lib/googleIdentity';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 import { images } from '../../theme/images';
@@ -37,8 +37,8 @@ export default function Calendar() {
     setGoogleError(null);
     setConnectingGoogle(true);
     try {
-      const accessToken = await requestGoogleCalendarAccessToken();
-      await verifyGoogleCalendarAccess(accessToken);
+      const code = await requestGoogleCalendarAuthCode();
+      await connectGoogleCalendarBackend(code);
       setGoogleConnected(true);
       updateProfile({ googleCalendarConnected: true });
       saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar');

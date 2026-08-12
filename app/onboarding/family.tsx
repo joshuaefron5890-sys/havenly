@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,8 @@ import { colors } from '../../theme/colors';
 const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity'];
 
 export default function Family() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [children, setChildren] = useState(profile.numChildren);
   const [neurodivergentChildren, setNeurodivergentChildren] = useState(
@@ -71,12 +73,17 @@ export default function Family() {
     updateProfile(patch);
     const nextStep = stepAfterFamily({ numChildren: children, numNeurodivergentChildren: neurodivergentChildren });
     saveOnboardingStep(patch, nextStep);
-    router.push(nextStep);
+    router.push(editMode ? '/profile' : nextStep);
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={2} title="Tell us about" accent="your family." backTo="/onboarding/account" />
+      <WizardHeader
+        step={2}
+        title="Tell us about"
+        accent="your family."
+        backTo={editMode ? '/profile' : '/onboarding/account'}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
           label="Family photo"

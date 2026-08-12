@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,8 @@ const PERSONALITY = [
 const SOUNDS_GOOD = ['Coffee', 'Dinner', 'Walking', 'Family BBQs', 'Day trips', 'Kids activities together', 'Talking parenting'];
 
 export default function AboutYou() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [personality, setPersonality] = useState<string | null>(profile.personality);
   const [soundsGood, setSoundsGood] = useState<string[]>(profile.soundsGoodTo);
@@ -32,12 +34,17 @@ export default function AboutYou() {
     const patch = { personality, soundsGoodTo: soundsGood };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/availability');
-    router.push('/onboarding/availability');
+    router.push(editMode ? '/profile' : '/onboarding/availability');
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={8} title="Now, a little" accent="about you." backTo="/onboarding/goals" />
+      <WizardHeader
+        step={8}
+        title="Now, a little"
+        accent="about you."
+        backTo={editMode ? '/profile' : '/onboarding/goals'}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>AT A GET-TOGETHER, YOU'RE USUALLY...</Text>
         {PERSONALITY.map((option) => {

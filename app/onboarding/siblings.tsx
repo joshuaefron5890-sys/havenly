@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/
 import { colors } from '../../theme/colors';
 
 export default function Siblings() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const total = Math.max(
     1,
@@ -69,13 +71,15 @@ export default function Siblings() {
     const patch = { siblingProfiles: siblingsData };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/play-style');
-    router.push('/onboarding/play-style');
+    router.push(editMode ? '/profile' : '/onboarding/play-style');
   };
 
   const handleBack = () => {
     if (siblingIndex > 0) {
       setError(null);
       setSiblingIndex(siblingIndex - 1);
+    } else if (editMode) {
+      router.replace('/profile');
     } else {
       router.replace(
         stepBeforeSiblings({

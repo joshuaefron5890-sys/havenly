@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +27,8 @@ const NEURODIVERGENCE_OPTIONS = [
 ];
 
 export default function Child() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const total = Math.max(1, profile.numNeurodivergentChildren);
   const [childIndex, setChildIndex] = useState(0);
@@ -91,7 +93,7 @@ export default function Child() {
       numNeurodivergentChildren: profile.numNeurodivergentChildren,
     });
     saveOnboardingStep(patch, nextStep);
-    router.push(nextStep);
+    router.push(editMode ? '/profile' : nextStep);
   };
 
   const handleBack = () => {
@@ -99,7 +101,7 @@ export default function Child() {
       setError(null);
       setChildIndex(childIndex - 1);
     } else {
-      router.replace('/onboarding/family');
+      router.replace(editMode ? '/profile' : '/onboarding/family');
     }
   };
 

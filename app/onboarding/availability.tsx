@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ const WEEKDAYS = ['Before school', 'After school', 'Evenings'];
 const WEEKENDS = ['Saturday morning', 'Saturday afternoon', 'Saturday evening', 'Sunday morning', 'Sunday afternoon', 'Sunday evening'];
 
 export default function Availability() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [selected, setSelected] = useState<string[]>(profile.availability);
 
@@ -24,12 +26,17 @@ export default function Availability() {
     const patch = { availability: selected };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/calendar');
-    router.push('/onboarding/calendar');
+    router.push(editMode ? '/profile' : '/onboarding/calendar');
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={9} title="When do playdates" accent="usually work?" backTo="/onboarding/about-you" />
+      <WizardHeader
+        step={9}
+        title="When do playdates"
+        accent="usually work?"
+        backTo={editMode ? '/profile' : '/onboarding/about-you'}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>WEEKDAYS</Text>
         <View style={styles.chips}>

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +31,8 @@ const INTERESTS = [
 ];
 
 export default function Interests() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [selected, setSelected] = useState<string[]>(profile.interests);
 
@@ -42,12 +44,17 @@ export default function Interests() {
     const patch = { interests: selected };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/goals');
-    router.push('/onboarding/goals');
+    router.push(editMode ? '/profile' : '/onboarding/goals');
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={6} title="What are they" accent="really into?" backTo="/onboarding/play-style" />
+      <WizardHeader
+        step={6}
+        title="What are they"
+        accent="really into?"
+        backTo={editMode ? '/profile' : '/onboarding/play-style'}
+      />
       <Text style={styles.caption}>Tap to select anything they're into.</Text>
       <ScrollView contentContainerStyle={styles.grid}>
         {INTERESTS.map((interest) => {

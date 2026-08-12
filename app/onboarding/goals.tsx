@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +23,8 @@ const GOALS = [
 ];
 
 export default function Goals() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [selected, setSelected] = useState<string[]>(profile.goals);
 
@@ -34,12 +36,17 @@ export default function Goals() {
     const patch = { goals: selected };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/about-you');
-    router.push('/onboarding/about-you');
+    router.push(editMode ? '/profile' : '/onboarding/about-you');
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={7} title="What are you" accent="hoping to find?" backTo="/onboarding/interests" />
+      <WizardHeader
+        step={7}
+        title="What are you"
+        accent="hoping to find?"
+        backTo={editMode ? '/profile' : '/onboarding/interests'}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>SELECT ALL THAT APPLY</Text>
         {GOALS.map((goal) => {

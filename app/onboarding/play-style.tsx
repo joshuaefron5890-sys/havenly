@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,6 +34,8 @@ function playHeading(names: string[]): { title: string; accent: string } {
 }
 
 export default function PlayStyle() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [childrenData, setChildrenData] = useState<ChildProfile[]>(() =>
     profile.children.map((c) => ({ ...emptyChildProfile, ...c }))
@@ -57,7 +59,7 @@ export default function PlayStyle() {
     const patch = { children: childrenData };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/interests');
-    router.push('/onboarding/interests');
+    router.push(editMode ? '/profile' : '/onboarding/interests');
   };
 
   const heading = playHeading(childrenData.map((c) => c.name));
@@ -68,10 +70,14 @@ export default function PlayStyle() {
         step={5}
         title={heading.title}
         accent={heading.accent}
-        backTo={stepBeforePlayStyle({
-          numChildren: profile.numChildren,
-          numNeurodivergentChildren: profile.numNeurodivergentChildren,
-        })}
+        backTo={
+          editMode
+            ? '/profile'
+            : stepBeforePlayStyle({
+                numChildren: profile.numChildren,
+                numNeurodivergentChildren: profile.numNeurodivergentChildren,
+              })
+        }
       />
       <ScrollView contentContainerStyle={styles.content}>
         {childrenData.length === 0 ? (

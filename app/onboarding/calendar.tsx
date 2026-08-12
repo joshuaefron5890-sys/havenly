@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -16,6 +16,8 @@ import { colors } from '../../theme/colors';
 import { images } from '../../theme/images';
 
 export default function Calendar() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,11 +93,13 @@ export default function Calendar() {
           googleCalendarConnected: googleConnected,
           appleCalendarConnected: appleConnected,
           onboardingComplete: true,
-          createdAt: serverTimestamp(),
+          // Only stamp createdAt the first time onboarding actually finishes —
+          // editing calendar settings afterward shouldn't reset it.
+          ...(editMode ? {} : { createdAt: serverTimestamp() }),
         },
         { merge: true }
       );
-      router.replace('/(tabs)');
+      router.replace(editMode ? '/profile' : '/(tabs)');
     } catch {
       setError('Couldn’t save your profile — check your connection and try again.');
     } finally {
@@ -105,7 +109,12 @@ export default function Calendar() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={10} title="Connect your" accent="calendar." backTo="/onboarding/availability" />
+      <WizardHeader
+        step={10}
+        title="Connect your"
+        accent="calendar."
+        backTo={editMode ? '/profile' : '/onboarding/availability'}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.note}>
           <View style={styles.noteHeader}>
@@ -201,7 +210,11 @@ export default function Calendar() {
 
       <View style={styles.footer}>
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={finish} disabled={submitting}>
-          {submitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.ctaText}>Get Started</Text>}
+          {submitting ? (
+            <ActivityIndicator color={colors.surface} />
+          ) : (
+            <Text style={styles.ctaText}>{editMode ? 'Save changes' : 'Get Started'}</Text>
+          )}
         </Pressable>
       </View>
     </SafeAreaView>

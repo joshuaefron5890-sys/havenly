@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -43,6 +43,8 @@ function friendlyGoogleError(reason: string): string | null {
 }
 
 export default function Account() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const editMode = edit === '1';
   const { user, loading: authLoading } = useAuth();
   const { profile, updateProfile: updateOnboardingProfile } = useOnboarding();
   const [firstName, setFirstName] = useState(profile.firstName);
@@ -72,10 +74,10 @@ export default function Account() {
       return;
     }
 
-    if (connectedGmail) {
+    if (connectedGmail || editMode) {
       updateOnboardingProfile({ firstName, lastName, pronouns: pronoun });
       saveOnboardingStep({ firstName, lastName, pronouns: pronoun }, '/onboarding/family');
-      router.push('/onboarding/family');
+      router.replace(editMode ? '/profile' : '/onboarding/family');
       return;
     }
 
@@ -143,7 +145,12 @@ export default function Account() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <WizardHeader step={1} title="Create your" accent="account." />
+      <WizardHeader
+        step={1}
+        title={editMode ? 'Edit your' : 'Create your'}
+        accent="account."
+        backTo={editMode ? '/profile' : undefined}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <View style={styles.half}>
@@ -159,6 +166,14 @@ export default function Account() {
             <View style={styles.connectedTextWrap}>
               <Text style={styles.connectedTitle}>Connected with Gmail</Text>
               <Text style={styles.connectedEmail}>{connectedGmail}</Text>
+            </View>
+          </View>
+        ) : editMode ? (
+          <View style={styles.connectedRow}>
+            <Ionicons name="mail-outline" size={22} color={colors.positive} />
+            <View style={styles.connectedTextWrap}>
+              <Text style={styles.connectedTitle}>Signed in</Text>
+              <Text style={styles.connectedEmail}>{user?.email}</Text>
             </View>
           </View>
         ) : (
@@ -195,9 +210,9 @@ export default function Account() {
 
       <View style={styles.footer}>
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={handleContinue} disabled={submitting}>
-          <Text style={styles.ctaText}>{submitting ? 'Creating account…' : 'Continue'}</Text>
+          <Text style={styles.ctaText}>{submitting ? 'Creating account…' : editMode ? 'Save changes' : 'Continue'}</Text>
         </Pressable>
-        {!connectedGmail && (
+        {!connectedGmail && !editMode && (
           <Pressable
             style={[styles.googleButton, googleSubmitting && styles.ctaDisabled]}
             onPress={handleGoogleSignUp}

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
@@ -12,6 +12,7 @@ import { auth, db } from '../../lib/firebase';
 import { verifyGoogleCalendarAccess } from '../../lib/googleCalendar';
 import { requestGoogleCalendarAccessToken } from '../../lib/googleIdentity';
 import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
 
 export default function Calendar() {
   const { profile } = useOnboarding();
@@ -102,7 +103,10 @@ export default function Calendar() {
       <WizardHeader step={10} title="Connect your" accent="calendar." backTo="/onboarding/availability" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.note}>
-          <Text style={styles.noteTitle}>Let us do the scheduling work.</Text>
+          <View style={styles.noteHeader}>
+            <Ionicons name="bulb-outline" size={18} color={colors.info} />
+            <Text style={styles.noteTitle}>Let us do the scheduling work.</Text>
+          </View>
           <Text style={styles.noteBody}>
             We match your free time with other families'. Other parents only ever see "free" or "busy" — never
             what's actually on your calendar.
@@ -120,7 +124,7 @@ export default function Calendar() {
             </View>
           ) : (
             <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
-              <Ionicons name="link-outline" size={16} color={colors.accent} />
+              <Image source={images.googleLogo} style={styles.brandIcon} />
               <Text style={styles.connect}>Connect</Text>
             </Pressable>
           )}
@@ -136,18 +140,10 @@ export default function Calendar() {
             </View>
           ) : (
             <Pressable style={styles.connectBadge} onPress={openAppleModal}>
-              <Ionicons name="link-outline" size={16} color={colors.accent} />
+              <Ionicons name="logo-apple" size={16} color={colors.text} />
               <Text style={styles.connect}>Connect</Text>
             </Pressable>
           )}
-        </View>
-
-        <View style={styles.calendarRow}>
-          <Text style={styles.calendarName}>Outlook Calendar</Text>
-          <View style={styles.connectBadge}>
-            <Ionicons name="link-outline" size={16} color={colors.accent} />
-            <Text style={styles.connect}>Connect</Text>
-          </View>
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -220,16 +216,21 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   note: {
-    backgroundColor: colors.accentMuted,
+    backgroundColor: colors.infoMuted,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
+  },
+  noteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
   },
   noteTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 6,
   },
   noteBody: {
     fontSize: 13,
@@ -262,6 +263,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  brandIcon: {
+    width: 16,
+    height: 16,
   },
   connectedBadge: {
     flexDirection: 'row',

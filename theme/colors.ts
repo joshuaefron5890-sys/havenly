@@ -13,4 +13,6 @@ export const colors = {
   warning: '#C98A1E',
   warningMuted: '#FBEFD6',
   error: '#C0392B',
+  info: '#3B6FA8',
+  infoMuted: '#DDE9F5',
 } as const;

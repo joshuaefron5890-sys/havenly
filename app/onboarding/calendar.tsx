@@ -114,6 +114,7 @@ export default function Calendar() {
         title="Connect your"
         accent="calendar."
         backTo={editMode ? '/profile' : '/onboarding/availability'}
+        editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.note}>

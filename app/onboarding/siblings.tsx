@@ -97,6 +97,7 @@ export default function Siblings() {
         title="About"
         accent={total > 1 ? `sibling ${siblingIndex + 1} of ${total}.` : 'their sibling.'}
         onBack={handleBack}
+        editMode={editMode}
       />
       <Text style={styles.caption}>Just the basics — this helps us find playdates that work for the whole family.</Text>
       <ScrollView contentContainerStyle={styles.content}>
@@ -133,7 +134,9 @@ export default function Siblings() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>{siblingIndex + 1 < total ? 'Next sibling' : 'Continue'}</Text>
+          <Text style={styles.ctaText}>
+            {siblingIndex + 1 < total ? 'Next sibling' : editMode ? 'Save changes' : 'Continue'}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>

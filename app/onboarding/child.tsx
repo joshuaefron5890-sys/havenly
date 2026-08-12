@@ -112,6 +112,7 @@ export default function Child() {
         title="About your"
         accent={total > 1 ? `neurodivergent child ${childIndex + 1} of ${total}.` : 'neurodivergent child.'}
         onBack={handleBack}
+        editMode={editMode}
       />
       <Text style={styles.caption}>
         This helps us match you with families who understand your child's needs — we'll ask about siblings next.
@@ -161,7 +162,9 @@ export default function Child() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>{childIndex + 1 < total ? 'Next child' : 'Continue'}</Text>
+          <Text style={styles.ctaText}>
+            {childIndex + 1 < total ? 'Next child' : editMode ? 'Save changes' : 'Continue'}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>

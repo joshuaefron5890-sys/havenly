@@ -46,6 +46,7 @@ export default function Goals() {
         title="What are you"
         accent="hoping to find?"
         backTo={editMode ? '/profile' : '/onboarding/interests'}
+        editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>SELECT ALL THAT APPLY</Text>
@@ -61,7 +62,7 @@ export default function Goals() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>{editMode ? 'Save changes' : 'Continue'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

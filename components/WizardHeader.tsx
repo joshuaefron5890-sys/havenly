@@ -11,6 +11,7 @@ export function WizardHeader({
   accent,
   backTo,
   onBack,
+  editMode,
 }: {
   step: number;
   title: string;
@@ -24,6 +25,9 @@ export function WizardHeader({
   // sub-steps itself (e.g. one per child), so "back" should step within the
   // screen instead of always leaving it.
   onBack?: () => void;
+  // Reached from Profile's "Edit" links rather than the wizard itself —
+  // the step progress bar/count is meaningless there, so hide it.
+  editMode?: boolean;
 }) {
   const handleBack = () => {
     if (onBack) {
@@ -41,15 +45,19 @@ export function WizardHeader({
         <Pressable style={styles.back} onPress={handleBack}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${(step / TOTAL_STEPS) * 100}%` }]} />
-        </View>
-        <Text style={styles.stepCount}>
-          {step}/{TOTAL_STEPS}
-        </Text>
+        {editMode ? null : (
+          <>
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: `${(step / TOTAL_STEPS) * 100}%` }]} />
+            </View>
+            <Text style={styles.stepCount}>
+              {step}/{TOTAL_STEPS}
+            </Text>
+          </>
+        )}
       </View>
 
-      <Text style={styles.eyebrow}>STEP {step} OF {TOTAL_STEPS}</Text>
+      {editMode ? null : <Text style={styles.eyebrow}>STEP {step} OF {TOTAL_STEPS}</Text>}
       <Text style={styles.title}>
         {title} <Text style={styles.accent}>{accent}</Text>
       </Text>

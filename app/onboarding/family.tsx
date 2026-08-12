@@ -83,6 +83,7 @@ export default function Family() {
         title="Tell us about"
         accent="your family."
         backTo={editMode ? '/profile' : '/onboarding/account'}
+        editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
@@ -156,7 +157,7 @@ export default function Family() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>{editMode ? 'Save changes' : 'Continue'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

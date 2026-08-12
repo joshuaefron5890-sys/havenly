@@ -78,6 +78,7 @@ export default function PlayStyle() {
                 numNeurodivergentChildren: profile.numNeurodivergentChildren,
               })
         }
+        editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>
         {childrenData.length === 0 ? (
@@ -117,7 +118,7 @@ export default function PlayStyle() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>{editMode ? 'Save changes' : 'Continue'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

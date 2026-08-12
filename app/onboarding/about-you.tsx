@@ -44,6 +44,7 @@ export default function AboutYou() {
         title="Now, a little"
         accent="about you."
         backTo={editMode ? '/profile' : '/onboarding/goals'}
+        editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>AT A GET-TOGETHER, YOU'RE USUALLY...</Text>
@@ -66,7 +67,7 @@ export default function AboutYou() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>{editMode ? 'Save changes' : 'Continue'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

@@ -150,6 +150,7 @@ export default function Account() {
         title={editMode ? 'Edit your' : 'Create your'}
         accent="account."
         backTo={editMode ? '/profile' : undefined}
+        editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>

@@ -36,6 +36,7 @@ export default function Availability() {
         title="When do playdates"
         accent="usually work?"
         backTo={editMode ? '/profile' : '/onboarding/about-you'}
+        editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>WEEKDAYS</Text>
@@ -63,7 +64,7 @@ export default function Availability() {
 
       <View style={styles.footer}>
         <Pressable style={styles.cta} onPress={handleContinue}>
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>{editMode ? 'Save changes' : 'Continue'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

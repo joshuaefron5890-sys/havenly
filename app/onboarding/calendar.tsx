@@ -95,7 +95,7 @@ export default function Calendar() {
         },
         { merge: true }
       );
-      router.replace('/onboarding/matches');
+      router.replace('/(tabs)');
     } catch {
       setError('Couldn’t save your profile — check your connection and try again.');
     } finally {
@@ -201,10 +201,7 @@ export default function Calendar() {
 
       <View style={styles.footer}>
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={finish} disabled={submitting}>
-          {submitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.ctaText}>Find My Matches</Text>}
-        </Pressable>
-        <Pressable onPress={finish} disabled={submitting}>
-          <Text style={styles.skip}>Skip for now</Text>
+          {submitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.ctaText}>Get Started</Text>}
         </Pressable>
       </View>
     </SafeAreaView>

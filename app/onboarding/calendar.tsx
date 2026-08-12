@@ -11,11 +11,12 @@ import { connectAppleCalendar } from '../../lib/appleCalendar';
 import { auth, db } from '../../lib/firebase';
 import { verifyGoogleCalendarAccess } from '../../lib/googleCalendar';
 import { requestGoogleCalendarAccessToken } from '../../lib/googleIdentity';
+import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 import { images } from '../../theme/images';
 
 export default function Calendar() {
-  const { profile } = useOnboarding();
+  const { profile, updateProfile } = useOnboarding();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +38,8 @@ export default function Calendar() {
       const accessToken = await requestGoogleCalendarAccessToken();
       await verifyGoogleCalendarAccess(accessToken);
       setGoogleConnected(true);
+      updateProfile({ googleCalendarConnected: true });
+      saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar');
     } catch {
       setGoogleError('Couldn’t connect Google Calendar — try again.');
     } finally {
@@ -59,6 +62,8 @@ export default function Calendar() {
     try {
       await connectAppleCalendar(appleId.trim(), appPassword.trim());
       setAppleConnected(true);
+      updateProfile({ appleCalendarConnected: true });
+      saveOnboardingStep({ appleCalendarConnected: true }, '/onboarding/calendar');
       setAppleModalVisible(false);
       setAppleId('');
       setAppPassword('');

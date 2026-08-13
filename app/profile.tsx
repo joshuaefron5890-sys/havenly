@@ -144,8 +144,13 @@ export default function Profile() {
         if (cancelled) return;
         setSlots(upcomingSlots(profile.availability, busy));
       })
-      .catch(() => {
-        if (!cancelled) setSlotsError('Couldn’t check your calendar right now — try again later.');
+      .catch((err: any) => {
+        if (cancelled) return;
+        if (err?.code === 'functions/failed-precondition') {
+          setSlotsError('Your Google Calendar connection needs to be refreshed — reconnect it above.');
+        } else {
+          setSlotsError(`Couldn’t check your calendar right now — try again later. (${err?.code ?? err?.message ?? 'unknown error'})`);
+        }
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);

@@ -132,33 +132,37 @@ export default function Calendar() {
           <Text style={styles.calendarName}>Google Calendar</Text>
           {connectingGoogle ? (
             <ActivityIndicator color={colors.accent} />
-          ) : googleConnected ? (
-            <View style={styles.connectedBadge}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
-              <Text style={styles.connectedText}>Connected</Text>
-            </View>
           ) : (
-            <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
-              <Image source={images.googleLogo} style={styles.brandIcon} />
-              <Text style={styles.connect}>Connect</Text>
-            </Pressable>
+            <View style={styles.calendarActions}>
+              {googleConnected && (
+                <View style={styles.connectedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
+                  <Text style={styles.connectedText}>Connected</Text>
+                </View>
+              )}
+              <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
+                <Image source={images.googleLogo} style={styles.brandIcon} />
+                <Text style={styles.connect}>{googleConnected ? 'Reconnect' : 'Connect'}</Text>
+              </Pressable>
+            </View>
           )}
         </View>
         {googleError ? <Text style={styles.rowError}>{googleError}</Text> : null}
 
         <View style={styles.calendarRow}>
           <Text style={styles.calendarName}>Apple Calendar</Text>
-          {appleConnected ? (
-            <View style={styles.connectedBadge}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
-              <Text style={styles.connectedText}>Connected</Text>
-            </View>
-          ) : (
+          <View style={styles.calendarActions}>
+            {appleConnected && (
+              <View style={styles.connectedBadge}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
+                <Text style={styles.connectedText}>Connected</Text>
+              </View>
+            )}
             <Pressable style={styles.connectBadge} onPress={openAppleModal}>
               <Ionicons name="logo-apple" size={16} color={colors.text} />
-              <Text style={styles.connect}>Connect</Text>
+              <Text style={styles.connect}>{appleConnected ? 'Reconnect' : 'Connect'}</Text>
             </Pressable>
-          )}
+          </View>
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -274,6 +278,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.accent,
+  },
+  calendarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   connectBadge: {
     flexDirection: 'row',

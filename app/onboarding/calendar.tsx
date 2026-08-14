@@ -36,14 +36,35 @@ export default function Calendar() {
   const handleConnectGoogle = async () => {
     setGoogleError(null);
     setConnectingGoogle(true);
+
+    let code: string;
     try {
-      const code = await requestGoogleCalendarAuthCode();
+      code = await requestGoogleCalendarAuthCode();
+    } catch (err: any) {
+      // Chrome's Cross-Origin-Opener-Policy blocks Google's own internal
+      // "is the popup still open" check, which can make it wrongly report
+      // popup_closed_by_user even after a real, completed consent grant —
+      // a false negative, not necessarily a real failure. One retry often
+      // succeeds since the browser sometimes allows the check the second
+      // time (timing-dependent, not something we can force reliably).
+      if (err?.message?.includes('closed')) {
+        setGoogleError(
+          'Google reported the popup closed early, which can be a false alarm in some browsers — please try Connect again.'
+        );
+      } else {
+        setGoogleError(`Couldn’t get Google’s permission (${err?.message ?? 'unknown error'}) — try again.`);
+      }
+      setConnectingGoogle(false);
+      return;
+    }
+
+    try {
       await connectGoogleCalendarBackend(code);
       setGoogleConnected(true);
       updateProfile({ googleCalendarConnected: true });
       saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar');
-    } catch {
-      setGoogleError('Couldn’t connect Google Calendar — try again.');
+    } catch (err: any) {
+      setGoogleError(`Couldn’t save the connection (${err?.code ?? err?.message ?? 'unknown error'}) — try again.`);
     } finally {
       setConnectingGoogle(false);
     }

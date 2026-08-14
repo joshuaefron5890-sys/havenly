@@ -64,7 +64,7 @@ export default function Calendar() {
       updateProfile({ googleCalendarConnected: true });
       saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar');
     } catch (err: any) {
-      setGoogleError(`Couldn’t save the connection (${err?.code ?? err?.message ?? 'unknown error'}) — try again.`);
+      setGoogleError(`Couldn’t save the connection (${err?.message ?? err?.code ?? 'unknown error'}) — try again.`);
     } finally {
       setConnectingGoogle(false);
     }

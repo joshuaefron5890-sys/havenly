@@ -121,39 +121,44 @@ export default function Profile() {
   }, [authLoading, user]);
 
   const [slots, setSlots] = useState<SlotCheck[] | null>(null);
-  const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
+  // 'ok'/'needs-reconnect' reflect whether the stored connection actually
+  // works, independent of whether the user has picked any preferred times
+  // yet — the Calendar card below shows this even with no availability set.
+  const [googleCalendarStatus, setGoogleCalendarStatus] = useState<'idle' | 'checking' | 'ok' | 'needs-reconnect' | 'error'>(
+    'idle'
+  );
 
-  // Cross-checks the real, live Google Calendar connection against the
-  // preferred playdate windows picked during onboarding — separate from the
-  // rest of this screen since it needs a network call, not just the
-  // already-hydrated profile.
+  // Verifies the real, live Google Calendar connection (a googleCalendarConnected:
+  // true flag in Firestore doesn't guarantee a working stored refresh token —
+  // e.g. one saved before the backend function existed) and, if it works,
+  // cross-checks it against the preferred playdate windows from onboarding.
   useEffect(() => {
     if (hydrating) return;
-    if (!profile.googleCalendarConnected || profile.availability.length === 0) {
+    if (!profile.googleCalendarConnected) {
+      setGoogleCalendarStatus('idle');
       setSlots(null);
       return;
     }
     let cancelled = false;
-    setSlotsLoading(true);
+    setGoogleCalendarStatus('checking');
     setSlotsError(null);
     const now = new Date();
     const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     getGoogleFreeBusy(now.toISOString(), weekOut.toISOString())
       .then((busy) => {
         if (cancelled) return;
-        setSlots(upcomingSlots(profile.availability, busy));
+        setGoogleCalendarStatus('ok');
+        setSlots(profile.availability.length ? upcomingSlots(profile.availability, busy) : []);
       })
       .catch((err: any) => {
         if (cancelled) return;
         if (err?.code === 'functions/failed-precondition') {
-          setSlotsError('Your Google Calendar connection needs to be refreshed — reconnect it above.');
+          setGoogleCalendarStatus('needs-reconnect');
         } else {
+          setGoogleCalendarStatus('error');
           setSlotsError(`Couldn’t check your calendar right now — try again later. (${err?.code ?? err?.message ?? 'unknown error'})`);
         }
-      })
-      .finally(() => {
-        if (!cancelled) setSlotsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -305,7 +310,18 @@ export default function Profile() {
               <Image source={images.googleLogo} style={styles.brandIcon} />
               <Text style={styles.fieldValue}>Google Calendar</Text>
             </View>
-            {profile.googleCalendarConnected ? <ConnectedBadge /> : <Text style={styles.empty}>Not connected</Text>}
+            {!profile.googleCalendarConnected ? (
+              <Text style={styles.empty}>Not connected</Text>
+            ) : googleCalendarStatus === 'checking' ? (
+              <ActivityIndicator color={colors.accent} size="small" />
+            ) : googleCalendarStatus === 'needs-reconnect' ? (
+              <View style={styles.connectedBadge}>
+                <Ionicons name="alert-circle" size={16} color={colors.warning} />
+                <Text style={styles.needsReconnectText}>Needs reconnection</Text>
+              </View>
+            ) : (
+              <ConnectedBadge />
+            )}
           </View>
           <View style={styles.calendarRow}>
             <View style={styles.calendarLabel}>
@@ -323,12 +339,16 @@ export default function Profile() {
           </Text>
           {!profile.googleCalendarConnected ? (
             <Text style={styles.empty}>Connect Google Calendar above to see this.</Text>
+          ) : googleCalendarStatus === 'checking' ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : googleCalendarStatus === 'needs-reconnect' ? (
+            <Text style={styles.availabilityError}>
+              Your Google Calendar connection needs to be refreshed — reconnect it above.
+            </Text>
+          ) : googleCalendarStatus === 'error' ? (
+            <Text style={styles.availabilityError}>{slotsError}</Text>
           ) : profile.availability.length === 0 ? (
             <Text style={styles.empty}>Set your preferred playdate times to see this.</Text>
-          ) : slotsLoading ? (
-            <ActivityIndicator color={colors.accent} />
-          ) : slotsError ? (
-            <Text style={styles.availabilityError}>{slotsError}</Text>
           ) : !slots || slots.length === 0 ? (
             <Text style={styles.empty}>No upcoming preferred times in the next week.</Text>
           ) : (
@@ -554,6 +574,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.positive,
+  },
+  needsReconnectText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.warning,
   },
   availabilitySubtitle: {
     fontSize: 12,

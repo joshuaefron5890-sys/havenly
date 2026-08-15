@@ -55,11 +55,13 @@ export type SuggestedSlot = {
 };
 
 // Finds concrete free slots sized to durationHours within the user's
-// selected preference windows over the next daysAhead days, checked against
-// real calendar busy blocks (from getGoogleFreeBusy) — e.g. "Sat, Aug 22 ·
-// 10:00–11:30 AM" rather than just marking the whole window free or busy.
-// A window can produce more than one slot in a day if a busy block splits
-// it into multiple gaps each still long enough to fit the duration.
+// selected preference windows over the next daysAhead days (starting
+// tomorrow, not today — same-day suggestions don't leave people enough time
+// to plan), checked against real calendar busy blocks (from
+// getGoogleFreeBusy) — e.g. "Sat, Aug 22 · 10:00–11:30 AM" rather than just
+// marking the whole window free or busy. A window can produce more than one
+// slot in a day if a busy block splits it into multiple gaps each still
+// long enough to fit the duration.
 export function suggestedPlaydateSlots(
   selectedLabels: string[],
   busy: { start: string; end: string }[],
@@ -76,7 +78,7 @@ export function suggestedPlaydateSlots(
   const now = new Date();
   const results: SuggestedSlot[] = [];
 
-  for (let offset = 0; offset < daysAhead; offset++) {
+  for (let offset = 1; offset <= daysAhead; offset++) {
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
     const dow = day.getDay();
     for (const w of windows) {

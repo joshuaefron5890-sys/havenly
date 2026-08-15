@@ -157,7 +157,10 @@ export default function Profile() {
     setGoogleCalendarStatus('checking');
     setSlotsError(null);
     const now = new Date();
-    const rangeEnd = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+    // +1 day of headroom — suggestedPlaydateSlots looks from tomorrow
+    // through daysAhead days out, one day later than a plain now+daysAhead
+    // would cover.
+    const rangeEnd = new Date(now.getTime() + (daysAhead + 1) * 24 * 60 * 60 * 1000);
     getGoogleFreeBusy(now.toISOString(), rangeEnd.toISOString())
       .then((busy) => {
         if (cancelled) return;

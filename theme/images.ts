@@ -27,8 +27,6 @@ export const images: Record<string, ImageSourcePropType | undefined> = {
   familyNakamura: unsplash('photo-1771785990200-0857c2b8e70b', 160, 160),
   familyOsei: unsplash('photo-1760084836111-b384c6d32104', 160, 160),
   familyReyes: unsplash('photo-1774641373997-9e5b8b2df8f3', 160, 160),
-  familyYuki: unsplash('photo-1782225203933-1b591fd703d9', 200, 200),
-  familyAbena: unsplash('photo-1641598547935-49453f079d90', 200, 200),
   playdatePlayground: unsplash('photo-1606474226448-4aa808468efc', 700, 400),
   playdateMuseum: unsplash('photo-1524178232363-1fb2b075b655', 700, 400),
   playdateSensoryStorytime: unsplash('photo-1529543544282-ea669407fca3', 700, 400),

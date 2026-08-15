@@ -1,19 +1,16 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
+import { useAuth } from '../../contexts/AuthContext';
+import { familyPhoto, familySubtitle, fetchSuggestedFamilies, SuggestedFamily } from '../../lib/families';
 import { colors } from '../../theme/colors';
 import { images } from '../../theme/images';
 
-const TABS = ['My List · 6', 'Discover'] as const;
-
-const SUGGESTED_FAMILIES = [
-  { name: 'Yuki', subtitle: 'Hana, 5 · Leo, 2 · 0.4 mi', match: 94, image: images.familyYuki },
-  { name: 'Abena', subtitle: 'Kwame, 3 · Ama, 3 · 0.9 mi', match: 88, image: images.familyAbena },
-];
+const TABS = ['My List', 'Discover'] as const;
 
 const SUGGESTED_PLAYDATES = [
   { title: 'Sensory Storytime', subtitle: 'Sat, Aug 16 · Brooklyn Public Library', reason: "Low-stimulation and structured — great for Mia's focus", image: images.playdateSensoryStorytime },
@@ -23,6 +20,25 @@ const SUGGESTED_PLAYDATES = [
 export default function ForYou() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(TABS[0]);
   const isDiscover = activeTab === 'Discover';
+  const { user } = useAuth();
+
+  const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
+  const [familiesError, setFamiliesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchSuggestedFamilies()
+      .then((result) => {
+        if (!cancelled) setFamilies(result);
+      })
+      .catch((err: any) => {
+        if (!cancelled) setFamiliesError(err?.message ?? err?.code ?? 'unknown error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -44,9 +60,25 @@ export default function ForYou() {
         {isDiscover ? (
           <>
             <SectionHeader title="Suggested families" action="Browse all" />
-            {SUGGESTED_FAMILIES.map((family) => (
-              <ListRow key={family.name} title={family.name} subtitle={family.subtitle} badge={`${family.match}%`} image={family.image} />
-            ))}
+            {familiesError ? (
+              <Text style={styles.stateText}>Couldn’t load families ({familiesError}).</Text>
+            ) : families === null ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : families.length === 0 ? (
+              <Text style={styles.stateText}>No other families onboarded yet — check back soon.</Text>
+            ) : (
+              families.map((family) => {
+                const photoUrl = familyPhoto(family);
+                return (
+                  <ListRow
+                    key={family.uid}
+                    title={family.firstName || 'A family'}
+                    subtitle={familySubtitle(family)}
+                    image={photoUrl ? { uri: photoUrl } : undefined}
+                  />
+                );
+              })
+            )}
 
             <SectionHeader title="Suggested playdates" action="See more" />
             {SUGGESTED_PLAYDATES.map((playdate) => (
@@ -60,7 +92,7 @@ export default function ForYou() {
         ) : (
           <>
             <SectionHeader title="Families" action="Browse all" />
-            <ListRow title="Yuki" subtitle="Hana, 5 · Leo, 2 · 0.4 mi" image={images.familyYuki} />
+            <Text style={styles.stateText}>No connected families yet — find some under Discover.</Text>
 
             <SectionHeader title="Playdates" action="View in Events" />
             <ListRow
@@ -119,5 +151,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  stateText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: 16,
   },
 });

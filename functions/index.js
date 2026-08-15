@@ -290,3 +290,37 @@ exports.getGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (req
 
   return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });
+
+// Powers the "For You" screen's Discover tab. Runs server-side (Admin SDK)
+// rather than letting the client query the users collection directly,
+// because each user doc also holds things that must never reach another
+// user's device — a Google Calendar refresh token, an Apple app-specific
+// password — so this hand-picks only the fields that are actually safe to
+// show another family, instead of opening up broader Firestore read access.
+exports.getSuggestedFamilies = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+
+  const snap = await admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(30).get();
+
+  const families = snap.docs
+    .filter((doc) => doc.id !== request.auth.uid)
+    .map((doc) => {
+      const data = doc.data();
+      return {
+        uid: doc.id,
+        firstName: typeof data.firstName === 'string' ? data.firstName : '',
+        familyPhotoUrl: typeof data.familyPhotoUrl === 'string' ? data.familyPhotoUrl : null,
+        children: Array.isArray(data.children)
+          ? data.children.map((c) => ({
+              name: typeof c?.name === 'string' ? c.name : '',
+              age: typeof c?.age === 'string' ? c.age : '',
+              photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
+            }))
+          : [],
+      };
+    });
+
+  return { families };
+});

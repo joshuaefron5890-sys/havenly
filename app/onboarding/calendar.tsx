@@ -35,6 +35,12 @@ export default function Calendar() {
 
   const handleConnectGoogle = async () => {
     setGoogleError(null);
+
+    if (!auth?.currentUser) {
+      setGoogleError('Your sign-in session has expired — log out and back in, then try Reconnect again.');
+      return;
+    }
+
     setConnectingGoogle(true);
 
     let code: string;
@@ -64,7 +70,11 @@ export default function Calendar() {
       updateProfile({ googleCalendarConnected: true });
       saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar');
     } catch (err: any) {
-      setGoogleError(`Couldn’t save the connection (${err?.message ?? err?.code ?? 'unknown error'}) — try again.`);
+      if (err?.code === 'functions/unauthenticated') {
+        setGoogleError('Your sign-in session has expired — log out and back in, then try Reconnect again.');
+      } else {
+        setGoogleError(`Couldn’t save the connection (${err?.message ?? err?.code ?? 'unknown error'}) — try again.`);
+      }
     } finally {
       setConnectingGoogle(false);
     }

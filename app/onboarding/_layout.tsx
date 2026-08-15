@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { router, Stack, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,9 +7,14 @@ import { useOnboarding } from '../../contexts/OnboardingContext';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
+// The only onboarding step reachable without an existing session — it's the
+// one that creates the account in the first place.
+const ACCOUNT_CREATION_PATH = '/onboarding/account';
+
 export default function OnboardingLayout() {
   const { user, loading: authLoading } = useAuth();
   const { updateProfile } = useOnboarding();
+  const pathname = usePathname();
   const [hydrating, setHydrating] = useState(true);
 
   // Landing directly on any onboarding step — most commonly a page refresh —
@@ -20,6 +25,13 @@ export default function OnboardingLayout() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
+      // A stale/expired session left this route rendering as if signed in
+      // (e.g. after a page refresh) — send back to sign-in rather than
+      // letting steps that assume an authenticated user render anyway.
+      if (pathname !== ACCOUNT_CREATION_PATH) {
+        router.replace('/sign-in');
+        return;
+      }
       setHydrating(false);
       return;
     }
@@ -38,7 +50,7 @@ export default function OnboardingLayout() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user]);
+  }, [authLoading, user, pathname]);
 
   if (authLoading || hydrating) {
     return (

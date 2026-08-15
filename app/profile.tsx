@@ -101,7 +101,10 @@ export default function Profile() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setHydrating(false);
+      // A stale/expired session left this route rendering as if signed in
+      // (e.g. after a page refresh) — send back to sign-in instead of
+      // showing a profile screen with nothing real behind it.
+      router.replace('/sign-in');
       return;
     }
     let cancelled = false;

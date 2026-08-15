@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
-import { SlotCheck, upcomingSlots } from '../lib/availabilityWindows';
+import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
 import { signOutUser } from '../lib/firebase';
 import { getGoogleFreeBusy } from '../lib/googleCalendar';
 import { numSiblings } from '../lib/onboardingFlow';
@@ -76,10 +76,10 @@ function ConnectedBadge() {
   );
 }
 
-function groupSlotsByDay(slots: SlotCheck[]): { dateLabel: string; slots: SlotCheck[] }[] {
-  const groups: { dateLabel: string; slots: SlotCheck[] }[] = [];
+function groupSlotsByDay(slots: SuggestedSlot[]): { dateLabel: string; slots: SuggestedSlot[] }[] {
+  const groups: { dateLabel: string; slots: SuggestedSlot[] }[] = [];
   for (const slot of slots) {
-    const dateLabel = slot.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const dateLabel = slot.start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     const existing = groups.find((g) => g.dateLabel === dateLabel);
     if (existing) {
       existing.slots.push(slot);
@@ -88,6 +88,11 @@ function groupSlotsByDay(slots: SlotCheck[]): { dateLabel: string; slots: SlotCh
     }
   }
   return groups;
+}
+
+function formatTimeRange(start: Date, end: Date): string {
+  const opts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+  return `${start.toLocaleTimeString(undefined, opts)} – ${end.toLocaleTimeString(undefined, opts)}`;
 }
 
 export default function Profile() {
@@ -123,7 +128,7 @@ export default function Profile() {
     };
   }, [authLoading, user]);
 
-  const [slots, setSlots] = useState<SlotCheck[] | null>(null);
+  const [slots, setSlots] = useState<SuggestedSlot[] | null>(null);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   // 'ok'/'needs-reconnect' reflect whether the stored connection actually
   // works, independent of whether the user has picked any preferred times
@@ -132,10 +137,15 @@ export default function Profile() {
     'idle'
   );
 
+  const playdateLengthHours = longestPlaydateLengthHours(profile.children.map((c) => c.idealPlaydateLength));
+  const daysAhead = 21;
+
   // Verifies the real, live Google Calendar connection (a googleCalendarConnected:
   // true flag in Firestore doesn't guarantee a working stored refresh token —
   // e.g. one saved before the backend function existed) and, if it works,
-  // cross-checks it against the preferred playdate windows from onboarding.
+  // finds concrete open slots — sized to the longest child's preferred
+  // playdate length — within the preferred playdate windows from onboarding,
+  // over the next three weeks.
   useEffect(() => {
     if (hydrating) return;
     if (!profile.googleCalendarConnected) {
@@ -147,12 +157,16 @@ export default function Profile() {
     setGoogleCalendarStatus('checking');
     setSlotsError(null);
     const now = new Date();
-    const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    getGoogleFreeBusy(now.toISOString(), weekOut.toISOString())
+    const rangeEnd = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+    getGoogleFreeBusy(now.toISOString(), rangeEnd.toISOString())
       .then((busy) => {
         if (cancelled) return;
         setGoogleCalendarStatus('ok');
-        setSlots(profile.availability.length ? upcomingSlots(profile.availability, busy) : []);
+        setSlots(
+          profile.availability.length
+            ? suggestedPlaydateSlots(profile.availability, busy, playdateLengthHours, daysAhead)
+            : []
+        );
       })
       .catch((err: any) => {
         if (cancelled) return;
@@ -166,7 +180,7 @@ export default function Profile() {
     return () => {
       cancelled = true;
     };
-  }, [hydrating, profile.googleCalendarConnected, profile.availability.length]);
+  }, [hydrating, profile.googleCalendarConnected, profile.availability.length, playdateLengthHours]);
 
   const logOut = async () => {
     await signOutUser();
@@ -338,7 +352,9 @@ export default function Profile() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>My playdate availability</Text>
           <Text style={styles.availabilitySubtitle}>
-            Checked against your connected calendar and preferred playdate times.
+            Open slots over the next 3 weeks, sized to your preferred playdate length
+            ({playdateLengthHours % 1 === 0 ? playdateLengthHours : playdateLengthHours.toFixed(1)}h) and checked
+            against your connected calendar.
           </Text>
           {!profile.googleCalendarConnected ? (
             <Text style={styles.empty}>Connect Google Calendar above to see this.</Text>
@@ -353,24 +369,15 @@ export default function Profile() {
           ) : profile.availability.length === 0 ? (
             <Text style={styles.empty}>Set your preferred playdate times to see this.</Text>
           ) : !slots || slots.length === 0 ? (
-            <Text style={styles.empty}>No upcoming preferred times in the next week.</Text>
+            <Text style={styles.empty}>No open slots long enough in the next 3 weeks.</Text>
           ) : (
             groupSlotsByDay(slots).map((group) => (
               <View key={group.dateLabel} style={styles.availabilityDay}>
                 <Text style={styles.availabilityDate}>{group.dateLabel}</Text>
                 {group.slots.map((slot) => (
-                  <View key={slot.label} style={styles.availabilitySlotRow}>
-                    <Text style={styles.fieldValue}>{slot.label}</Text>
-                    <View style={styles.availabilityStatus}>
-                      <Ionicons
-                        name={slot.free ? 'checkmark-circle' : 'close-circle'}
-                        size={16}
-                        color={slot.free ? colors.positive : colors.error}
-                      />
-                      <Text style={[styles.availabilityStatusText, slot.free ? styles.freeText : styles.busyText]}>
-                        {slot.free ? 'Free' : 'Busy'}
-                      </Text>
-                    </View>
+                  <View key={slot.start.toISOString()} style={styles.availabilitySlotRow}>
+                    <Text style={styles.fieldValue}>{formatTimeRange(slot.start, slot.end)}</Text>
+                    <Text style={styles.availabilityWindowLabel}>{slot.label}</Text>
                   </View>
                 ))}
               </View>
@@ -608,20 +615,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
   },
-  availabilityStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  availabilityStatusText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  freeText: {
-    color: colors.positive,
-  },
-  busyText: {
-    color: colors.error,
+  availabilityWindowLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   logoutButton: {
     flexDirection: 'row',

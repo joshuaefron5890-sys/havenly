@@ -12,7 +12,6 @@ export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title: stri
       </View>
       <View style={styles.icons}>
         <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
-        <View style={styles.avatar} />
         <SettingsMenu />
       </View>
     </View>
@@ -41,11 +40,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.accentMuted,
   },
 });

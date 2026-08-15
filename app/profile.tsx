@@ -9,19 +9,12 @@ import { useOnboarding } from '../contexts/OnboardingContext';
 import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
 import { signOutUser } from '../lib/firebase';
 import { getGoogleFreeBusy } from '../lib/googleCalendar';
+import { initials } from '../lib/initials';
 import { numSiblings } from '../lib/onboardingFlow';
 import { loadOnboardingProgress } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 import { INTERESTS } from '../theme/interests';
-
-function initials(name: string | null | undefined, email: string | null | undefined): string {
-  const source = name?.trim() || email || '';
-  if (!source) return '?';
-  const parts = source.split(' ').filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return source.slice(0, 2).toUpperCase();
-}
 
 function SectionCard({ title, editHref, children }: { title: string; editHref: string; children: ReactNode }) {
   return (

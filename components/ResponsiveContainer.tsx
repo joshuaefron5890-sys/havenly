@@ -4,8 +4,12 @@ import { colors } from '../theme/colors';
 
 // On web, wide viewports (tablet/desktop browsers) get the app content
 // centered in a phone-width column instead of stretching edge to edge.
-// Narrow viewports (actual phones) are unaffected.
-const MAX_CONTENT_WIDTH = 480;
+// Narrow viewports (actual phones) are unaffected. Exported so anything
+// that renders outside the normal layout tree (e.g. a Modal, which portals
+// straight to the browser's <body> and so isn't constrained by this
+// component's own layout) can still align itself to the visible column
+// instead of the full browser window.
+export const MAX_CONTENT_WIDTH = 480;
 
 export function ResponsiveContainer({ children }: PropsWithChildren) {
   const { width } = useWindowDimensions();

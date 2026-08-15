@@ -170,7 +170,7 @@ export default function Profile() {
           setGoogleCalendarStatus('needs-reconnect');
         } else {
           setGoogleCalendarStatus('error');
-          setSlotsError(`Couldn’t check your calendar right now — try again later. (${err?.code ?? err?.message ?? 'unknown error'})`);
+          setSlotsError(`Couldn’t check your calendar right now — try again later. (${err?.message ?? err?.code ?? 'unknown error'})`);
         }
       });
     return () => {

@@ -39,7 +39,7 @@ function friendlyGoogleError(reason: string): string | null {
     case 'auth/unauthorized-domain':
       return 'This site isn’t authorized for Google sign-in yet — add it under Firebase Auth → Settings → Authorized domains.';
     default:
-      return 'Something went wrong signing up with Gmail. Please try again.';
+      return `Something went wrong signing up with Gmail (${reason || 'unknown error'}) — please try again.`;
   }
 }
 
@@ -140,7 +140,7 @@ export default function Account() {
       setLastName(rest.join(' '));
       setConnectedGmail(credential.user.email);
     } catch (err: any) {
-      const message = friendlyGoogleError(err?.code ?? err?.message ?? '');
+      const message = friendlyGoogleError(err?.message ?? err?.code ?? '');
       if (message) setError(message);
     } finally {
       setGoogleSubmitting(false);

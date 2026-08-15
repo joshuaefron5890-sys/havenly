@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { User } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { OnboardingProfile } from '../contexts/OnboardingContext';
 import { auth, db } from './firebase';
@@ -38,16 +39,14 @@ export async function loadOnboardingProgress(uid: string): Promise<OnboardingSav
 }
 
 // Single policy for "where does a signed-in user belong": finished onboarding
-// goes to the tabs; anyone else resumes at their last saved step (or family,
-// the step right after account, if they never got further than signing up).
-// Used both right after sign-in and when the app opens to an already
-// signed-in session.
+// goes to the tabs; anyone else resumes at their last saved step. Used both
+// right after sign-in and when the app opens to an already signed-in session.
 export async function routeSignedInUser(
-  uid: string,
+  user: User,
   hydrateProfile: (patch: Partial<OnboardingProfile>) => void
 ): Promise<void> {
   try {
-    const progress = await loadOnboardingProgress(uid);
+    const progress = await loadOnboardingProgress(user.uid);
     if (progress?.onboardingComplete) {
       router.replace('/(tabs)');
       return;
@@ -55,7 +54,18 @@ export async function routeSignedInUser(
     if (progress && Object.keys(progress.profile).length) {
       hydrateProfile(progress.profile);
     }
-    router.replace((progress?.onboardingStep as any) ?? '/onboarding/family');
+    if (!progress) {
+      // No saved progress at all means nothing has run saveOnboardingStep
+      // yet — for "Sign in with Gmail" this can be a brand-new account
+      // Firebase created transparently on first use (Google sign-in doesn't
+      // distinguish sign-up from sign-in). Send it through the account step
+      // like a fresh sign-up would, so name/pronouns get a chance to be
+      // confirmed, instead of skipping straight past it to family.
+      const isGoogleUser = user.providerData.some((p) => p.providerId === 'google.com');
+      router.replace(isGoogleUser ? '/onboarding/account' : '/onboarding/family');
+      return;
+    }
+    router.replace((progress.onboardingStep as any) ?? '/onboarding/family');
   } catch {
     router.replace('/onboarding/family');
   }

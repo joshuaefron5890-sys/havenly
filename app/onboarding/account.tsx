@@ -66,6 +66,16 @@ export default function Account() {
     if (authLoading) return;
     const isGoogleUser = user?.providerData.some((p) => p.providerId === 'google.com');
     setConnectedGmail(isGoogleUser ? (user?.email ?? null) : null);
+    // Covers landing here already Google-signed-in without having gone
+    // through handleGoogleSignUp locally (e.g. a brand-new account routed
+    // here from the Sign In screen's Gmail button) — handleGoogleSignUp
+    // already sets these itself, so the prev-check just avoids clobbering
+    // that or anything the user's already typed.
+    if (isGoogleUser && user?.displayName) {
+      const [first, ...rest] = user.displayName.split(' ');
+      setFirstName((prev) => prev || first || '');
+      setLastName((prev) => prev || rest.join(' '));
+    }
   }, [authLoading, user]);
 
   const handleContinue = async () => {

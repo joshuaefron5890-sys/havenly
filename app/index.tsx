@@ -32,7 +32,7 @@ export default function Onboarding() {
   // Resume them at whichever step they last saved progress on instead.
   useEffect(() => {
     if (loading || !user) return;
-    routeSignedInUser(user.uid, updateProfile);
+    routeSignedInUser(user, updateProfile);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user]);
 

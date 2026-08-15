@@ -62,7 +62,7 @@ export default function SignIn() {
     setSubmitting(true);
     try {
       const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      await routeSignedInUser(credential.user.uid, updateProfile);
+      await routeSignedInUser(credential.user, updateProfile);
     } catch (err: any) {
       setError(friendlyError(err?.code ?? ''));
     } finally {
@@ -94,7 +94,7 @@ export default function SignIn() {
           // ignore — calendar connection isn't required to sign in
         }
       }
-      await routeSignedInUser(credential.user.uid, updateProfile);
+      await routeSignedInUser(credential.user, updateProfile);
     } catch (err: any) {
       const message = friendlyGoogleError(err?.message ?? err?.code ?? '');
       if (message) setError(message);

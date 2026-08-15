@@ -127,6 +127,52 @@ exports.connectAppleCalendar = onCall(async (request) => {
   return { connected: true };
 });
 
+// Shared by connectGoogleCalendar (calendar-only scope, requires an existing
+// session) and exchangeGoogleSignInCode (combined identity+calendar scope,
+// used before a session exists) — both hand a code from a client-side
+// initCodeClient popup here to trade it for real tokens.
+async function exchangeGoogleCode(code, clientSecret) {
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: clientSecret,
+      // Google's fixed placeholder redirect_uri for JS popup-mode code
+      // clients — there's no real redirect endpoint to register for these.
+      redirect_uri: 'postmessage',
+      grant_type: 'authorization_code',
+    }),
+  });
+  const tokenJson = await tokenRes.json();
+  if (!tokenRes.ok) {
+    throw new HttpsError('unknown', tokenJson.error_description || 'Google sign-in failed.');
+  }
+  return tokenJson;
+}
+
+// Stored scoped to this user's own document, same security-rule boundary as
+// the rest of their profile — mirrors how the Apple app-specific password is
+// stored, for the same reason (no way to re-query later without persisting a
+// re-usable credential).
+async function storeGoogleCalendarRefreshToken(uid, refreshToken) {
+  await admin
+    .firestore()
+    .collection('users')
+    .doc(uid)
+    .set(
+      {
+        googleCalendarConnected: true,
+        googleCalendar: {
+          refreshToken,
+          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+      },
+      { merge: true }
+    );
+}
+
 // Exchanges an authorization code (from the client's initCodeClient popup)
 // for tokens. The refresh token is what makes the connection "live" — it
 // lets refreshGoogleAccessToken mint a fresh access token later, on demand,
@@ -141,42 +187,55 @@ exports.connectGoogleCalendar = onCall({ secrets: [googleClientSecret] }, async 
     throw new HttpsError('invalid-argument', 'Missing authorization code.');
   }
 
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: googleClientSecret.value(),
-      // Google's fixed placeholder redirect_uri for JS popup-mode code
-      // clients — there's no real redirect endpoint to register for these.
-      redirect_uri: 'postmessage',
-      grant_type: 'authorization_code',
-    }),
-  });
-  const tokenJson = await tokenRes.json();
-  if (!tokenRes.ok || !tokenJson.refresh_token) {
-    throw new HttpsError('unknown', tokenJson.error_description || 'Google did not return a refresh token.');
+  const tokenJson = await exchangeGoogleCode(code, googleClientSecret.value());
+  if (!tokenJson.refresh_token) {
+    throw new HttpsError('unknown', 'Google did not return a refresh token.');
   }
 
-  // Stored scoped to this user's own document, same security-rule boundary
-  // as the rest of their profile — mirrors how the Apple app-specific
-  // password is stored, for the same reason (no way to re-query later
-  // without persisting a re-usable credential).
-  await admin
-    .firestore()
-    .collection('users')
-    .doc(request.auth.uid)
-    .set(
-      {
-        googleCalendarConnected: true,
-        googleCalendar: {
-          refreshToken: tokenJson.refresh_token,
-          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-      },
-      { merge: true }
-    );
+  await storeGoogleCalendarRefreshToken(request.auth.uid, tokenJson.refresh_token);
+
+  return { connected: true };
+});
+
+// Used by "Sign up / Sign in with Gmail": a single initCodeClient popup
+// requests identity scopes (openid email profile) together with calendar
+// free/busy access in one consent screen, so connecting a Google account
+// also connects its calendar — no separate step. Runs before the caller has
+// a Firebase session, so (unlike connectGoogleCalendar) this can't require
+// request.auth; it just hands back the tokens for the client to sign in
+// with and then pass the refresh token to saveGoogleCalendarRefreshToken.
+exports.exchangeGoogleSignInCode = onCall({ secrets: [googleClientSecret] }, async (request) => {
+  const code = typeof request.data?.code === 'string' ? request.data.code : '';
+  if (!code) {
+    throw new HttpsError('invalid-argument', 'Missing authorization code.');
+  }
+
+  const tokenJson = await exchangeGoogleCode(code, googleClientSecret.value());
+  if (!tokenJson.id_token) {
+    throw new HttpsError('unknown', 'Google did not return sign-in details.');
+  }
+
+  return {
+    idToken: tokenJson.id_token,
+    accessToken: tokenJson.access_token ?? null,
+    refreshToken: tokenJson.refresh_token ?? null,
+  };
+});
+
+// Persists a refresh token the client already obtained via
+// exchangeGoogleSignInCode, once it has a real session to attach it to —
+// splitting this from exchangeGoogleSignInCode is what lets that call stay
+// auth-free while this one keeps the usual "prove who you are" check.
+exports.saveGoogleCalendarRefreshToken = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const refreshToken = typeof request.data?.refreshToken === 'string' ? request.data.refreshToken : '';
+  if (!refreshToken) {
+    throw new HttpsError('invalid-argument', 'Missing refresh token.');
+  }
+
+  await storeGoogleCalendarRefreshToken(request.auth.uid, refreshToken);
 
   return { connected: true };
 });

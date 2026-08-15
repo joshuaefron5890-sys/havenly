@@ -14,6 +14,36 @@ export async function connectGoogleCalendarBackend(code: string): Promise<void> 
   await call({ code });
 }
 
+export type GoogleSignInExchange = {
+  idToken: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+};
+
+// Exchanges the code from requestGoogleSignInWithCalendarCode() for an ID
+// token (to sign in to Firebase with) and, if the user granted it, a
+// calendar refresh token — the combined-scope counterpart to
+// connectGoogleCalendarBackend, used before a Firebase session exists so it
+// can't be gated behind one.
+export async function exchangeGoogleSignInCode(code: string): Promise<GoogleSignInExchange> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  const call = httpsCallable<{ code: string }, GoogleSignInExchange>(functions, 'exchangeGoogleSignInCode');
+  const result = await call({ code });
+  return result.data;
+}
+
+// Persists a refresh token already obtained via exchangeGoogleSignInCode,
+// now that a real session exists to attach it to.
+export async function saveGoogleCalendarRefreshToken(refreshToken: string): Promise<void> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  const call = httpsCallable(functions, 'saveGoogleCalendarRefreshToken');
+  await call({ refreshToken });
+}
+
 // Fetches this user's busy blocks for a time range using the stored
 // refresh token — the same call a future matching feature would make to
 // find overlapping free time between two families.

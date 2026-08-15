@@ -39,14 +39,14 @@ export function googleSignInSupported(): boolean {
   return Platform.OS === 'web';
 }
 
-// Exchanges a Google OAuth access token (from lib/googleIdentity.ts, obtained
-// via Google Identity Services directly rather than Firebase's redirect
-// relay) for a signed-in Firebase user.
-export async function signInWithGoogleAccessToken(accessToken: string): Promise<UserCredential> {
+// Exchanges a Google ID token (from lib/googleCalendar.ts's
+// exchangeGoogleSignInCode, which trades a Google Identity Services
+// authorization code for one server-side) for a signed-in Firebase user.
+export async function signInWithGoogleIdToken(idToken: string, accessToken?: string | null): Promise<UserCredential> {
   if (!auth) {
     throw new Error('not-configured');
   }
-  const credential = GoogleAuthProvider.credential(null, accessToken);
+  const credential = GoogleAuthProvider.credential(idToken, accessToken ?? undefined);
   return signInWithCredential(auth, credential);
 }
 

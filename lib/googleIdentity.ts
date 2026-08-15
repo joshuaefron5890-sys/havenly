@@ -30,50 +30,12 @@ function loadGsiScript(): Promise<void> {
   return scriptLoadPromise;
 }
 
-function requestAccessTokenForScope(scope: string): Promise<string> {
-  if (Platform.OS !== 'web') {
-    return Promise.reject(new Error('not-supported-native'));
-  }
-  return loadGsiScript().then(
-    () =>
-      new Promise<string>((resolve, reject) => {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope,
-          callback: (response: any) => {
-            if (response.error) {
-              reject(new Error(response.error));
-              return;
-            }
-            resolve(response.access_token);
-          },
-          error_callback: (err: any) => {
-            reject(new Error(err?.type ?? 'google-oauth-error'));
-          },
-        });
-        client.requestAccessToken();
-      })
-  );
-}
-
 // Uses Google Identity Services directly (a popup Google's own script opens
 // and closes itself, same-origin) instead of Firebase's signInWithRedirect,
 // which relays the result through havenly-cd19f.firebaseapp.com — a hop that
 // doesn't reliably return a result back to an app that isn't hosted on
 // Firebase Hosting itself.
-export function requestGoogleAccessToken(): Promise<string> {
-  return requestAccessTokenForScope('openid email profile');
-}
-
-// The token-client flow (requestAccessTokenForScope) only ever returns a
-// short-lived access token with no way to renew it once the popup closes —
-// fine for one-off sign-in, useless for "check this family's free/busy
-// whenever a match is being computed." This uses the authorization-code
-// flow instead: the code it returns gets exchanged server-side (functions/
-// index.js, which holds the client secret) for a refresh token, which is
-// what actually lets the backend query the calendar later without the user
-// being present.
-export function requestGoogleCalendarAuthCode(): Promise<string> {
+function requestCodeForScope(scope: string): Promise<string> {
   if (Platform.OS !== 'web') {
     return Promise.reject(new Error('not-supported-native'));
   }
@@ -82,7 +44,7 @@ export function requestGoogleCalendarAuthCode(): Promise<string> {
       new Promise<string>((resolve, reject) => {
         const client = window.google.accounts.oauth2.initCodeClient({
           client_id: CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/calendar.freebusy',
+          scope,
           ux_mode: 'popup',
           access_type: 'offline',
           // Google only issues a refresh token on a user's first consent
@@ -103,4 +65,26 @@ export function requestGoogleCalendarAuthCode(): Promise<string> {
         client.requestCode();
       })
   );
+}
+
+// A token-client flow only ever returns a short-lived access token with no
+// way to renew it once the popup closes — fine for one-off sign-in, useless
+// for "check this family's free/busy whenever a match is being computed."
+// This uses the authorization-code flow instead: the code it returns gets
+// exchanged server-side (functions/index.js, which holds the client secret)
+// for a refresh token, which is what actually lets the backend query the
+// calendar later without the user being present. Used by the explicit
+// Connect/Reconnect action for someone already signed in.
+export function requestGoogleCalendarAuthCode(): Promise<string> {
+  return requestCodeForScope('https://www.googleapis.com/auth/calendar.freebusy');
+}
+
+// Same code-flow popup as requestGoogleCalendarAuthCode, but requesting
+// identity scopes together with calendar access in one consent screen — so
+// "Sign in/up with Gmail" connects the calendar in the same step instead of
+// requiring a separate one later. The resulting code is exchanged via
+// exchangeGoogleSignInCode (functions/index.js) for both an ID token (to
+// sign in with) and a calendar refresh token.
+export function requestGoogleSignInWithCalendarCode(): Promise<string> {
+  return requestCodeForScope('openid email profile https://www.googleapis.com/auth/calendar.freebusy');
 }

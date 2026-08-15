@@ -12,7 +12,7 @@ import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
 
-const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity'];
+const SIBLING_OPTIONS = ['Almost always', 'Sometimes', 'Usually not', 'Depends on the activity', 'Not applicable'];
 
 export default function Family() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();

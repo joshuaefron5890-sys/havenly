@@ -422,6 +422,8 @@ export default function ForYou() {
                       imageUrl: event.imageUrl ?? '',
                       link: event.link,
                       categories: event.categories.join(','),
+                      distanceMiles: event.distanceMiles != null ? String(event.distanceMiles) : '',
+                      virtual: String(event.virtual),
                     },
                   })
                 }

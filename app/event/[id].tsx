@@ -11,16 +11,19 @@ import { colors } from '../../theme/colors';
 // params instead of being re-fetched here — there's no "look up an event
 // by id" endpoint, and nothing here is sensitive.
 export default function EventDetail() {
-  const { title, eventDate, venue, address, imageUrl, link, categories } = useLocalSearchParams<{
-    id: string;
-    title?: string;
-    eventDate?: string;
-    venue?: string;
-    address?: string;
-    imageUrl?: string;
-    link: string;
-    categories?: string;
-  }>();
+  const { title, eventDate, venue, address, imageUrl, link, categories, distanceMiles, virtual } =
+    useLocalSearchParams<{
+      id: string;
+      title?: string;
+      eventDate?: string;
+      venue?: string;
+      address?: string;
+      imageUrl?: string;
+      link: string;
+      categories?: string;
+      distanceMiles?: string;
+      virtual?: string;
+    }>();
 
   const dateLabel = eventDate
     ? new Date(eventDate).toLocaleDateString(undefined, {
@@ -31,6 +34,12 @@ export default function EventDetail() {
       })
     : '';
   const categoryList = categories ? categories.split(',').filter(Boolean) : [];
+  const isVirtual = virtual === 'true';
+  const distanceLabel = isVirtual
+    ? 'Virtual event'
+    : distanceMiles
+      ? `${Math.round(Number(distanceMiles))} miles away`
+      : '';
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -49,11 +58,12 @@ export default function EventDetail() {
           <Text style={styles.infoValue}>{dateLabel || 'Date not listed'}</Text>
         </View>
 
-        {(venue || address) && (
+        {(venue || address || isVirtual) && (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>LOCATION</Text>
             {venue ? <Text style={styles.infoValue}>{venue}</Text> : null}
             {address ? <Text style={styles.infoSubvalue}>{address}</Text> : null}
+            {distanceLabel ? <Text style={styles.distanceLabel}>{distanceLabel}</Text> : null}
           </View>
         )}
 
@@ -145,6 +155,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     marginTop: 4,
+  },
+  distanceLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent,
+    marginTop: 8,
   },
   tags: {
     flexDirection: 'row',

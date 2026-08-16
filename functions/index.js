@@ -883,28 +883,66 @@ function parseTacaEventDate(raw) {
 }
 
 // The structured event_venue field is just a short name ("Panera Bread") —
-// the full street address lives inside content.rendered under a "Location"
-// heading, which is the only place the state (needed to match "near me")
-// actually shows up. Regex extraction, same reasoning as stripHtml's
-// comment: this is arbitrary page-builder HTML, not a feed meant for
-// parsing, so a structured XML/HTML parse buys nothing a page-builder
-// template change wouldn't just as easily break.
+// the full street address, including its zip, lives inside
+// content.rendered under a "Location" heading. That zip is what makes
+// actual distance filtering possible (state alone is meaningless for a
+// state the size of Texas or California). Regex extraction, same
+// reasoning as stripHtml's comment: this is arbitrary page-builder HTML,
+// not a feed meant for parsing, so a structured HTML parse buys nothing a
+// page-builder template change wouldn't just as easily break.
 function extractTacaLocation(html) {
   const match = /<h3[^>]*>\s*Location\s*<\/h3>([\s\S]*?)<\/div>/i.exec(html);
-  if (!match) return { address: '', city: '', state: '' };
+  if (!match) return { address: '', city: '', state: '', zip: '' };
   const address = stripHtml(match[1]);
-  const cityState = /([A-Za-z .'-]+),\s*([A-Z]{2})\s+\d{5}/.exec(address);
+  const cityStateZip = /([A-Za-z .'-]+),\s*([A-Z]{2})\s+(\d{5})/.exec(address);
   return {
     address,
-    city: cityState ? cityState[1].trim() : '',
-    state: cityState ? cityState[2] : '',
+    city: cityStateZip ? cityStateZip[1].trim() : '',
+    state: cityStateZip ? cityStateZip[2] : '',
+    zip: cityStateZip ? cityStateZip[3] : '',
   };
 }
 
-// Powers the "Events" section on the Discover tab. Same-state matches lead
-// (mirroring how favorited items lead each dashboard section client-side),
-// followed by everything else soonest-first — a national webinar still
-// shows, just not ahead of an actual local meetup.
+// Same free, no-key zip lookup used client-side for zip verification (see
+// lib/zipcode.ts) — reused here server-side to turn a zip into
+// coordinates for distance math, for both the caller's own zip and each
+// event's.
+async function geocodeZip(zip) {
+  if (!/^\d{5}$/.test(zip)) return null;
+  try {
+    const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const place = Array.isArray(data?.places) ? data.places[0] : null;
+    const lat = parseFloat(place?.latitude);
+    const lon = parseFloat(place?.longitude);
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+  } catch {
+    return null;
+  }
+}
+
+function haversineMiles(a, b) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const R = 3958.8;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLon = Math.sin(dLon / 2);
+  const h = sinLat * sinLat + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * sinLon * sinLon;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+// A driving day trip, not "somewhere in the same state" — nobody's
+// driving 500 miles for a coffee talk.
+const EVENT_RADIUS_MILES = 50;
+
+// Powers the "Events" section on the Discover tab. In-person events within
+// driving distance lead, closest first; virtual events (no parseable
+// address — TACA's webinars don't have a "Location" block) always show,
+// since distance is meaningless for those. Without a zip on file yet,
+// falls back to showing everything soonest-first rather than hiding every
+// in-person event for lack of a distance to compare.
 exports.getNearbyEvents = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
@@ -912,7 +950,8 @@ exports.getNearbyEvents = onCall(async (request) => {
 
   const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
   const me = meSnap.data() ?? {};
-  const myState = typeof me.state === 'string' ? me.state : '';
+  const myZip = typeof me.zipCode === 'string' ? me.zipCode : '';
+  const myLocation = myZip ? await geocodeZip(myZip) : null;
 
   // Sorted by most-recently-modified rather than paging through all ~100+
   // historical entries — TACA republishes their recurring meetups close to
@@ -935,7 +974,7 @@ exports.getNearbyEvents = onCall(async (request) => {
   );
 
   const now = Date.now();
-  const events = pages
+  const candidates = pages
     .flat()
     .map((e) => {
       const eventDate = parseTacaEventDate(e.event_date);
@@ -956,9 +995,38 @@ exports.getNearbyEvents = onCall(async (request) => {
     })
     .filter((e) => e.title && e.link && e.eventDate && e.eventDate.getTime() >= now);
 
-  const sameState = myState ? events.filter((e) => e.state === myState) : [];
-  const rest = myState ? events.filter((e) => e.state !== myState) : events;
-  const ranked = [...sameState.sort((a, b) => a.eventDate - b.eventDate), ...rest.sort((a, b) => a.eventDate - b.eventDate)];
+  // Geocode each candidate's zip — deduped, since recurring meetups often
+  // reuse the same venue/zip — to get an actual driving-relevant distance.
+  const zipCache = new Map();
+  const withDistance = await Promise.all(
+    candidates.map(async (e) => {
+      if (!e.zip) {
+        // No parseable address at all — a webinar/virtual event, which
+        // has no meaningful distance and always shows.
+        const { zip, ...rest } = e;
+        return { ...rest, distanceMiles: null, virtual: true };
+      }
+      if (!zipCache.has(e.zip)) {
+        zipCache.set(e.zip, geocodeZip(e.zip));
+      }
+      const eventLocation = await zipCache.get(e.zip);
+      const distanceMiles = myLocation && eventLocation ? haversineMiles(myLocation, eventLocation) : null;
+      const { zip, ...rest } = e;
+      return { ...rest, distanceMiles, virtual: false };
+    })
+  );
+
+  const filtered = myLocation
+    ? withDistance.filter((e) => e.virtual || (e.distanceMiles !== null && e.distanceMiles <= EVENT_RADIUS_MILES))
+    : withDistance;
+
+  const ranked = filtered.sort((a, b) => {
+    if (a.virtual !== b.virtual) return a.virtual ? 1 : -1;
+    if (!a.virtual && !b.virtual && a.distanceMiles !== b.distanceMiles) {
+      return a.distanceMiles - b.distanceMiles;
+    }
+    return a.eventDate - b.eventDate;
+  });
 
   return {
     events: ranked.slice(0, 20).map(({ eventDate, ...e }) => ({ ...e, eventDate: eventDate.toISOString() })),

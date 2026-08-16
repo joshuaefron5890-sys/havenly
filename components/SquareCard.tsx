@@ -20,6 +20,7 @@ export function SquareCard({
   favorited,
   onToggleFavorite,
   badge,
+  badgeVariant = 'accent',
   community,
   contributedBy,
 }: {
@@ -38,6 +39,10 @@ export function SquareCard({
   // pending playdate proposal) — opposite corner from the favorite heart.
   // Ignored when `community` is set, since that has its own fixed look.
   badge?: string;
+  // 'positive' (green) for a settled/good-news status like "Confirmed";
+  // 'accent' (orange, the default) for everything else, e.g. "Proposed"
+  // still waiting on a response.
+  badgeVariant?: 'accent' | 'positive';
   // The standardized "this was added by a family, not curated" marker —
   // same dark icon+label pill everywhere it appears (here, ListRow, and the
   // contribution detail screen) so it always reads the same regardless of
@@ -69,7 +74,7 @@ export function SquareCard({
             </Text>
           </View>
         ) : badge ? (
-          <View style={styles.badge}>
+          <View style={[styles.badge, badgeVariant === 'positive' && styles.badgePositive]}>
             <Text style={styles.badgeText} numberOfLines={1}>
               {badge}
             </Text>
@@ -165,6 +170,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 4,
     paddingVertical: 2,
+  },
+  badgePositive: {
+    backgroundColor: colors.positive,
   },
   communityBadge: {
     position: 'absolute',

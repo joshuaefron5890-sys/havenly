@@ -483,6 +483,7 @@ export default function ForYou() {
     pairImages?: [ImageSourcePropType | undefined, ImageSourcePropType | undefined];
     icon?: 'calendar' | 'document-text-outline';
     badge: string;
+    badgeVariant?: 'accent' | 'positive';
     onPress: () => void;
   };
 
@@ -498,6 +499,7 @@ export default function ForYou() {
           : undefined,
         icon: 'calendar',
         badge: 'Confirmed',
+        badgeVariant: 'positive',
         onPress: () => router.push(`/proposal/${p.id}`),
       };
     });
@@ -674,6 +676,7 @@ export default function ForYou() {
                   pairImages={h.pairImages}
                   icon={h.icon}
                   badge={h.badge}
+                  badgeVariant={h.badgeVariant}
                   onPress={h.onPress}
                 />
               ))}

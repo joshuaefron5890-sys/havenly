@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
+import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SquareCard } from '../../components/SquareCard';
@@ -27,11 +28,17 @@ import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../li
 import { colors } from '../../theme/colors';
 
 const PAGE_SIZE = 6;
+// Articles stayed a row list (see the section below) rather than joining
+// the square-card grid — a lone document icon centered in a big square
+// looked odd next to cards with real photos, and a text-heavy row reads
+// better anyway. A row list is denser than a 3-wide grid, so it gets its
+// own, smaller cap.
+const ARTICLE_PAGE_SIZE = 3;
 
-// Only offers the toggle once there's actually more than PAGE_SIZE to show
-// — no "View all" on a grid that's already fully visible.
-function expandAction(count: number, expanded: boolean, setExpanded: (v: boolean) => void) {
-  if (count <= PAGE_SIZE) return {};
+// Only offers the toggle once there's actually more than pageSize to show
+// — no "View all" on a list that's already fully visible.
+function expandAction(count: number, expanded: boolean, setExpanded: (v: boolean) => void, pageSize = PAGE_SIZE) {
+  if (count <= pageSize) return {};
   return { action: expanded ? 'Show less' : 'View all', onAction: () => setExpanded(!expanded) };
 }
 
@@ -332,7 +339,7 @@ export default function ForYou() {
 
         <SectionHeader
           title="Articles"
-          {...expandAction(sortedArticles?.length ?? 0, articlesExpanded, setArticlesExpanded)}
+          {...expandAction(sortedArticles?.length ?? 0, articlesExpanded, setArticlesExpanded, ARTICLE_PAGE_SIZE)}
         />
         {articlesError ? (
           <EmptyState text={`Couldn’t load articles (${articlesError}).`} />
@@ -341,28 +348,26 @@ export default function ForYou() {
         ) : sortedArticles.length === 0 ? (
           <EmptyState text="Add your child's neurodivergence info to see relevant articles." />
         ) : (
-          <View style={styles.grid}>
-            {(articlesExpanded ? sortedArticles : sortedArticles.slice(0, PAGE_SIZE)).map((article) => (
-              <SquareCard
-                key={article.url}
-                title={article.title}
-                subtitle={resourceSubtitle(article)}
-                icon="document-text-outline"
-                onPress={() =>
-                  router.push({
-                    pathname: '/article/[id]',
-                    params: {
-                      id: encodeURIComponent(article.url),
-                      title: article.title,
-                      summary: article.summary,
-                      url: article.url,
-                      matchedTags: article.matchedTags.join(','),
-                    },
-                  })
-                }
-              />
-            ))}
-          </View>
+          (articlesExpanded ? sortedArticles : sortedArticles.slice(0, ARTICLE_PAGE_SIZE)).map((article) => (
+            <ListRow
+              key={article.url}
+              title={article.title}
+              subtitle={resourceSubtitle(article)}
+              icon="document-text-outline"
+              onPress={() =>
+                router.push({
+                  pathname: '/article/[id]',
+                  params: {
+                    id: encodeURIComponent(article.url),
+                    title: article.title,
+                    summary: article.summary,
+                    url: article.url,
+                    matchedTags: article.matchedTags.join(','),
+                  },
+                })
+              }
+            />
+          ))
         )}
 
         <SectionHeader title="Playdates" />

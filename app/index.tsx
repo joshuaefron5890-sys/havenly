@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -11,37 +10,26 @@ import { routeSignedInUser } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 
+// What the app actually does today, not a generic pitch — each subtitle
+// names the real, shipped part of the product behind that pillar (match
+// scoring; direct messaging, playdate proposals, and TACA-sourced local
+// events; curated products/podcasts/articles), so a new family knows what
+// they're signing up for rather than just how it feels.
 const FEATURES = [
-  { title: 'Find your people', subtitle: 'Families who truly get it', image: images.featureFindPeople },
-  { title: 'Build community', subtitle: 'Events, groups & shared space', image: images.featureBuildCommunity },
-  { title: 'Get real support', subtitle: 'Resources, helpers & guidance', image: images.featureGetSupport },
-];
-
-// What the app actually does today, not a generic pitch — each of these
-// maps to a real, shipped part of the product (match scoring, direct
-// messaging + playdate proposals, TACA-sourced local events, curated
-// products/podcasts/articles), so a new family knows what they're
-// signing up for rather than just how it feels.
-const WHATS_INSIDE = [
   {
-    icon: 'people-outline' as const,
-    title: 'Matched by what matters',
-    subtitle: 'Shared neurodivergence, interests, and schedules, not just a zip code.',
+    title: 'Find your people',
+    subtitle: 'Matched by shared neurodivergence, interests, and schedules, not just a zip code.',
+    image: images.featureFindPeople,
   },
   {
-    icon: 'chatbubble-outline' as const,
-    title: 'Message & plan playdates',
-    subtitle: 'Propose a time and place, then accept, decline, or counter, all in the app.',
+    title: 'Build community',
+    subtitle: 'Message families, propose playdates, and find events near you, in person or virtual.',
+    image: images.featureBuildCommunity,
   },
   {
-    icon: 'calendar-outline' as const,
-    title: 'Events near you',
-    subtitle: 'In-person meetups within driving distance, plus virtual ones.',
-  },
-  {
-    icon: 'bag-outline' as const,
-    title: 'Picks made for your kid',
-    subtitle: 'Sensory products, podcasts, and articles matched to your child.',
+    title: 'Get real support',
+    subtitle: 'Sensory products, podcasts, and articles curated for your child.',
+    image: images.featureGetSupport,
   },
 ];
 
@@ -97,21 +85,10 @@ export default function Onboarding() {
           {FEATURES.map((feature) => (
             <View key={feature.title} style={styles.featureCard}>
               <Photo source={feature.image} style={styles.featureImage} />
-              <Text style={styles.featureTitle}>{feature.title}</Text>
-              <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>WHAT'S INSIDE</Text>
-        <View style={styles.insideGrid}>
-          {WHATS_INSIDE.map((item) => (
-            <View key={item.title} style={styles.insideCard}>
-              <View style={styles.insideIconWrap}>
-                <Ionicons name={item.icon} size={20} color={colors.surface} />
+              <View style={styles.featureText}>
+                <Text style={styles.featureTitle}>{feature.title}</Text>
+                <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
               </View>
-              <Text style={styles.insideTitle}>{item.title}</Text>
-              <Text style={styles.insideSubtitle}>{item.subtitle}</Text>
             </View>
           ))}
         </View>
@@ -187,70 +164,36 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   features: {
-    flexDirection: 'row',
     gap: 10,
     marginBottom: 24,
   },
   featureCard: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: 10,
+    padding: 12,
   },
   featureImage: {
+    width: 60,
     height: 60,
-    borderRadius: 10,
+    borderRadius: 14,
     backgroundColor: colors.accentMuted,
-    marginBottom: 8,
+  },
+  featureText: {
+    flex: 1,
   },
   featureTitle: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text,
   },
   featureSubtitle: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 1.5,
-    marginBottom: 12,
-  },
-  insideGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 24,
-  },
-  insideCard: {
-    width: '48%',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-  },
-  insideIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  insideTitle: {
     fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 3,
-  },
-  insideSubtitle: {
-    fontSize: 11,
     color: colors.textMuted,
-    lineHeight: 15,
+    lineHeight: 18,
+    marginTop: 3,
   },
   cta: {
     backgroundColor: colors.accent,

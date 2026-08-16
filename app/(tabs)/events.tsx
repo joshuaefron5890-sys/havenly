@@ -1,7 +1,10 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ContributeModal } from '../../components/ContributeModal';
 import { EmptyState } from '../../components/EmptyState';
 import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
@@ -9,6 +12,7 @@ import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import { familyPhoto, fetchFamiliesByUids } from '../../lib/families';
 import { fetchLatestProposal, PlaydateProposal } from '../../lib/playdateProposals';
@@ -17,6 +21,7 @@ import { colors } from '../../theme/colors';
 const ALL = 'All';
 const VIRTUAL = 'Virtual';
 const IN_PERSON = 'In-person';
+const SCHEMA = CONTRIBUTION_SCHEMAS.event;
 
 export default function Events() {
   const { user } = useAuth();
@@ -26,6 +31,8 @@ export default function Events() {
   const [proposalFamilyPhotos, setProposalFamilyPhotos] = useState<[string | null, string | null] | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(ALL);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [contributeVisible, setContributeVisible] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -48,6 +55,9 @@ export default function Events() {
       let cancelled = false;
       fetchLatestProposal().then((result) => {
         if (!cancelled) setProposal(result);
+      });
+      fetchContributions('event').then((result) => {
+        if (!cancelled) setContributions(result);
       });
       return () => {
         cancelled = true;
@@ -92,6 +102,21 @@ export default function Events() {
     });
   }, [events, query, filter]);
 
+  const filteredContributions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return contributions;
+    return contributions.filter((c) => (c.fields.title ?? '').toLowerCase().includes(q));
+  }, [contributions, query]);
+
+  const submitContribution = async (name: string, values: Record<string, string>) => {
+    await createContribution('event', values, name);
+    const result = await fetchContributions('event');
+    setContributions(result);
+  };
+
+  const nothingToShow =
+    events !== null && filteredEvents?.length === 0 && filteredContributions.length === 0 && !proposal;
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Haven.ly" />
@@ -101,12 +126,14 @@ export default function Events() {
           title="Meetups near you"
           description="In-person events within driving distance, plus virtual ones, from The Autism Community in Action (TACA)."
         />
+        <Pressable style={styles.contributeButton} onPress={() => setContributeVisible(true)}>
+          <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+          <Text style={styles.contributeButtonText}>Contribute an event</Text>
+        </Pressable>
         {error ? (
           <EmptyState text={`Couldn’t load events (${error}).`} />
         ) : events === null ? (
           <ActivityIndicator color={colors.accent} />
-        ) : events.length === 0 && !proposal ? (
-          <EmptyState text="No upcoming events found — check back soon." />
         ) : (
           <>
             {events.length > 0 ? (
@@ -117,7 +144,7 @@ export default function Events() {
                 ) : null}
               </>
             ) : null}
-            {filteredEvents && filteredEvents.length === 0 && !proposal ? (
+            {nothingToShow ? (
               <EmptyState text="No events match that search." />
             ) : (
               <View style={styles.grid}>
@@ -165,11 +192,35 @@ export default function Events() {
                     }
                   />
                 ))}
+                {filteredContributions.map((c) => (
+                  <SquareCard
+                    key={c.id}
+                    title={c.fields.title ?? 'Community event'}
+                    subtitle={`Contributed by ${c.contributedByName}`}
+                    icon="calendar-outline"
+                    badge="Community"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/contribution/[id]',
+                        params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                      })
+                    }
+                  />
+                ))}
               </View>
             )}
           </>
         )}
       </ScrollView>
+
+      <ContributeModal
+        visible={contributeVisible}
+        title={`Contribute an ${SCHEMA.noun}`}
+        fields={SCHEMA.fields}
+        defaultName={user?.displayName ?? ''}
+        onClose={() => setContributeVisible(false)}
+        onSubmit={submitContribution}
+      />
     </SafeAreaView>
   );
 }
@@ -186,5 +237,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  contributeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  contributeButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
 });

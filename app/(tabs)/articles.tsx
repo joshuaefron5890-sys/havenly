@@ -1,7 +1,10 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ContributeModal } from '../../components/ContributeModal';
 import { EmptyState } from '../../components/EmptyState';
 import { FilterChips } from '../../components/FilterChips';
 import { ListRow } from '../../components/ListRow';
@@ -9,11 +12,13 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { useAuth } from '../../contexts/AuthContext';
+import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { addFavoriteResource, getFavoriteResourceUrls, removeFavoriteResource } from '../../lib/favorites';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
+const SCHEMA = CONTRIBUTION_SCHEMAS.article;
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -31,6 +36,8 @@ export default function Articles() {
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [contributeVisible, setContributeVisible] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -53,6 +60,9 @@ export default function Articles() {
       let cancelled = false;
       getFavoriteResourceUrls(user.uid).then((urls) => {
         if (!cancelled) setFavoriteUrls(new Set(urls));
+      });
+      fetchContributions('article').then((result) => {
+        if (!cancelled) setContributions(result);
       });
       return () => {
         cancelled = true;
@@ -79,6 +89,12 @@ export default function Articles() {
     });
   }, [sorted, query, tagFilter]);
 
+  const filteredContributions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return contributions;
+    return contributions.filter((c) => (c.fields.title ?? '').toLowerCase().includes(q));
+  }, [contributions, query]);
+
   const toggleFavorite = async (article: HealthResource) => {
     const wasFavorited = favoriteUrls.has(article.url);
     setFavoriteUrls((prev) => {
@@ -97,6 +113,14 @@ export default function Articles() {
     }
   };
 
+  const submitContribution = async (name: string, values: Record<string, string>) => {
+    await createContribution('article', values, name);
+    const result = await fetchContributions('article');
+    setContributions(result);
+  };
+
+  const nothingToShow = sorted !== null && filtered?.length === 0 && filteredContributions.length === 0;
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Haven.ly" />
@@ -106,47 +130,75 @@ export default function Articles() {
           title="Vetted guides & articles"
           description="Health and parenting information from MedlinePlus, matched to your child's neurodivergence tags."
         />
+        <Pressable style={styles.contributeButton} onPress={() => setContributeVisible(true)}>
+          <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+          <Text style={styles.contributeButtonText}>Contribute an article</Text>
+        </Pressable>
         {error ? (
           <EmptyState text={`Couldn’t load articles (${error}).`} />
         ) : sorted === null ? (
           <ActivityIndicator color={colors.accent} />
-        ) : sorted.length === 0 ? (
-          <EmptyState text="No articles yet." />
         ) : (
           <>
             <SearchBar value={query} onChangeText={setQuery} placeholder="Search articles" />
             {tagOptions.length > 2 ? (
               <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} />
             ) : null}
-            {filtered && filtered.length === 0 ? (
+            {nothingToShow ? (
               <EmptyState text="No articles match that search." />
             ) : (
-              filtered?.map((article) => (
-                <ListRow
-                  key={article.url}
-                  title={article.title}
-                  subtitle={resourceSubtitle(article)}
-                  icon="document-text-outline"
-                  favorited={favoriteUrls.has(article.url)}
-                  onToggleFavorite={() => toggleFavorite(article)}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/article/[id]',
-                      params: {
-                        id: encodeURIComponent(article.url),
-                        title: article.title,
-                        summary: article.summary,
-                        url: article.url,
-                        matchedTags: article.matchedTags.join(','),
-                      },
-                    })
-                  }
-                />
-              ))
+              <>
+                {filtered?.map((article) => (
+                  <ListRow
+                    key={article.url}
+                    title={article.title}
+                    subtitle={resourceSubtitle(article)}
+                    icon="document-text-outline"
+                    favorited={favoriteUrls.has(article.url)}
+                    onToggleFavorite={() => toggleFavorite(article)}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/article/[id]',
+                        params: {
+                          id: encodeURIComponent(article.url),
+                          title: article.title,
+                          summary: article.summary,
+                          url: article.url,
+                          matchedTags: article.matchedTags.join(','),
+                        },
+                      })
+                    }
+                  />
+                ))}
+                {filteredContributions.map((c) => (
+                  <ListRow
+                    key={c.id}
+                    title={c.fields.title ?? 'Community pick'}
+                    subtitle={`Contributed by ${c.contributedByName}`}
+                    icon="document-text-outline"
+                    badge="Community"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/contribution/[id]',
+                        params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                      })
+                    }
+                  />
+                ))}
+              </>
             )}
           </>
         )}
       </ScrollView>
+
+      <ContributeModal
+        visible={contributeVisible}
+        title={`Contribute an ${SCHEMA.noun}`}
+        fields={SCHEMA.fields}
+        defaultName={user?.displayName ?? ''}
+        onClose={() => setContributeVisible(false)}
+        onSubmit={submitContribution}
+      />
     </SafeAreaView>
   );
 }
@@ -158,5 +210,21 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  contributeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  contributeButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
 });

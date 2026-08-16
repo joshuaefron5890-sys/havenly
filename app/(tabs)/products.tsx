@@ -1,7 +1,10 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ContributeModal } from '../../components/ContributeModal';
 import { EmptyState } from '../../components/EmptyState';
 import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
@@ -9,11 +12,13 @@ import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { addFavoriteProduct, getFavoriteProductUrls, removeFavoriteProduct } from '../../lib/favorites';
 import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
+const SCHEMA = CONTRIBUTION_SCHEMAS.product;
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -31,6 +36,8 @@ export default function Products() {
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [contributeVisible, setContributeVisible] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -53,6 +60,9 @@ export default function Products() {
       let cancelled = false;
       getFavoriteProductUrls(user.uid).then((urls) => {
         if (!cancelled) setFavoriteUrls(new Set(urls));
+      });
+      fetchContributions('product').then((result) => {
+        if (!cancelled) setContributions(result);
       });
       return () => {
         cancelled = true;
@@ -82,6 +92,14 @@ export default function Products() {
     });
   }, [sorted, query, tagFilter]);
 
+  // Community contributions aren't tagged, so they're exempt from the tag
+  // filter and only narrowed by the search text.
+  const filteredContributions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return contributions;
+    return contributions.filter((c) => (c.fields.title ?? '').toLowerCase().includes(q));
+  }, [contributions, query]);
+
   const toggleFavorite = async (product: RecommendedProduct) => {
     const wasFavorited = favoriteUrls.has(product.url);
     setFavoriteUrls((prev) => {
@@ -100,6 +118,14 @@ export default function Products() {
     }
   };
 
+  const submitContribution = async (name: string, values: Record<string, string>) => {
+    await createContribution('product', values, name);
+    const result = await fetchContributions('product');
+    setContributions(result);
+  };
+
+  const nothingToShow = sorted !== null && filtered?.length === 0 && filteredContributions.length === 0;
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Haven.ly" />
@@ -109,19 +135,21 @@ export default function Products() {
           title="Hand-picked for your family"
           description="Sensory tools, calming aids, and everyday products from specialty retailers, matched to your child's neurodivergence tags."
         />
+        <Pressable style={styles.contributeButton} onPress={() => setContributeVisible(true)}>
+          <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+          <Text style={styles.contributeButtonText}>Contribute a product</Text>
+        </Pressable>
         {error ? (
           <EmptyState text={`Couldn’t load products (${error}).`} />
         ) : sorted === null ? (
           <ActivityIndicator color={colors.accent} />
-        ) : sorted.length === 0 ? (
-          <EmptyState text="No product picks yet." />
         ) : (
           <>
             <SearchBar value={query} onChangeText={setQuery} placeholder="Search products" />
             {tagOptions.length > 2 ? (
               <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} />
             ) : null}
-            {filtered && filtered.length === 0 ? (
+            {nothingToShow ? (
               <EmptyState text="No products match that search." />
             ) : (
               <View style={styles.grid}>
@@ -150,11 +178,35 @@ export default function Products() {
                     }
                   />
                 ))}
+                {filteredContributions.map((c) => (
+                  <SquareCard
+                    key={c.id}
+                    title={c.fields.title ?? 'Community pick'}
+                    subtitle={`Contributed by ${c.contributedByName}`}
+                    icon="bag-outline"
+                    badge="Community"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/contribution/[id]',
+                        params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                      })
+                    }
+                  />
+                ))}
               </View>
             )}
           </>
         )}
       </ScrollView>
+
+      <ContributeModal
+        visible={contributeVisible}
+        title={`Contribute a ${SCHEMA.noun}`}
+        fields={SCHEMA.fields}
+        defaultName={user?.displayName ?? ''}
+        onClose={() => setContributeVisible(false)}
+        onSubmit={submitContribution}
+      />
     </SafeAreaView>
   );
 }
@@ -171,5 +223,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  contributeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  contributeButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
 });

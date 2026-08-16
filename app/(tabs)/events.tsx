@@ -1,11 +1,9 @@
-import { router } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ListRow } from '../../components/ListRow';
+import { EmptyState } from '../../components/EmptyState';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { colors } from '../../theme/colors';
-import { images } from '../../theme/images';
 
 export default function Events() {
   return (
@@ -14,18 +12,10 @@ export default function Events() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHeader title="Your playdates" action="See all" />
-        <ListRow
-          title="Playground meetup"
-          subtitle="Sat, Aug 16 · Nakamura Family"
-          badge="Confirmed"
-          image={images.playdatePlayground}
-          onPress={() => router.push('/playdate/1')}
-        />
-        <ListRow title="Museum morning" subtitle="Sun, Aug 17 · Osei Family" badge="Unconfirmed" image={images.playdateMuseum} />
+        <EmptyState text="No playdates yet." />
 
         <SectionHeader title="Events you're going to" />
-        <ListRow title="Parent's Night Out" subtitle="RISE · 350 Jay St, Brooklyn" badge="31 going" image={images.eventParentsNightOut} />
-        <ListRow title="Mom's Night Out" subtitle="South School · Park Slope" badge="Confirmed" image={images.eventMomsNightOut} />
+        <EmptyState text="No events yet." />
       </ScrollView>
     </SafeAreaView>
   );

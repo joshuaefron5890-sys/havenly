@@ -2,20 +2,15 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { familyPhoto, familySubtitle, fetchSuggestedFamilies, SuggestedFamily } from '../../lib/families';
 import { colors } from '../../theme/colors';
-import { images } from '../../theme/images';
 
 const TABS = ['My List', 'Discover'] as const;
-
-const SUGGESTED_PLAYDATES = [
-  { title: 'Sensory Storytime', subtitle: 'Sat, Aug 16 · Brooklyn Public Library', reason: "Low-stimulation and structured — great for Mia's focus", image: images.playdateSensoryStorytime },
-  { title: 'Outdoor Art Morning', subtitle: 'Sun, Aug 17 · Prospect Park', reason: 'Open-air creativity — matches drawing love', image: images.playdateOutdoorArt },
-];
 
 export default function ForYou() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(TABS[0]);
@@ -40,9 +35,11 @@ export default function ForYou() {
     };
   }, [user]);
 
+  const firstName = user?.displayName?.split(' ')[0];
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader eyebrow="Haven.ly" title="For you, Sarah." />
+      <ScreenHeader eyebrow="Haven.ly" title={firstName ? `For you, ${firstName}.` : 'For you.'} />
 
       <View style={styles.toggle}>
         {TABS.map((tab) => (
@@ -61,11 +58,11 @@ export default function ForYou() {
           <>
             <SectionHeader title="Suggested families" action="Browse all" />
             {familiesError ? (
-              <Text style={styles.stateText}>Couldn’t load families ({familiesError}).</Text>
+              <EmptyState text={`Couldn’t load families (${familiesError}).`} />
             ) : families === null ? (
               <ActivityIndicator color={colors.accent} />
             ) : families.length === 0 ? (
-              <Text style={styles.stateText}>No other families onboarded yet — check back soon.</Text>
+              <EmptyState text="No other families onboarded yet — check back soon." />
             ) : (
               families.map((family) => {
                 const photoUrl = familyPhoto(family);
@@ -75,43 +72,34 @@ export default function ForYou() {
                     title={family.firstName || 'A family'}
                     subtitle={familySubtitle(family)}
                     image={photoUrl ? { uri: photoUrl } : undefined}
+                    onPress={() => router.push(`/family/${family.uid}`)}
                   />
                 );
               })
             )}
 
             <SectionHeader title="Suggested playdates" action="See more" />
-            {SUGGESTED_PLAYDATES.map((playdate) => (
-              <ListRow key={playdate.title} title={playdate.title} subtitle={`${playdate.subtitle} — ${playdate.reason}`} image={playdate.image} />
-            ))}
+            <EmptyState text="No playdate suggestions yet — check back once you've connected with families." />
 
-            <SectionHeader title="For Mia — products" action="View all" />
-            <ListRow title="Harkla Weighted Blanket" subtitle="$89" image={images.productWeightedBlanket} />
-            <ListRow title="Noise-cancelling headphones" subtitle="$45" image={images.productHeadphones} />
+            <SectionHeader title="Products" action="View all" />
+            <EmptyState text="No product recommendations yet." />
           </>
         ) : (
           <>
             <SectionHeader title="Families" action="Browse all" />
-            <Text style={styles.stateText}>No connected families yet — find some under Discover.</Text>
+            <EmptyState text="No connected families yet — find some under Discover." />
 
             <SectionHeader title="Playdates" action="View in Events" />
-            <ListRow
-              title="Playground meetup"
-              subtitle="Sat, Aug 16 · Nakamura Family"
-              badge="Confirmed"
-              image={images.playdatePlayground}
-              onPress={() => router.push('/playdate/1')}
-            />
+            <EmptyState text="No playdates yet." />
 
             <SectionHeader title="Products" />
-            <ListRow title="Harkla Weighted Blanket" subtitle="$89" image={images.productWeightedBlanket} />
-            <ListRow title="Rubik's Cube 3×3" subtitle="$12" image={images.productRubiksCube} />
+            <EmptyState text="No product recommendations yet." />
 
             <SectionHeader title="Seminars" />
-            <ListRow title="ADHD & Playdates: What Actually Helps" subtitle="Sep 14 · Zoom" image={images.seminarAdhdPlaydates} />
+            <EmptyState text="No seminars yet." />
 
             <SectionHeader title="Podcasts" />
-            <ListRow title="Coming soon" subtitle="More content on the way" />
+            <EmptyState text="No podcasts yet." />
           </>
         )}
       </ScrollView>
@@ -151,10 +139,5 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-  },
-  stateText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginBottom: 16,
   },
 });

@@ -1,19 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Photo } from '../../components/Photo';
+import { EmptyState } from '../../components/EmptyState';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { colors } from '../../theme/colors';
-import { images } from '../../theme/images';
 
 const FILTERS = ['All', 'Available Now', 'Sitters', 'Nannies', 'Behavioral'];
-
-const HELPERS = [
-  { id: '1', name: 'Marcus T.', role: 'BCBA · 7 yrs · 0.6 mi', rate: '$45/hr', rating: '4.9', reviews: 38, tags: ['Behavioral Support', 'Sitter'], image: images.helperMarcus },
-  { id: '2', name: 'Available OT', role: 'OT · 5 yrs · 1.1 mi', rate: '$55/hr', rating: '4.8', reviews: 24, tags: ['Occupational Therapy', 'Sitter'], image: images.helperOt },
-];
 
 export default function GetHelp() {
   const [filter, setFilter] = useState(FILTERS[0]);
@@ -45,32 +38,11 @@ export default function GetHelp() {
           ))}
         </ScrollView>
 
-        {HELPERS.map((helper) => (
-          <Pressable key={helper.id} style={styles.card} onPress={() => router.push(`/helper/${helper.id}`)}>
-            <Photo source={helper.image} style={styles.avatar} />
-            <View style={styles.cardBody}>
-              <View style={styles.cardTop}>
-                <Text style={styles.cardName}>{helper.name}</Text>
-                <Text style={styles.cardRate}>{helper.rate}</Text>
-              </View>
-              <Text style={styles.cardRole}>{helper.role}</Text>
-              <Text style={styles.cardRating}>
-                {helper.rating} ★ · {helper.reviews} reviews
-              </Text>
-              <View style={styles.tags}>
-                {helper.tags.map((tag) => (
-                  <View key={tag} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </Pressable>
-        ))}
+        <EmptyState text="No helpers listed in your area yet." />
 
         <View style={styles.premiumCard}>
           <Text style={styles.premiumTitle}>Unlock Haven.ly Premium</Text>
-          <Text style={styles.premiumSubtitle}>4 more vetted helpers in your area</Text>
+          <Text style={styles.premiumSubtitle}>Priority access to vetted helpers in your area</Text>
           <Text style={styles.premiumBullet}>✓ Full access to all vetted helpers & sitters</Text>
           <Text style={styles.premiumBullet}>✓ Direct booking for playdates & sessions</Text>
           <Text style={styles.premiumBullet}>✓ Priority chaperone matching</Text>
@@ -141,64 +113,6 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: colors.surface,
-  },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    gap: 12,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.accentMuted,
-  },
-  cardBody: {
-    flex: 1,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cardName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  cardRate: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  cardRole: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  cardRating: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
-    marginBottom: 6,
-  },
-  tags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  tag: {
-    backgroundColor: colors.accentMuted,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.accent,
   },
   premiumCard: {
     backgroundColor: colors.text,

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
@@ -13,8 +14,7 @@ export default function Treatments() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHeader title="Active therapies" action="Add" />
-        <ListRow title="Occupational Therapy (OT)" subtitle="1x per week · Park Slope OT Center" />
-        <ListRow title="Behavioral Therapy" subtitle="2x per month · Dr. Lena Park, Park Slope" />
+        <EmptyState text="No therapies added yet." />
 
         <SectionHeader title="FDA approved & established" action="See all" />
         <ListRow title="Applied Behavior Analysis (ABA)" subtitle="ADHD, Autism · Evidence-based, widely covered" />
@@ -27,7 +27,7 @@ export default function Treatments() {
             These approaches have limited or emerging clinical evidence. Always consult your provider.
           </Text>
         </View>
-        <ListRow title="Example exploratory treatment" subtitle="Limited evidence · consult your provider" />
+        <EmptyState text="No exploratory treatments listed yet." />
       </ScrollView>
     </SafeAreaView>
   );

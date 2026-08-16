@@ -108,6 +108,23 @@ export async function fetchLatestProposal(): Promise<PlaydateProposal | null> {
   return proposals[0];
 }
 
+// Every accepted (confirmed) playdate involving the signed-in user,
+// soonest first — powers the Home dashboard's "For You" highlights,
+// where a confirmed playdate is the single highest-priority thing to
+// surface. Same array-contains-only + client-side status filter as
+// fetchLatestProposal, for the same composite-index reason.
+export async function fetchAcceptedProposals(): Promise<PlaydateProposal[]> {
+  const myUid = auth?.currentUser?.uid;
+  if (!myUid || !db) return [];
+  const q = query(collection(db, 'playdateProposals'), where('participantUids', 'array-contains', myUid));
+  const snap = await getDocs(q);
+  const proposals = snap.docs
+    .map((d) => parseProposal(d.id, d.data()))
+    .filter((p) => p.status === 'accepted');
+  proposals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return proposals;
+}
+
 // Live feed of every proposal involving the signed-in user, across all
 // conversations — the message thread screen filters this client-side down
 // to its own conversationId to know whether a proposal it's rendering is

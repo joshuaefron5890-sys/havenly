@@ -102,7 +102,7 @@ export default function Podcasts() {
       <ScreenHeader eyebrow="Haven.ly" title="Podcasts." />
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHero
-          icon="mic-outline"
+          photoSeed="havenly-podcasts"
           title="Shows worth a listen"
           description="Podcasts about neurodivergence, parenting, and everyday life, matched to your child's neurodivergence tags."
         />

@@ -1,15 +1,16 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ImageSourcePropType, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
+import { SectionHero } from '../../components/SectionHero';
 import { CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
-import { fetchLatestProposal, PlaydateProposal } from '../../lib/playdateProposals';
+import { fetchAcceptedProposals, fetchLatestProposal, PlaydateProposal } from '../../lib/playdateProposals';
 import {
   addFavoriteFamily,
   addFavoritePodcast,
@@ -394,6 +395,193 @@ export default function ForYou() {
     };
   }, [proposal]);
 
+  // For You — a cross-category highlight reel above everything else,
+  // prioritized in a fixed order: a confirmed playdate is the single most
+  // actionable thing on the whole dashboard, then anything already
+  // favorited (a signal the user gave directly), then families the match
+  // algorithm rates especially highly but haven't been favorited yet.
+  const [confirmedProposals, setConfirmedProposals] = useState<PlaydateProposal[]>([]);
+  const [confirmedProposalPhotos, setConfirmedProposalPhotos] = useState<
+    Record<string, [string | null, string | null]>
+  >({});
+  const [forYouExpanded, setForYouExpanded] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let cancelled = false;
+      fetchAcceptedProposals().then((result) => {
+        if (!cancelled) setConfirmedProposals(result);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [user])
+  );
+
+  useEffect(() => {
+    if (!confirmedProposals.length) {
+      setConfirmedProposalPhotos({});
+      return;
+    }
+    let cancelled = false;
+    const uids = [...new Set(confirmedProposals.flatMap((p) => [p.fromUid, p.toUid]))];
+    fetchFamiliesByUids(uids).then((result) => {
+      if (cancelled) return;
+      const byUid = new Map(result.map((f) => [f.uid, familyPhoto(f)]));
+      const photos: Record<string, [string | null, string | null]> = {};
+      for (const p of confirmedProposals) {
+        photos[p.id] = [byUid.get(p.fromUid) ?? null, byUid.get(p.toUid) ?? null];
+      }
+      setConfirmedProposalPhotos(photos);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [confirmedProposals]);
+
+  type Highlight = {
+    key: string;
+    title: string;
+    subtitle?: string;
+    image?: ImageSourcePropType;
+    pairImages?: [ImageSourcePropType | undefined, ImageSourcePropType | undefined];
+    icon?: 'calendar' | 'document-text-outline';
+    badge: string;
+    onPress: () => void;
+  };
+
+  const highlights = useMemo<Highlight[]>(() => {
+    const confirmed: Highlight[] = confirmedProposals.map((p) => {
+      const photos = confirmedProposalPhotos[p.id];
+      return {
+        key: `confirmed-${p.id}`,
+        title: p.dateLabel,
+        subtitle: p.venue,
+        pairImages: photos
+          ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
+          : undefined,
+        icon: 'calendar',
+        badge: 'Confirmed',
+        onPress: () => router.push(`/proposal/${p.id}`),
+      };
+    });
+
+    const favoritedFamilies: Highlight[] = mergedFamilies
+      .filter((f) => favoriteFamilyUids.has(f.uid))
+      .map((f) => {
+        const photoUrl = familyPhoto(f);
+        return {
+          key: `family-${f.uid}`,
+          title: familyDisplayName(f),
+          subtitle: familySubtitle(f),
+          image: photoUrl ? { uri: photoUrl } : undefined,
+          badge: 'Favorited',
+          onPress: () => router.push(`/family/${f.uid}`),
+        };
+      });
+    const favoritedProducts: Highlight[] = (products ?? [])
+      .filter((p) => favoriteProductUrls.has(p.url))
+      .map((p) => ({
+        key: `product-${p.url}`,
+        title: p.title,
+        subtitle: productSubtitle(p),
+        image: p.imageUrl ? { uri: p.imageUrl } : undefined,
+        badge: 'Favorited',
+        onPress: () =>
+          router.push({
+            pathname: '/product/[id]',
+            params: {
+              id: encodeURIComponent(p.url),
+              title: p.title,
+              vendor: p.vendor,
+              source: p.source,
+              imageUrl: p.imageUrl ?? '',
+              url: p.url,
+              description: p.description,
+              matchedTags: p.matchedTags.join(','),
+            },
+          }),
+      }));
+    const favoritedPodcasts: Highlight[] = (podcasts ?? [])
+      .filter((p) => favoritePodcastIds.has(p.id))
+      .map((p) => ({
+        key: `podcast-${p.id}`,
+        title: p.title || 'Untitled podcast',
+        subtitle: podcastSubtitle(p),
+        image: p.artworkUrl ? { uri: p.artworkUrl } : undefined,
+        badge: 'Favorited',
+        onPress: () =>
+          router.push({
+            pathname: '/podcast/[id]',
+            params: {
+              id: p.id,
+              title: p.title,
+              artist: p.artist,
+              artworkUrl: p.artworkUrl ?? '',
+              viewUrl: p.viewUrl ?? '',
+              feedUrl: p.feedUrl ?? '',
+              trackCount: p.trackCount != null ? String(p.trackCount) : '',
+              genres: p.genres.join(','),
+              matchedTags: p.matchedTags.join(','),
+            },
+          }),
+      }));
+    const favoritedArticles: Highlight[] = (articles ?? [])
+      .filter((a) => favoriteResourceUrls.has(a.url))
+      .map((a) => ({
+        key: `article-${a.url}`,
+        title: a.title,
+        subtitle: resourceSubtitle(a),
+        icon: 'document-text-outline',
+        badge: 'Favorited',
+        onPress: () =>
+          router.push({
+            pathname: '/article/[id]',
+            params: {
+              id: encodeURIComponent(a.url),
+              title: a.title,
+              summary: a.summary,
+              url: a.url,
+              matchedTags: a.matchedTags.join(','),
+            },
+          }),
+      }));
+
+    // 95%+ matches that aren't already surfaced above as a favorite —
+    // favoriting already outranks match score, so a family shouldn't get
+    // two cards.
+    const topMatches: Highlight[] = mergedFamilies
+      .filter((f) => f.matchScore >= 95 && !favoriteFamilyUids.has(f.uid))
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .map((f) => {
+        const photoUrl = familyPhoto(f);
+        return {
+          key: `match-${f.uid}`,
+          title: familyDisplayName(f),
+          subtitle: familySubtitle(f),
+          image: photoUrl ? { uri: photoUrl } : undefined,
+          badge: `${f.matchScore}% match`,
+          onPress: () => router.push(`/family/${f.uid}`),
+        };
+      });
+
+    return [...confirmed, ...favoritedFamilies, ...favoritedProducts, ...favoritedPodcasts, ...favoritedArticles, ...topMatches];
+  }, [
+    confirmedProposals,
+    confirmedProposalPhotos,
+    mergedFamilies,
+    favoriteFamilyUids,
+    products,
+    favoriteProductUrls,
+    podcasts,
+    favoritePodcastIds,
+    articles,
+    favoriteResourceUrls,
+  ]);
+
+  const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
+
   const firstName = user?.displayName?.split(' ')[0];
 
   return (
@@ -402,6 +590,38 @@ export default function ForYou() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View onLayout={(e) => setGridWidth((prev) => prev ?? e.nativeEvent.layout.width)} />
+
+        <SectionHero
+          photoSeed="havenly-for-you"
+          title="For You"
+          description="Curates your confirmed playdates, anything you've favorited, and families that are an especially strong match — all in one place."
+        />
+        {forYouLoading ? (
+          <ActivityIndicator color={colors.accent} />
+        ) : highlights.length === 0 ? (
+          <EmptyState text="Nothing to highlight yet — favorite a family or pick, or confirm a playdate, and it'll show up here." />
+        ) : (
+          <>
+            <SectionHeader
+              title="Highlights"
+              {...expandAction(highlights.length, forYouExpanded, setForYouExpanded, perRow)}
+            />
+            <View style={styles.grid}>
+              {(forYouExpanded ? highlights : highlights.slice(0, perRow)).map((h) => (
+                <SquareCard
+                  key={h.key}
+                  title={h.title}
+                  subtitle={h.subtitle}
+                  image={h.image}
+                  pairImages={h.pairImages}
+                  icon={h.icon}
+                  badge={h.badge}
+                  onPress={h.onPress}
+                />
+              ))}
+            </View>
+          </>
+        )}
 
         <SectionHeader
           title="Families like you"

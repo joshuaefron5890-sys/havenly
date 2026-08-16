@@ -97,7 +97,7 @@ export default function Events() {
       <ScreenHeader eyebrow="Haven.ly" title="Events." />
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHero
-          icon="calendar-outline"
+          photoSeed="havenly-events"
           title="Meetups near you"
           description="In-person events within driving distance, plus virtual ones, from The Autism Community in Action (TACA)."
         />

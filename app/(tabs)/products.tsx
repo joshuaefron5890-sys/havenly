@@ -105,7 +105,7 @@ export default function Products() {
       <ScreenHeader eyebrow="Haven.ly" title="Products." />
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHero
-          icon="bag-outline"
+          photoSeed="havenly-products"
           title="Hand-picked for your family"
           description="Sensory tools, calming aids, and everyday products from specialty retailers, matched to your child's neurodivergence tags."
         />

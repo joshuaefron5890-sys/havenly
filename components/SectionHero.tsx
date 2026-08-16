@@ -1,26 +1,27 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
+import { Photo } from './Photo';
 
-// A short explainer block at the top of each bottom-nav sub-page — what
-// this section is and where its picks come from, so it doesn't just drop
-// you into a bare list. Kept neutral (no accent color) to match the
-// app's limited palette.
+// A full-width photo banner at the top of each bottom-nav sub-page — what
+// this section is, with a real image instead of a small icon tile, in the
+// same "big photo + scrim + overlaid headline" style as the Resources
+// screen's featured-article card. `photoSeed` is a stable key into a
+// keyless stock-photo CDN (picsum.photos/seed/<key> always returns the
+// same image for the same key, no API token or curated asset needed).
 export function SectionHero({
-  icon,
+  photoSeed,
   title,
   description,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  photoSeed: string;
   title: string;
   description: string;
 }) {
   return (
     <View style={styles.hero}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={20} color={colors.text} />
-      </View>
+      <Photo source={{ uri: `https://picsum.photos/seed/${photoSeed}/800/450` }} style={styles.image} />
+      <View style={styles.scrim} />
       <View style={styles.textWrap}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.description}>{description}</Text>
@@ -31,33 +32,43 @@ export function SectionHero({
 
 const styles = StyleSheet.create({
   hero: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
+    height: 160,
+    borderRadius: 20,
     marginBottom: 16,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
   },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  image: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  // Darkens the bottom of the photo so white text stays legible regardless
+  // of how bright the underlying photo is — same idiom as the family
+  // profile hero.
+  scrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '70%',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   textWrap: {
-    flex: 1,
+    padding: 16,
   },
   title: {
-    fontSize: 15,
+    fontSize: 19,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.surface,
     marginBottom: 4,
   },
   description: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: colors.surface,
+    opacity: 0.9,
     lineHeight: 18,
   },
 });

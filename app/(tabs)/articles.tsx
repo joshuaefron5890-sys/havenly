@@ -102,7 +102,7 @@ export default function Articles() {
       <ScreenHeader eyebrow="Haven.ly" title="Articles." />
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHero
-          icon="document-text-outline"
+          photoSeed="havenly-articles"
           title="Vetted guides & articles"
           description="Health and parenting information from MedlinePlus, matched to your child's neurodivergence tags."
         />

@@ -46,7 +46,7 @@ export function SquareCard({
           </View>
         ) : !image && icon ? (
           <View style={[styles.thumbnail, styles.iconThumbnail]}>
-            <Ionicons name={icon} size={22} color={colors.accent} />
+            <Ionicons name={icon} size={22} color={colors.surface} />
           </View>
         ) : (
           <Photo source={image} style={styles.thumbnail} />
@@ -98,6 +98,9 @@ const styles = StyleSheet.create({
   iconThumbnail: {
     alignItems: 'center',
     justifyContent: 'center',
+    // White-on-black rather than the tinted thumbnail's accent color —
+    // matches ListRow's fallback icon treatment.
+    backgroundColor: colors.text,
   },
   pairThumbnail: {
     overflow: 'visible',

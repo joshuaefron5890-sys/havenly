@@ -15,6 +15,9 @@ export type SuggestedFamily = {
   city: string;
   state: string;
   children: SuggestedFamilyChild[];
+  // Weighted match score (functions/index.js computeMatch) — not a raw
+  // overlap percentage, clamped to 50-97.
+  matchScore: number;
 };
 
 // Other onboarded families, fetched server-side (functions/index.js

@@ -357,98 +357,12 @@ function computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, s
   return Math.round(Math.max(50, Math.min(97, 50 + points)));
 }
 
-// Shared by every endpoint that hands another family's data to a client
-// (getSuggestedFamilies, getFamiliesByUids) — the single place that decides
-// which fields of a user doc are actually safe to show someone else. User
-// docs also hold things that must never reach another user's device (a
-// Google Calendar refresh token, an Apple app-specific password), so this
-// hand-picks rather than passing the doc through. Note zipCode itself is
-// deliberately NOT included — city/state is what's shown publicly (see
-// contexts/OnboardingContext.tsx), the exact zip stays private.
-function toPublicFamily(uid, data) {
-  return {
-    uid,
-    firstName: typeof data.firstName === 'string' ? data.firstName : '',
-    lastName: typeof data.lastName === 'string' ? data.lastName : '',
-    familyPhotoUrl: typeof data.familyPhotoUrl === 'string' ? data.familyPhotoUrl : null,
-    city: typeof data.city === 'string' ? data.city : '',
-    state: typeof data.state === 'string' ? data.state : '',
-    children: Array.isArray(data.children)
-      ? data.children.map((c) => ({
-          name: typeof c?.name === 'string' ? c.name : '',
-          age: typeof c?.age === 'string' ? c.age : '',
-          photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
-        }))
-      : [],
-  };
-}
-
-// Powers the "For You" screen's Discover tab. Runs server-side (Admin SDK)
-// rather than letting the client query the users collection directly, for
-// the same reason toPublicFamily exists — see its comment.
-exports.getSuggestedFamilies = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Sign in required.');
-  }
-
-  const snap = await admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(30).get();
-
-  const families = snap.docs
-    .filter((doc) => doc.id !== request.auth.uid)
-    .map((doc) => toPublicFamily(doc.id, doc.data()));
-
-  return { families };
-});
-
-// Powers the "For You" screen's My List tab — given the uids a user has
-// favorited (client reads its own doc's favoriteFamilyUids array directly,
-// a normal Firestore read of one's own document), fetches their current
-// public info the same safe way getSuggestedFamilies does.
-exports.getFamiliesByUids = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Sign in required.');
-  }
-  const uids = Array.isArray(request.data?.uids)
-    ? request.data.uids.filter((u) => typeof u === 'string').slice(0, 50)
-    : [];
-  if (!uids.length) {
-    return { families: [] };
-  }
-
-  const snaps = await Promise.all(uids.map((uid) => admin.firestore().collection('users').doc(uid).get()));
-  const families = snaps.filter((snap) => snap.exists).map((snap) => toPublicFamily(snap.id, snap.data()));
-
-  return { families };
-});
-
-// Powers the family public-profile screen (tapped from a Discover row).
-// Runs server-side, like getSuggestedFamilies, both to keep the same
-// private fields out of reach and because it needs the CALLER's own
-// profile too — to compute what's actually shared with the target family —
-// without handing that comparison data to the client to do itself.
-exports.getFamilyProfile = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Sign in required.');
-  }
-  const targetUid = typeof request.data?.uid === 'string' ? request.data.uid : '';
-  if (!targetUid) {
-    throw new HttpsError('invalid-argument', 'Missing family uid.');
-  }
-
-  const [meSnap, targetSnap] = await Promise.all([
-    admin.firestore().collection('users').doc(request.auth.uid).get(),
-    admin.firestore().collection('users').doc(targetUid).get(),
-  ]);
-  if (!targetSnap.exists) {
-    throw new HttpsError('not-found', 'That family could not be found.');
-  }
-
-  const me = meSnap.data() ?? {};
-  const target = targetSnap.data() ?? {};
-
-  // Everything returned below is an INTERSECTION with the caller's own
-  // profile, not the target's full data — this screen is meant to show
-  // "what you two have in common," not a stranger's complete profile.
+// Shared by getFamilyProfile (which returns every field below) and
+// getSuggestedFamilies/getFamiliesByUids (which only need matchScore, to
+// power the Home dashboard's "95%+ match" highlight) — one place to
+// compute what two families have in common instead of two copies of the
+// same filtering logic drifting apart.
+function computeMatch(me, target) {
   const myInterests = Array.isArray(me.interests) ? me.interests : [];
   const theirInterests = Array.isArray(target.interests) ? target.interests : [];
   const sharedInterests = theirInterests.filter((i) => myInterests.includes(i));
@@ -484,6 +398,122 @@ exports.getFamilyProfile = onCall(async (request) => {
   const sharedAvailability = theirAvailability.filter((a) => myAvailability.has(a));
 
   const matchScore = computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, sharedAvailability);
+
+  return { sharedInterests, sharedNeurodivergence, sharedPlayStyle, sharedAvailability, matchScore };
+}
+
+// Shared by every endpoint that hands another family's data to a client
+// (getSuggestedFamilies, getFamiliesByUids) — the single place that decides
+// which fields of a user doc are actually safe to show someone else. User
+// docs also hold things that must never reach another user's device (a
+// Google Calendar refresh token, an Apple app-specific password), so this
+// hand-picks rather than passing the doc through. Note zipCode itself is
+// deliberately NOT included — city/state is what's shown publicly (see
+// contexts/OnboardingContext.tsx), the exact zip stays private.
+function toPublicFamily(uid, data) {
+  return {
+    uid,
+    firstName: typeof data.firstName === 'string' ? data.firstName : '',
+    lastName: typeof data.lastName === 'string' ? data.lastName : '',
+    familyPhotoUrl: typeof data.familyPhotoUrl === 'string' ? data.familyPhotoUrl : null,
+    city: typeof data.city === 'string' ? data.city : '',
+    state: typeof data.state === 'string' ? data.state : '',
+    children: Array.isArray(data.children)
+      ? data.children.map((c) => ({
+          name: typeof c?.name === 'string' ? c.name : '',
+          age: typeof c?.age === 'string' ? c.age : '',
+          photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
+        }))
+      : [],
+  };
+}
+
+// Powers the "For You" screen's Discover tab. Runs server-side (Admin SDK)
+// rather than letting the client query the users collection directly, for
+// the same reason toPublicFamily exists — see its comment.
+exports.getSuggestedFamilies = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+
+  const [meSnap, snap] = await Promise.all([
+    admin.firestore().collection('users').doc(request.auth.uid).get(),
+    admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(30).get(),
+  ]);
+  const me = meSnap.data() ?? {};
+
+  const families = snap.docs
+    .filter((doc) => doc.id !== request.auth.uid)
+    .map((doc) => {
+      const target = doc.data();
+      return { ...toPublicFamily(doc.id, target), matchScore: computeMatch(me, target).matchScore };
+    });
+
+  return { families };
+});
+
+// Powers the "For You" screen's My List tab — given the uids a user has
+// favorited (client reads its own doc's favoriteFamilyUids array directly,
+// a normal Firestore read of one's own document), fetches their current
+// public info the same safe way getSuggestedFamilies does.
+exports.getFamiliesByUids = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const uids = Array.isArray(request.data?.uids)
+    ? request.data.uids.filter((u) => typeof u === 'string').slice(0, 50)
+    : [];
+  if (!uids.length) {
+    return { families: [] };
+  }
+
+  const [meSnap, snaps] = await Promise.all([
+    admin.firestore().collection('users').doc(request.auth.uid).get(),
+    Promise.all(uids.map((uid) => admin.firestore().collection('users').doc(uid).get())),
+  ]);
+  const me = meSnap.data() ?? {};
+  const families = snaps
+    .filter((snap) => snap.exists)
+    .map((snap) => {
+      const target = snap.data();
+      return { ...toPublicFamily(snap.id, target), matchScore: computeMatch(me, target).matchScore };
+    });
+
+  return { families };
+});
+
+// Powers the family public-profile screen (tapped from a Discover row).
+// Runs server-side, like getSuggestedFamilies, both to keep the same
+// private fields out of reach and because it needs the CALLER's own
+// profile too — to compute what's actually shared with the target family —
+// without handing that comparison data to the client to do itself.
+exports.getFamilyProfile = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const targetUid = typeof request.data?.uid === 'string' ? request.data.uid : '';
+  if (!targetUid) {
+    throw new HttpsError('invalid-argument', 'Missing family uid.');
+  }
+
+  const [meSnap, targetSnap] = await Promise.all([
+    admin.firestore().collection('users').doc(request.auth.uid).get(),
+    admin.firestore().collection('users').doc(targetUid).get(),
+  ]);
+  if (!targetSnap.exists) {
+    throw new HttpsError('not-found', 'That family could not be found.');
+  }
+
+  const me = meSnap.data() ?? {};
+  const target = targetSnap.data() ?? {};
+
+  // Everything returned below is an INTERSECTION with the caller's own
+  // profile, not the target's full data — this screen is meant to show
+  // "what you two have in common," not a stranger's complete profile.
+  const { sharedInterests, sharedNeurodivergence, sharedPlayStyle, sharedAvailability, matchScore } = computeMatch(
+    me,
+    target
+  );
 
   return {
     ...toPublicFamily(targetUid, target),

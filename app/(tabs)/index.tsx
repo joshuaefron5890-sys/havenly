@@ -21,6 +21,14 @@ import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../
 import { colors } from '../../theme/colors';
 
 const TABS = ['My List', 'Discover'] as const;
+const PAGE_SIZE = 3;
+
+// Only offers the toggle once there's actually more than PAGE_SIZE to show
+// — no "View all" on a list that's already fully visible.
+function expandAction(count: number, expanded: boolean, setExpanded: (v: boolean) => void) {
+  if (count <= PAGE_SIZE) return {};
+  return { action: expanded ? 'Show less' : 'View all', onAction: () => setExpanded(!expanded) };
+}
 
 export default function ForYou() {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(TABS[0]);
@@ -29,6 +37,7 @@ export default function ForYou() {
 
   const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
   const [familiesError, setFamiliesError] = useState<string | null>(null);
+  const [familiesExpanded, setFamiliesExpanded] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -47,6 +56,7 @@ export default function ForYou() {
 
   const [myFamilies, setMyFamilies] = useState<SuggestedFamily[] | null>(null);
   const [myFamiliesError, setMyFamiliesError] = useState<string | null>(null);
+  const [myFamiliesExpanded, setMyFamiliesExpanded] = useState(false);
 
   // Re-fetches every time this screen regains focus (not just on mount) —
   // favoriting happens on the family detail screen, so coming back here
@@ -72,6 +82,7 @@ export default function ForYou() {
 
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [podcastsError, setPodcastsError] = useState<string | null>(null);
+  const [podcastsExpanded, setPodcastsExpanded] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -109,7 +120,10 @@ export default function ForYou() {
       <ScrollView contentContainerStyle={styles.content}>
         {isDiscover ? (
           <>
-            <SectionHeader title="Suggested families" action="Browse all" />
+            <SectionHeader
+              title="Suggested families"
+              {...expandAction(families?.length ?? 0, familiesExpanded, setFamiliesExpanded)}
+            />
             {familiesError ? (
               <EmptyState text={`Couldn’t load families (${familiesError}).`} />
             ) : families === null ? (
@@ -117,7 +131,7 @@ export default function ForYou() {
             ) : families.length === 0 ? (
               <EmptyState text="No other families onboarded yet — check back soon." />
             ) : (
-              families.map((family) => {
+              (familiesExpanded ? families : families.slice(0, PAGE_SIZE)).map((family) => {
                 const photoUrl = familyPhoto(family);
                 return (
                   <ListRow
@@ -137,7 +151,10 @@ export default function ForYou() {
             <SectionHeader title="Products" action="View all" />
             <EmptyState text="No product recommendations yet." />
 
-            <SectionHeader title="Suggested podcasts" />
+            <SectionHeader
+              title="Suggested podcasts"
+              {...expandAction(podcasts?.length ?? 0, podcastsExpanded, setPodcastsExpanded)}
+            />
             {podcastsError ? (
               <EmptyState text={`Couldn’t load podcasts (${podcastsError}).`} />
             ) : podcasts === null ? (
@@ -145,7 +162,7 @@ export default function ForYou() {
             ) : podcasts.length === 0 ? (
               <EmptyState text="Add your child's neurodivergence info to see podcast suggestions." />
             ) : (
-              podcasts.map((podcast) => (
+              (podcastsExpanded ? podcasts : podcasts.slice(0, PAGE_SIZE)).map((podcast) => (
                 <ListRow
                   key={podcast.id}
                   title={podcast.title || 'Untitled podcast'}
@@ -158,7 +175,10 @@ export default function ForYou() {
           </>
         ) : (
           <>
-            <SectionHeader title="Families" action="Browse all" />
+            <SectionHeader
+              title="Families"
+              {...expandAction(myFamilies?.length ?? 0, myFamiliesExpanded, setMyFamiliesExpanded)}
+            />
             {myFamiliesError ? (
               <EmptyState text={`Couldn’t load your families (${myFamiliesError}).`} />
             ) : myFamilies === null ? (
@@ -166,7 +186,7 @@ export default function ForYou() {
             ) : myFamilies.length === 0 ? (
               <EmptyState text="No connected families yet — find some under Discover." />
             ) : (
-              myFamilies.map((family) => {
+              (myFamiliesExpanded ? myFamilies : myFamilies.slice(0, PAGE_SIZE)).map((family) => {
                 const photoUrl = familyPhoto(family);
                 return (
                   <ListRow

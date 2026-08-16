@@ -558,3 +558,114 @@ exports.getPodcastSuggestions = onCall(async (request) => {
 
   return { podcasts };
 });
+
+function decodeXmlEntities(str) {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'");
+}
+
+// MedlinePlus's search results embed <span class="qt0">…</span> highlight
+// markup around matched terms right inside otherwise-plain-text fields —
+// this strips any such embedded tags and decodes entities, rather than
+// relying on the generic XML parser (used elsewhere in this file for
+// CalDAV) to handle that mixed content correctly.
+function stripHtml(str) {
+  return decodeXmlEntities(str.replace(/<[^>]+>/g, ''))
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractTaggedContent(body, name) {
+  const re = new RegExp(`<content\\s+name="${name}"[^>]*>([\\s\\S]*?)<\\/content>`, 'i');
+  const m = re.exec(body);
+  return m ? stripHtml(m[1]) : '';
+}
+
+// Regex extraction rather than a structured XML parse — see stripHtml's
+// comment for why.
+function extractMedlinePlusDocuments(xml) {
+  const docs = [];
+  const docRegex = /<document\b[^>]*\burl="([^"]*)"[^>]*>([\s\S]*?)<\/document>/g;
+  let match;
+  while ((match = docRegex.exec(xml))) {
+    const url = decodeXmlEntities(match[1]);
+    const body = match[2];
+    const title = extractTaggedContent(body, 'title');
+    const snippet = extractTaggedContent(body, 'snippet') || extractTaggedContent(body, 'FullSummary');
+    if (url && title) {
+      docs.push({ url, title, snippet });
+    }
+  }
+  return docs;
+}
+
+// Powers "Articles & guides" on the Resources screen. Uses the National
+// Library of Medicine's MedlinePlus Web Service — free, no API key or
+// registration required, updated daily, and every result links to a
+// vetted, government-maintained health topic page rather than an
+// arbitrary parenting blog. Per MedlinePlus's terms, results must be
+// attributed to MedlinePlus — the client shows that attribution in its own
+// copy alongside each result, not just in this comment.
+exports.getHealthResources = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+
+  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const me = meSnap.data() ?? {};
+  const neurodivergence = [
+    ...new Set(
+      (Array.isArray(me.children) ? me.children : []).flatMap((c) =>
+        Array.isArray(c?.neurodivergence) ? c.neurodivergence : []
+      )
+    ),
+  ];
+  if (!neurodivergence.length) {
+    return { resources: [] };
+  }
+
+  const resultsPerTag = await Promise.all(
+    neurodivergence.map(async (tag) => {
+      try {
+        const res = await fetch(
+          `https://wsearch.nlm.nih.gov/ws/query?db=healthTopics&term=${encodeURIComponent(tag)}&retmax=5`
+        );
+        if (!res.ok) return [];
+        const xml = await res.text();
+        return extractMedlinePlusDocuments(xml).map((doc) => ({ ...doc, matchedTag: tag }));
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  // A topic can turn up under more than one tag's search — dedupe by url,
+  // rank higher the more of the child's tags it matched.
+  const byUrl = new Map();
+  for (const list of resultsPerTag) {
+    for (const doc of list) {
+      const existing = byUrl.get(doc.url);
+      if (existing) {
+        existing.matchedTags.add(doc.matchedTag);
+      } else {
+        byUrl.set(doc.url, {
+          url: doc.url,
+          title: doc.title,
+          snippet: doc.snippet,
+          matchedTags: new Set([doc.matchedTag]),
+        });
+      }
+    }
+  }
+
+  const resources = [...byUrl.values()]
+    .map((r) => ({ ...r, matchedTags: [...r.matchedTags] }))
+    .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
+    .slice(0, 15);
+
+  return { resources };
+});

@@ -291,6 +291,61 @@ exports.getGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (req
   return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });
 
+// Smallest age gap between any of one family's kids and any of the
+// other's — used as a rough "will these two actually enjoy playing
+// together" signal. Ages are free-text from onboarding, so this only
+// counts entries that parse cleanly as a number.
+function ageClosenessBonus(myChildren, theirChildren) {
+  const myAges = (Array.isArray(myChildren) ? myChildren : [])
+    .map((c) => parseInt(c?.age, 10))
+    .filter((n) => Number.isFinite(n));
+  const theirAges = (Array.isArray(theirChildren) ? theirChildren : [])
+    .map((c) => parseInt(c?.age, 10))
+    .filter((n) => Number.isFinite(n));
+  if (!myAges.length || !theirAges.length) return 0;
+
+  let smallestGap = Infinity;
+  for (const a of myAges) {
+    for (const b of theirAges) {
+      smallestGap = Math.min(smallestGap, Math.abs(a - b));
+    }
+  }
+  if (smallestGap <= 1) return 10;
+  if (smallestGap <= 2) return 7;
+  if (smallestGap <= 4) return 4;
+  return 1;
+}
+
+// Weighted, capped point system — deliberately not "% of everything that
+// overlaps," which would treat a shared taste in Pokémon the same as
+// shared neurodivergent experience. Heaviest weight goes to the two
+// signals that actually predict a good match: shared neurodivergent
+// experience (the app's core "someone who gets it" value) and shared
+// goals (so a family wanting casual playdates doesn't get matched with one
+// looking for a close friendship). Child age closeness and shared
+// interests count for less; shared availability is closer to a small
+// logistics bonus than a real compatibility signal. Clamped well under
+// 100 — no two real families should ever read as a "sure thing."
+function computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, sharedAvailability) {
+  const myGoals = Array.isArray(me.goals) ? me.goals : [];
+  const theirGoals = Array.isArray(target.goals) ? target.goals : [];
+  const sharedGoals = theirGoals.filter((g) => myGoals.includes(g));
+
+  const mySoundsGoodTo = Array.isArray(me.soundsGoodTo) ? me.soundsGoodTo : [];
+  const theirSoundsGoodTo = Array.isArray(target.soundsGoodTo) ? target.soundsGoodTo : [];
+  const sharedSoundsGoodTo = theirSoundsGoodTo.filter((s) => mySoundsGoodTo.includes(s));
+
+  const points =
+    Math.min(sharedNeurodivergence.length, 3) * 8 +
+    Math.min(sharedGoals.length, 3) * 8 +
+    ageClosenessBonus(me.children, target.children) +
+    Math.min(sharedInterests.length, 5) * 3 +
+    Math.min(sharedSoundsGoodTo.length, 4) * 3 +
+    Math.min(sharedAvailability.length, 4) * 1.5;
+
+  return Math.round(Math.max(50, Math.min(97, 50 + points)));
+}
+
 // Shared by every endpoint that hands another family's data to a client
 // (getSuggestedFamilies, getFamiliesByUids) — the single place that decides
 // which fields of a user doc are actually safe to show someone else. User
@@ -413,10 +468,7 @@ exports.getFamilyProfile = onCall(async (request) => {
   const theirAvailability = Array.isArray(target.availability) ? target.availability : [];
   const sharedAvailability = theirAvailability.filter((a) => myAvailability.has(a));
 
-  // Placeholder scoring until real matching logic exists — rewards shared
-  // interests and shared neurodivergent experience and nothing else for
-  // now, just so the screen has a number to show while that's built out.
-  const matchScore = Math.max(50, Math.min(98, 55 + sharedInterests.length * 6 + sharedNeurodivergence.length * 10));
+  const matchScore = computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, sharedAvailability);
 
   return {
     ...toPublicFamily(targetUid, target),

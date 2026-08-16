@@ -74,8 +74,8 @@ export type FamilyProfile = {
   sharedNeurodivergence: string[];
   sharedPlayStyle: string[];
   sharedAvailability: string[];
-  // Placeholder scoring (functions/index.js getFamilyProfile) until real
-  // matching logic exists.
+  // Weighted match score (functions/index.js computeMatchScore) — not a
+  // raw overlap percentage, clamped to 50-97.
   matchScore: number;
 };
 

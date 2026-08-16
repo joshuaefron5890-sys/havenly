@@ -92,17 +92,20 @@ export default function ContributionDetail() {
 
         <Pressable
           style={styles.contributorRow}
-          onPress={() => contributedByUid && router.push(`/family/${contributedByUid}`)}
-          disabled={!contributedByUid}
+          onPress={() => !isOwner && contributedByUid && router.push(`/family/${contributedByUid}`)}
+          disabled={isOwner || !contributedByUid}
         >
           <Photo source={photoUrl ? { uri: photoUrl } : undefined} style={styles.contributorPhoto} />
           <View style={styles.contributorInfo}>
             <Text style={styles.contributorName} numberOfLines={1}>
-              {family ? familyDisplayName(family) : liveContributedByName}
+              {isOwner ? 'You' : family ? familyDisplayName(family) : liveContributedByName}
             </Text>
             <Text style={styles.contributorSub}>Contributed this {schema?.noun ?? 'pick'}</Text>
           </View>
-          {family ? (
+          {/* A match score compares you to another family — meaningless (and
+              was showing a clamped-but-real-looking number) when you're
+              looking at your own contribution. */}
+          {family && !isOwner ? (
             <View style={styles.matchBadge}>
               <Text style={styles.matchScore}>{family.matchScore}</Text>
               <Text style={styles.matchLabel}>match</Text>

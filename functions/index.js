@@ -1,4 +1,4 @@
-const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -626,7 +626,12 @@ function decodeXmlEntities(str) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'");
+    .replace(/&#39;|&apos;/g, "'")
+    // Numeric entities (&#8217;, &#038;, &#x2019; etc.) — MedlinePlus's XML
+    // doesn't use these, but WordPress content (TACA's events) does, for
+    // ordinary punctuation like apostrophes and ampersands.
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)));
 }
 
 // MedlinePlus's search results embed <span class="qt0">…</span> highlight
@@ -862,54 +867,100 @@ exports.getRecommendedProducts = onCall(async (request) => {
   return { products };
 });
 
-// Checking whether tacanow.org (The Autism Community in Action) exposes a
-// public WordPress REST API for its events — its URL patterns
-// (/family-resources/, /press-releases/) suggest WordPress, and "The
-// Events Calendar" plugin (if installed) exposes a public JSON events
-// endpoint by default. Can't reach the domain from the dev sandbox this
-// was written in to check directly. Unauthenticated, meant to be opened
-// directly in a browser once — safe to delete once answered.
-exports.probeTacaEvents = onRequest(async (req, res) => {
-  // The "event" custom post type is confirmed live — checking now whether
-  // location is a structured field (meta/acf/taxonomy) or just baked into
-  // the title's free text, and how many events + what date spread exist.
-  const out = {};
+// TACA (The Autism Community in Action) runs local support-group meetups,
+// resource fairs, and webinars — real events, not a generic marketplace —
+// and publishes them through a public WordPress REST API (confirmed via a
+// one-off diagnostic against the deployed function; the domain isn't
+// reachable from the dev sandbox this was written against). Their "event"
+// post type mixes real events with volunteer paperwork/training pages that
+// happen to reuse the same post type, so filtering to only entries with a
+// real, parseable, future event_date is what actually separates the two —
+// not just "is it in this post type."
+function parseTacaEventDate(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
-  try {
-    const response = await fetch('https://tacanow.org/wp-json/wp/v2/event?per_page=1&_fields=');
-    const totalHeader = response.headers.get('x-wp-total');
-    const totalPagesHeader = response.headers.get('x-wp-totalpages');
-    const oneEvent = await response.json();
-    out.total = totalHeader;
-    out.totalPages = totalPagesHeader;
-    // Every top-level key on a single record — reveals whether there's a
-    // meta/acf/taxonomy field beyond the standard WP fields.
-    out.singleEventKeys = Array.isArray(oneEvent) && oneEvent[0] ? Object.keys(oneEvent[0]) : oneEvent;
-  } catch (err) {
-    out.singleEventError = String(err?.message ?? err);
+// The structured event_venue field is just a short name ("Panera Bread") —
+// the full street address lives inside content.rendered under a "Location"
+// heading, which is the only place the state (needed to match "near me")
+// actually shows up. Regex extraction, same reasoning as stripHtml's
+// comment: this is arbitrary page-builder HTML, not a feed meant for
+// parsing, so a structured XML/HTML parse buys nothing a page-builder
+// template change wouldn't just as easily break.
+function extractTacaLocation(html) {
+  const match = /<h3[^>]*>\s*Location\s*<\/h3>([\s\S]*?)<\/div>/i.exec(html);
+  if (!match) return { address: '', city: '', state: '' };
+  const address = stripHtml(match[1]);
+  const cityState = /([A-Za-z .'-]+),\s*([A-Z]{2})\s+\d{5}/.exec(address);
+  return {
+    address,
+    city: cityState ? cityState[1].trim() : '',
+    state: cityState ? cityState[2] : '',
+  };
+}
+
+// Powers the "Events" section on the Discover tab. Same-state matches lead
+// (mirroring how favorited items lead each dashboard section client-side),
+// followed by everything else soonest-first — a national webinar still
+// shows, just not ahead of an actual local meetup.
+exports.getNearbyEvents = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
   }
 
-  try {
-    const response = await fetch('https://tacanow.org/wp-json/wp/v2/event?per_page=1');
-    const data = await response.json();
-    // The full record for one event, meta/acf included if present —
-    // separate from the keys-only pass above so this one isn't truncated
-    // by a shallow key list hiding nested structure.
-    out.fullSingleEvent = data;
-  } catch (err) {
-    out.fullSingleEventError = String(err?.message ?? err);
-  }
+  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const me = meSnap.data() ?? {};
+  const myState = typeof me.state === 'string' ? me.state : '';
 
-  try {
-    const response = await fetch(
-      'https://tacanow.org/wp-json/wp/v2/event?per_page=30&orderby=date&order=asc&_fields=id,title,link,date'
-    );
-    const data = await response.json();
-    out.upcomingTitles = Array.isArray(data) ? data.map((e) => ({ title: e.title?.rendered, date: e.date, link: e.link })) : data;
-  } catch (err) {
-    out.upcomingTitlesError = String(err?.message ?? err);
-  }
+  // Sorted by most-recently-modified rather than paging through all ~100+
+  // historical entries — TACA republishes their recurring meetups close to
+  // the date, so the actively-maintained (i.e. actually upcoming) events
+  // cluster at the front of this ordering. 3 pages comfortably covers that
+  // without pulling years of stale entries.
+  const pages = await Promise.all(
+    [1, 2, 3].map(async (page) => {
+      try {
+        const res = await fetch(
+          `https://tacanow.org/wp-json/wp/v2/event?per_page=30&page=${page}&orderby=modified&order=desc&_embed=wp:featuredmedia`
+        );
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch {
+        return [];
+      }
+    })
+  );
 
-  res.set('Content-Type', 'application/json');
-  res.status(200).send(JSON.stringify(out, null, 2));
+  const now = Date.now();
+  const events = pages
+    .flat()
+    .map((e) => {
+      const eventDate = parseTacaEventDate(e.event_date);
+      const location = extractTacaLocation(e.content?.rendered ?? '');
+      const media = e._embedded?.['wp:featuredmedia']?.[0];
+      return {
+        id: e.id,
+        title: typeof e.title?.rendered === 'string' ? decodeXmlEntities(e.title.rendered) : '',
+        link: typeof e.link === 'string' ? e.link : '',
+        eventDate,
+        venue: typeof e.event_venue === 'string' ? e.event_venue : '',
+        imageUrl: typeof media?.source_url === 'string' ? media.source_url : null,
+        categories: (Array.isArray(e.class_list) ? e.class_list : [])
+          .filter((c) => typeof c === 'string' && c.startsWith('event_category-'))
+          .map((c) => c.replace('event_category-', '').replace(/-/g, ' ')),
+        ...location,
+      };
+    })
+    .filter((e) => e.title && e.link && e.eventDate && e.eventDate.getTime() >= now);
+
+  const sameState = myState ? events.filter((e) => e.state === myState) : [];
+  const rest = myState ? events.filter((e) => e.state !== myState) : events;
+  const ranked = [...sameState.sort((a, b) => a.eventDate - b.eventDate), ...rest.sort((a, b) => a.eventDate - b.eventDate)];
+
+  return {
+    events: ranked.slice(0, 20).map(({ eventDate, ...e }) => ({ ...e, eventDate: eventDate.toISOString() })),
+  };
 });

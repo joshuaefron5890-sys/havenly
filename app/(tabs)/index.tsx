@@ -8,6 +8,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import {
   getFavoriteFamilyUids,
   getFavoritePodcastIds,
@@ -226,6 +227,26 @@ export default function ForYou() {
 
   const sortedArticles = articles ? sortFavoritedFirst(articles, favoriteResourceUrls, (a) => a.url) : null;
 
+  // Events
+  const [events, setEvents] = useState<NearbyEvent[] | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [eventsExpanded, setEventsExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchNearbyEvents()
+      .then((result) => {
+        if (!cancelled) setEvents(result);
+      })
+      .catch((err: any) => {
+        if (!cancelled) setEventsError(err?.message ?? err?.code ?? 'unknown error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const firstName = user?.displayName?.split(' ')[0];
 
   return (
@@ -370,8 +391,44 @@ export default function ForYou() {
           ))
         )}
 
-        <SectionHeader title="Playdates" />
-        <EmptyState text="No playdate suggestions yet — check back once you've connected with families." />
+        <SectionHeader
+          title="Events"
+          {...expandAction(events?.length ?? 0, eventsExpanded, setEventsExpanded)}
+        />
+        {eventsError ? (
+          <EmptyState text={`Couldn’t load events (${eventsError}).`} />
+        ) : events === null ? (
+          <ActivityIndicator color={colors.accent} />
+        ) : events.length === 0 ? (
+          <EmptyState text="No upcoming events found — check back soon." />
+        ) : (
+          <View style={styles.grid}>
+            {(eventsExpanded ? events : events.slice(0, PAGE_SIZE)).map((event) => (
+              <SquareCard
+                key={event.id}
+                title={event.title}
+                subtitle={eventSubtitle(event)}
+                image={event.imageUrl ? { uri: event.imageUrl } : undefined}
+                icon={event.imageUrl ? undefined : 'calendar-outline'}
+                onPress={() =>
+                  router.push({
+                    pathname: '/event/[id]',
+                    params: {
+                      id: String(event.id),
+                      title: event.title,
+                      eventDate: event.eventDate,
+                      venue: event.venue,
+                      address: event.address,
+                      imageUrl: event.imageUrl ?? '',
+                      link: event.link,
+                      categories: event.categories.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

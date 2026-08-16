@@ -1,19 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, Modal, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Text } from './AppText';
 import { MAX_CONTENT_WIDTH } from './ResponsiveContainer';
 import { useAuth } from '../contexts/AuthContext';
 import { signOutUser } from '../lib/firebase';
 import { initials } from '../lib/initials';
 import { colors } from '../theme/colors';
-import { Photo } from './Photo';
 
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { width } = useWindowDimensions();
+  // The Google account photo URL can fail to load (expired, blocked by
+  // referrer policy, etc.) — React Native Web then renders a broken-image
+  // icon instead of quietly falling back, so track load failures ourselves.
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [user?.photoURL]);
 
   // Modal portals straight to the browser's <body> on web, so it renders
   // relative to the full browser window rather than ResponsiveContainer's
@@ -52,8 +59,12 @@ export function SettingsMenu() {
         <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
           <Pressable style={[styles.menu, { marginRight: rightInset }]} onPress={() => {}}>
             <Pressable style={styles.item} onPress={goToProfile}>
-              {user?.photoURL ? (
-                <Photo source={{ uri: user.photoURL }} style={styles.avatar} />
+              {user?.photoURL && !avatarFailed ? (
+                <Image
+                  source={{ uri: user.photoURL }}
+                  style={styles.avatar}
+                  onError={() => setAvatarFailed(true)}
+                />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
                   <Text style={styles.avatarInitials}>{initials(user?.displayName, user?.email)}</Text>

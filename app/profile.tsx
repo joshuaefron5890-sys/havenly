@@ -93,6 +93,10 @@ export default function Profile() {
   const { user, loading: authLoading } = useAuth();
   const { profile, updateProfile } = useOnboarding();
   const [hydrating, setHydrating] = useState(true);
+  // The Google account photo URL can fail to load (expired, blocked by
+  // referrer policy, etc.) — React Native Web then renders a broken-image
+  // icon instead of quietly falling back, so track load failures ourselves.
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   // Unlike the onboarding screens, this route isn't behind onboarding/_layout's
   // hydration gate, so OnboardingContext would otherwise still be empty
@@ -121,6 +125,10 @@ export default function Profile() {
       cancelled = true;
     };
   }, [authLoading, user]);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [user?.photoURL]);
 
   const [slots, setSlots] = useState<SuggestedSlot[] | null>(null);
   const [slotsError, setSlotsError] = useState<string | null>(null);
@@ -217,8 +225,12 @@ export default function Profile() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.identity}>
-          {user?.photoURL ? (
-            <Photo source={{ uri: user.photoURL }} style={styles.avatar} />
+          {user?.photoURL && !avatarFailed ? (
+            <Image
+              source={{ uri: user.photoURL }}
+              style={styles.avatar}
+              onError={() => setAvatarFailed(true)}
+            />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback]}>
               <Text style={styles.avatarInitials}>{initials(user?.displayName, user?.email)}</Text>

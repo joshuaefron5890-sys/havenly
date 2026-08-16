@@ -34,7 +34,7 @@ export function ListRow({
     <Container style={styles.row} onPress={onPress}>
       {!image && icon ? (
         <View style={[styles.thumbnail, styles.iconThumbnail]}>
-          <Ionicons name={icon} size={20} color={colors.text} />
+          <Ionicons name={icon} size={20} color={colors.surface} />
         </View>
       ) : (
         <Photo source={image} style={styles.thumbnail} />
@@ -86,9 +86,9 @@ const styles = StyleSheet.create({
   iconThumbnail: {
     alignItems: 'center',
     justifyContent: 'center',
-    // Black-on-white/grey rather than the tinted thumbnail's accent color
-    // — keeps the article row's fallback icon neutral instead of orange.
-    backgroundColor: colors.border,
+    // White-on-black rather than the tinted thumbnail's accent color —
+    // keeps the article row's fallback icon neutral instead of orange.
+    backgroundColor: colors.text,
   },
   heart: {
     padding: 2,

@@ -9,6 +9,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SectionHero } from '../../components/SectionHero';
 import { CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { Contribution, fetchContributions } from '../../lib/contributions';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import {
   fetchAcceptedProposals,
@@ -188,6 +189,7 @@ export default function ForYou() {
   const [products, setProducts] = useState<RecommendedProduct[] | null>(null);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [favoriteProductUrls, setFavoriteProductUrls] = useState<Set<string>>(new Set());
+  const [productContributions, setProductContributions] = useState<Contribution[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -212,6 +214,9 @@ export default function ForYou() {
       let cancelled = false;
       getFavoriteProductUrls(user.uid).then((urls) => {
         if (!cancelled) setFavoriteProductUrls(new Set(urls));
+      });
+      fetchContributions('product').then((result) => {
+        if (!cancelled) setProductContributions(result);
       });
       return () => {
         cancelled = true;
@@ -243,6 +248,7 @@ export default function ForYou() {
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [podcastsError, setPodcastsError] = useState<string | null>(null);
   const [favoritePodcastIds, setFavoritePodcastIds] = useState<Set<string>>(new Set());
+  const [podcastContributions, setPodcastContributions] = useState<Contribution[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -265,6 +271,9 @@ export default function ForYou() {
       let cancelled = false;
       getFavoritePodcastIds(user.uid).then((ids) => {
         if (!cancelled) setFavoritePodcastIds(new Set(ids));
+      });
+      fetchContributions('podcast').then((result) => {
+        if (!cancelled) setPodcastContributions(result);
       });
       return () => {
         cancelled = true;
@@ -296,6 +305,7 @@ export default function ForYou() {
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
   const [articlesError, setArticlesError] = useState<string | null>(null);
   const [favoriteResourceUrls, setFavoriteResourceUrls] = useState<Set<string>>(new Set());
+  const [articleContributions, setArticleContributions] = useState<Contribution[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -318,6 +328,9 @@ export default function ForYou() {
       let cancelled = false;
       getFavoriteResourceUrls(user.uid).then((urls) => {
         if (!cancelled) setFavoriteResourceUrls(new Set(urls));
+      });
+      fetchContributions('article').then((result) => {
+        if (!cancelled) setArticleContributions(result);
       });
       return () => {
         cancelled = true;
@@ -350,6 +363,7 @@ export default function ForYou() {
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<PlaydateProposal | null>(null);
   const [proposalFamilyPhotos, setProposalFamilyPhotos] = useState<[string | null, string | null] | null>(null);
+  const [eventContributions, setEventContributions] = useState<Contribution[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -374,6 +388,9 @@ export default function ForYou() {
       let cancelled = false;
       fetchLatestProposal().then((result) => {
         if (!cancelled) setProposal(result);
+      });
+      fetchContributions('event').then((result) => {
+        if (!cancelled) setEventContributions(result);
       });
       return () => {
         cancelled = true;
@@ -644,6 +661,29 @@ export default function ForYou() {
 
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
 
+  // Each preview row below caps at one row (perRow, or ARTICLE_PAGE_SIZE for
+  // the article list) — community contributions get first claim on those
+  // slots (per the same "community first" ordering as the dedicated tabs),
+  // then whatever proposal/real-item slots remain get filled after.
+  const eventProposalSlots = proposal ? 1 : 0;
+  const shownEventContributions = eventContributions.slice(0, Math.max(0, perRow - eventProposalSlots));
+  const shownEvents = (events ?? []).slice(
+    0,
+    Math.max(0, perRow - eventProposalSlots - shownEventContributions.length)
+  );
+
+  const shownProductContributions = productContributions.slice(0, perRow);
+  const shownProducts = (sortedProducts ?? []).slice(0, Math.max(0, perRow - shownProductContributions.length));
+
+  const shownPodcastContributions = podcastContributions.slice(0, perRow);
+  const shownPodcasts = (sortedPodcasts ?? []).slice(0, Math.max(0, perRow - shownPodcastContributions.length));
+
+  const shownArticleContributions = articleContributions.slice(0, ARTICLE_PAGE_SIZE);
+  const shownArticles = (sortedArticles ?? []).slice(
+    0,
+    Math.max(0, ARTICLE_PAGE_SIZE - shownArticleContributions.length)
+  );
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Haven.ly" />
@@ -716,18 +756,14 @@ export default function ForYou() {
         <SectionHeader
           title="Events"
           {...viewAllAction(
-            (events?.length ?? 0) + (proposal ? 1 : 0),
+            (events?.length ?? 0) + eventProposalSlots + eventContributions.length,
             perRow,
             () => router.push('/(tabs)/events')
           )}
         />
-        {eventsError ? (
-          <EmptyState text={`Couldn’t load events (${eventsError}).`} />
-        ) : events === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : events.length === 0 && !proposal ? (
-          <EmptyState text="No upcoming events found — check back soon." />
-        ) : (
+        {eventsError ? <EmptyState text={`Couldn’t load events (${eventsError}).`} /> : null}
+        {events === null && !eventsError ? <ActivityIndicator color={colors.accent} /> : null}
+        {proposal || shownEventContributions.length > 0 || shownEvents.length > 0 ? (
           <View style={styles.grid}>
             {proposal ? (
               <SquareCard
@@ -744,7 +780,22 @@ export default function ForYou() {
                 onPress={() => router.push(`/proposal/${proposal.id}`)}
               />
             ) : null}
-            {events.slice(0, Math.max(0, perRow - (proposal ? 1 : 0))).map((event) => (
+            {shownEventContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community event'}
+                icon="calendar-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
+            {shownEvents.map((event) => (
               <SquareCard
                 key={event.id}
                 title={event.title}
@@ -771,21 +822,38 @@ export default function ForYou() {
               />
             ))}
           </View>
-        )}
+        ) : events !== null || eventsError ? (
+          <EmptyState text="No upcoming events found — check back soon." />
+        ) : null}
 
         <SectionHeader
           title="Products"
-          {...viewAllAction(sortedProducts?.length ?? 0, perRow, () => router.push('/(tabs)/products'))}
+          {...viewAllAction(
+            (sortedProducts?.length ?? 0) + productContributions.length,
+            perRow,
+            () => router.push('/(tabs)/products')
+          )}
         />
-        {productsError ? (
-          <EmptyState text={`Couldn’t load products (${productsError}).`} />
-        ) : sortedProducts === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : sortedProducts.length === 0 ? (
-          <EmptyState text="Add your child's neurodivergence info to see product picks." />
-        ) : (
+        {productsError ? <EmptyState text={`Couldn’t load products (${productsError}).`} /> : null}
+        {sortedProducts === null && !productsError ? <ActivityIndicator color={colors.accent} /> : null}
+        {shownProductContributions.length > 0 || shownProducts.length > 0 ? (
           <View style={styles.grid}>
-            {sortedProducts.slice(0, perRow).map((product) => (
+            {shownProductContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="bag-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
+            {shownProducts.map((product) => (
               <SquareCard
                 key={product.url}
                 title={product.title}
@@ -811,21 +879,38 @@ export default function ForYou() {
               />
             ))}
           </View>
-        )}
+        ) : sortedProducts !== null || productsError ? (
+          <EmptyState text="Add your child's neurodivergence info to see product picks." />
+        ) : null}
 
         <SectionHeader
           title="Podcasts"
-          {...viewAllAction(sortedPodcasts?.length ?? 0, perRow, () => router.push('/(tabs)/podcasts'))}
+          {...viewAllAction(
+            (sortedPodcasts?.length ?? 0) + podcastContributions.length,
+            perRow,
+            () => router.push('/(tabs)/podcasts')
+          )}
         />
-        {podcastsError ? (
-          <EmptyState text={`Couldn’t load podcasts (${podcastsError}).`} />
-        ) : sortedPodcasts === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : sortedPodcasts.length === 0 ? (
-          <EmptyState text="Add your child's neurodivergence info to see podcast suggestions." />
-        ) : (
+        {podcastsError ? <EmptyState text={`Couldn’t load podcasts (${podcastsError}).`} /> : null}
+        {sortedPodcasts === null && !podcastsError ? <ActivityIndicator color={colors.accent} /> : null}
+        {shownPodcastContributions.length > 0 || shownPodcasts.length > 0 ? (
           <View style={styles.grid}>
-            {sortedPodcasts.slice(0, perRow).map((podcast) => (
+            {shownPodcastContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="mic-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'podcast', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
+            {shownPodcasts.map((podcast) => (
               <SquareCard
                 key={podcast.id}
                 title={podcast.title || 'Untitled podcast'}
@@ -852,42 +937,63 @@ export default function ForYou() {
               />
             ))}
           </View>
-        )}
+        ) : sortedPodcasts !== null || podcastsError ? (
+          <EmptyState text="Add your child's neurodivergence info to see podcast suggestions." />
+        ) : null}
 
         <SectionHeader
           title="Articles"
-          {...viewAllAction(sortedArticles?.length ?? 0, ARTICLE_PAGE_SIZE, () => router.push('/(tabs)/articles'))}
+          {...viewAllAction(
+            (sortedArticles?.length ?? 0) + articleContributions.length,
+            ARTICLE_PAGE_SIZE,
+            () => router.push('/(tabs)/articles')
+          )}
         />
-        {articlesError ? (
-          <EmptyState text={`Couldn’t load articles (${articlesError}).`} />
-        ) : sortedArticles === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : sortedArticles.length === 0 ? (
+        {articlesError ? <EmptyState text={`Couldn’t load articles (${articlesError}).`} /> : null}
+        {sortedArticles === null && !articlesError ? <ActivityIndicator color={colors.accent} /> : null}
+        {shownArticleContributions.length > 0 || shownArticles.length > 0 ? (
+          <>
+            {shownArticleContributions.map((c) => (
+              <ListRow
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="document-text-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
+            {shownArticles.map((article) => (
+              <ListRow
+                key={article.url}
+                title={article.title}
+                subtitle={resourceSubtitle(article)}
+                icon="document-text-outline"
+                favorited={favoriteResourceUrls.has(article.url)}
+                onToggleFavorite={() => toggleArticleFavorite(article)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/article/[id]',
+                    params: {
+                      id: encodeURIComponent(article.url),
+                      title: article.title,
+                      summary: article.summary,
+                      url: article.url,
+                      matchedTags: article.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
+          </>
+        ) : sortedArticles !== null || articlesError ? (
           <EmptyState text="Add your child's neurodivergence info to see relevant articles." />
-        ) : (
-          sortedArticles.slice(0, ARTICLE_PAGE_SIZE).map((article) => (
-            <ListRow
-              key={article.url}
-              title={article.title}
-              subtitle={resourceSubtitle(article)}
-              icon="document-text-outline"
-              favorited={favoriteResourceUrls.has(article.url)}
-              onToggleFavorite={() => toggleArticleFavorite(article)}
-              onPress={() =>
-                router.push({
-                  pathname: '/article/[id]',
-                  params: {
-                    id: encodeURIComponent(article.url),
-                    title: article.title,
-                    summary: article.summary,
-                    url: article.url,
-                    matchedTags: article.matchedTags.join(','),
-                  },
-                })
-              }
-            />
-          ))
-        )}
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

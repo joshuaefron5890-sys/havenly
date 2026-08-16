@@ -183,9 +183,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    // Fixed dark color (not the accent) so it never gets confused with a
-    // status pill like "Proposed" — this one only ever means one thing.
-    backgroundColor: colors.text,
+    // A soft blue (not the accent, not stark black) so it never gets
+    // confused with a status pill like "Proposed" — this one only ever
+    // means one thing. Solid rather than the muted tint used elsewhere for
+    // this same marker (see ListRow, contribution detail) since this one
+    // sits on top of an arbitrary photo and needs to stay legible.
+    backgroundColor: colors.info,
     borderRadius: 6,
     paddingHorizontal: 4,
     paddingVertical: 2,

@@ -51,7 +51,7 @@ export function ListRow({
         <Text style={styles.title}>{title}</Text>
         {community ? (
           <View style={styles.communityBadge}>
-            <Ionicons name="people" size={10} color={colors.surface} />
+            <Ionicons name="people" size={10} color={colors.info} />
             <Text style={styles.communityBadgeText} numberOfLines={1}>
               Community{contributedBy ? ` · ${contributedBy}` : ''}
             </Text>
@@ -116,7 +116,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 4,
-    backgroundColor: colors.text,
+    // Soft muted blue rather than a solid dark pill — same treatment as
+    // the "Accepted" badge above, since this sits on a plain card surface
+    // rather than over a photo.
+    backgroundColor: colors.infoMuted,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -125,7 +128,7 @@ const styles = StyleSheet.create({
   communityBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.surface,
+    color: colors.info,
   },
   title: {
     fontSize: 15,

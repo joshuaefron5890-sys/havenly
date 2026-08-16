@@ -154,6 +154,21 @@ export default function Products() {
 
         {hasContent ? (
           <View style={styles.grid}>
+            {filteredContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="bag-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
             {filtered?.map((product) => (
               <SquareCard
                 key={product.url}
@@ -175,21 +190,6 @@ export default function Products() {
                       description: product.description,
                       matchedTags: product.matchedTags.join(','),
                     },
-                  })
-                }
-              />
-            ))}
-            {filteredContributions.map((c) => (
-              <SquareCard
-                key={c.id}
-                title={c.fields.title ?? 'Community pick'}
-                icon="bag-outline"
-                community
-                contributedBy={c.contributedByName}
-                onPress={() =>
-                  router.push({
-                    pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
                   })
                 }
               />

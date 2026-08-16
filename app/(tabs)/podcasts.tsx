@@ -149,6 +149,21 @@ export default function Podcasts() {
 
         {hasContent ? (
           <View style={styles.grid}>
+            {filteredContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="mic-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'podcast', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
             {filtered?.map((podcast) => (
               <SquareCard
                 key={podcast.id}
@@ -171,21 +186,6 @@ export default function Podcasts() {
                       genres: podcast.genres.join(','),
                       matchedTags: podcast.matchedTags.join(','),
                     },
-                  })
-                }
-              />
-            ))}
-            {filteredContributions.map((c) => (
-              <SquareCard
-                key={c.id}
-                title={c.fields.title ?? 'Community pick'}
-                icon="mic-outline"
-                community
-                contributedBy={c.contributedByName}
-                onPress={() =>
-                  router.push({
-                    pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'podcast', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
                   })
                 }
               />

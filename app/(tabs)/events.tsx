@@ -162,6 +162,21 @@ export default function Events() {
                 onPress={() => router.push(`/proposal/${proposal.id}`)}
               />
             ) : null}
+            {filteredContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community event'}
+                icon="calendar-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
             {filteredEvents?.map((event) => (
               <SquareCard
                 key={event.id}
@@ -184,21 +199,6 @@ export default function Events() {
                       distanceMiles: event.distanceMiles != null ? String(event.distanceMiles) : '',
                       virtual: String(event.virtual),
                     },
-                  })
-                }
-              />
-            ))}
-            {filteredContributions.map((c) => (
-              <SquareCard
-                key={c.id}
-                title={c.fields.title ?? 'Community event'}
-                icon="calendar-outline"
-                community
-                contributedBy={c.contributedByName}
-                onPress={() =>
-                  router.push({
-                    pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
                   })
                 }
               />

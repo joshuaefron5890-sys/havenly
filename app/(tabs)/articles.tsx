@@ -149,6 +149,21 @@ export default function Articles() {
 
         {hasContent ? (
           <>
+            {filteredContributions.map((c) => (
+              <ListRow
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="document-text-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
             {filtered?.map((article) => (
               <ListRow
                 key={article.url}
@@ -167,21 +182,6 @@ export default function Articles() {
                       url: article.url,
                       matchedTags: article.matchedTags.join(','),
                     },
-                  })
-                }
-              />
-            ))}
-            {filteredContributions.map((c) => (
-              <ListRow
-                key={c.id}
-                title={c.fields.title ?? 'Community pick'}
-                icon="document-text-outline"
-                community
-                contributedBy={c.contributedByName}
-                onPress={() =>
-                  router.push({
-                    pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
                   })
                 }
               />

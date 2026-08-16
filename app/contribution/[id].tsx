@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Photo } from '../../components/Photo';
 import { CONTRIBUTION_SCHEMAS, ContributionType } from '../../lib/contributions';
+import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { colors } from '../../theme/colors';
 
 // One detail screen for every contributed content type — the fields
@@ -11,17 +14,39 @@ import { colors } from '../../theme/colors';
 // same source the "Contribute" form used to collect them, so this never
 // needs updating when a form's fields change.
 export default function ContributionDetail() {
-  const { type, fieldsJson, contributedByName } = useLocalSearchParams<{
+  const { type, fieldsJson, contributedByName, contributedByUid } = useLocalSearchParams<{
     id: string;
     type: string;
     fieldsJson?: string;
     contributedByName?: string;
+    contributedByUid?: string;
   }>();
+
+  const [family, setFamily] = useState<SuggestedFamily | null>(null);
+
+  // Best-effort — a contributor's full family profile is a nice-to-have
+  // here, not required to show the contribution itself, so a failed fetch
+  // just falls back to the plain contributedByName string.
+  useEffect(() => {
+    if (!contributedByUid) return;
+    let cancelled = false;
+    fetchFamiliesByUids([contributedByUid])
+      .then((result) => {
+        if (!cancelled && result[0]) setFamily(result[0]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [contributedByUid]);
 
   const schema = CONTRIBUTION_SCHEMAS[type as ContributionType];
   const fields: Record<string, string> = fieldsJson ? JSON.parse(fieldsJson) : {};
   const title = fields.title || 'Community contribution';
   const url = fields.url?.trim();
+  const photoUrl = family ? familyPhoto(family) : null;
+  const imageField = schema?.fields.find((f) => f.type === 'image');
+  const contributedImageUrl = imageField ? fields[imageField.key]?.trim() : undefined;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -38,11 +63,32 @@ export default function ContributionDetail() {
         </View>
 
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.attribution}>Contributed by {contributedByName || 'A Haven.ly family'}</Text>
+
+        <Pressable
+          style={styles.contributorRow}
+          onPress={() => contributedByUid && router.push(`/family/${contributedByUid}`)}
+          disabled={!contributedByUid}
+        >
+          <Photo source={photoUrl ? { uri: photoUrl } : undefined} style={styles.contributorPhoto} />
+          <View style={styles.contributorInfo}>
+            <Text style={styles.contributorName} numberOfLines={1}>
+              {family ? familyDisplayName(family) : contributedByName || 'A Haven.ly family'}
+            </Text>
+            <Text style={styles.contributorSub}>Contributed this {schema?.noun ?? 'pick'}</Text>
+          </View>
+          {family ? (
+            <View style={styles.matchBadge}>
+              <Text style={styles.matchScore}>{family.matchScore}</Text>
+              <Text style={styles.matchLabel}>match</Text>
+            </View>
+          ) : null}
+        </Pressable>
+
+        {contributedImageUrl ? <Image source={{ uri: contributedImageUrl }} style={styles.contributedImage} /> : null}
 
         <View style={styles.card}>
           {schema?.fields
-            .filter((f) => f.key !== 'title' && (fields[f.key] ?? '').trim())
+            .filter((f) => f.type !== 'image' && f.key !== 'title' && (fields[f.key] ?? '').trim())
             .map((f) => (
               <View key={f.key} style={styles.row}>
                 <Text style={styles.rowLabel}>{f.label.toUpperCase()}</Text>
@@ -108,12 +154,64 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  attribution: {
-    fontSize: 14,
+  // Mirrors app/family/[id].tsx's own photo + name + match-score treatment
+  // (scaled down for an inline row instead of a hero banner) — tapping
+  // through opens that exact same profile screen.
+  contributorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 16,
+  },
+  contributorPhoto: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accentMuted,
+  },
+  contributorInfo: {
+    flex: 1,
+  },
+  contributorName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  contributorSub: {
+    fontSize: 12,
     color: colors.textMuted,
-    marginBottom: 20,
+    marginTop: 1,
+  },
+  matchBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchScore: {
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  matchLabel: {
+    fontSize: 7,
+    color: colors.textMuted,
+  },
+  contributedImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 16,
+    backgroundColor: colors.accentMuted,
+    marginBottom: 16,
   },
   card: {
     backgroundColor: colors.surface,

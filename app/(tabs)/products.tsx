@@ -158,13 +158,14 @@ export default function Products() {
               <SquareCard
                 key={c.id}
                 title={c.fields.title ?? 'Community pick'}
-                icon="bag-outline"
+                image={c.fields.imageUrl ? { uri: c.fields.imageUrl } : undefined}
+                icon={c.fields.imageUrl ? undefined : 'bag-outline'}
                 community
                 contributedBy={c.contributedByName}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName, contributedByUid: c.contributedByUid },
                   })
                 }
               />

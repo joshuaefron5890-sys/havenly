@@ -12,7 +12,10 @@ export type ContributionField = {
   // 'date' renders a calendar + time picker instead of a plain text
   // field (see components/DatePickerModal.tsx) — the value stored is
   // still just the formatted label string, same as every other field.
-  type?: 'text' | 'date';
+  // 'image' renders an upload-a-photo-or-paste-a-link picker (see
+  // ContributeModal) — the value stored is still just a URL string, same
+  // shape as `url` above, just displayed as a photo everywhere else.
+  type?: 'text' | 'date' | 'image';
 };
 
 // One schema per content type — shared by the "Contribute" form on each
@@ -26,6 +29,7 @@ export const CONTRIBUTION_SCHEMAS: Record<
     noun: 'product',
     fields: [
       { key: 'title', label: 'Product name' },
+      { key: 'imageUrl', label: 'Photo', type: 'image', optional: true },
       { key: 'vendor', label: "Brand or where it's from", optional: true },
       { key: 'url', label: 'Link', placeholder: 'https://…', optional: true },
       { key: 'description', label: 'Why do you recommend it?', multiline: true, optional: true },

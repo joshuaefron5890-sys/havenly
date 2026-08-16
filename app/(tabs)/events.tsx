@@ -172,7 +172,7 @@ export default function Events() {
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName, contributedByUid: c.contributedByUid },
                   })
                 }
               />

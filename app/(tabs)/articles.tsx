@@ -159,7 +159,7 @@ export default function Articles() {
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName, contributedByUid: c.contributedByUid },
                   })
                 }
               />

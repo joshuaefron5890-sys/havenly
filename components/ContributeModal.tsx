@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Text } from './AppText';
 import { DatePickerModal } from './DatePickerModal';
 import { FieldInput } from './FieldInput';
+import { PhotoCropperModal } from './PhotoCropperModal';
 import { ContributionField } from '../lib/contributions';
+import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
 import { colors } from '../theme/colors';
 
 // One generic bottom-sheet form reused by every "Contribute" CTA (Events,
@@ -32,6 +34,10 @@ export function ContributeModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [datePickerKey, setDatePickerKey] = useState<string | null>(null);
+  const [activeImageKey, setActiveImageKey] = useState<string | null>(null);
+  const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const missingRequired = fields.some((f) => !f.optional && !(values[f.key] ?? '').trim());
   const canSubmit = Boolean(name.trim()) && !missingRequired && !submitting;
@@ -40,6 +46,35 @@ export function ContributeModal({
     if (submitting) return;
     setError(null);
     onClose();
+  };
+
+  const handlePickImage = async (key: string) => {
+    setImageError(null);
+    if (!photoUploadSupported()) {
+      setImageError('Photo upload isn’t available on this platform yet — paste a link instead.');
+      return;
+    }
+    const file = await pickImageFile();
+    if (file) {
+      setActiveImageKey(key);
+      setPickedPhoto(file);
+    }
+  };
+
+  const handleImageCropConfirm = async (blob: Blob) => {
+    const key = activeImageKey;
+    setPickedPhoto(null);
+    if (!key) return;
+    setUploadingImage(true);
+    setImageError(null);
+    try {
+      const url = await uploadPhotoBlob(blob, `contribution-${Date.now()}.jpg`);
+      setValues((prev) => ({ ...prev, [key]: url }));
+    } catch {
+      setImageError('Couldn’t upload that photo — check your connection and try again.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -84,6 +119,56 @@ export function ContributeModal({
                         {values[f.key] || 'Select a date'}
                       </Text>
                     </Pressable>
+                  </View>
+                );
+              }
+              if (f.type === 'image') {
+                const value = values[f.key] ?? '';
+                const busy = uploadingImage && activeImageKey === f.key;
+                return (
+                  <View key={f.key} style={styles.imageWrap}>
+                    <Text style={styles.multilineLabel}>
+                      {f.label}
+                      {f.optional ? <Text style={styles.optional}> · optional</Text> : null}
+                    </Text>
+                    {value ? (
+                      <View style={styles.imagePreviewRow}>
+                        <Image source={{ uri: value }} style={styles.imagePreview} />
+                        <Pressable
+                          style={styles.imageRemove}
+                          onPress={() => setValues((prev) => ({ ...prev, [f.key]: '' }))}
+                          hitSlop={8}
+                        >
+                          <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                        </Pressable>
+                      </View>
+                    ) : null}
+                    {photoUploadSupported() ? (
+                      <Pressable
+                        style={styles.imageUploadButton}
+                        onPress={() => handlePickImage(f.key)}
+                        disabled={busy}
+                      >
+                        {busy ? (
+                          <ActivityIndicator color={colors.accent} />
+                        ) : (
+                          <>
+                            <Ionicons name="camera-outline" size={16} color={colors.accent} />
+                            <Text style={styles.imageUploadText}>
+                              {value ? 'Change photo' : 'Take or upload a photo'}
+                            </Text>
+                          </>
+                        )}
+                      </Pressable>
+                    ) : null}
+                    <FieldInput
+                      label="Or paste an image link"
+                      placeholder="https://…"
+                      optional
+                      value={value}
+                      onChangeText={(text) => setValues((prev) => ({ ...prev, [f.key]: text }))}
+                    />
+                    {imageError && activeImageKey === f.key ? <Text style={styles.error}>{imageError}</Text> : null}
                   </View>
                 );
               }
@@ -138,6 +223,7 @@ export function ContributeModal({
           setValues((prev) => ({ ...prev, [datePickerKey]: label }));
         }}
       />
+      <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleImageCropConfirm} />
     </Modal>
   );
 }
@@ -193,6 +279,42 @@ const styles = StyleSheet.create({
   dateButtonPlaceholder: {
     fontSize: 15,
     color: colors.textMuted,
+  },
+  imageWrap: {
+    marginBottom: 16,
+  },
+  imagePreviewRow: {
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  imagePreview: {
+    width: 88,
+    height: 88,
+    borderRadius: 14,
+    backgroundColor: colors.accentMuted,
+  },
+  imageRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+  },
+  imageUploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  imageUploadText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
   multilineLabel: {
     fontSize: 12,

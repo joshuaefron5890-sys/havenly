@@ -791,7 +791,7 @@ export default function ForYou() {
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName, contributedByUid: c.contributedByUid },
                   })
                 }
               />
@@ -843,13 +843,14 @@ export default function ForYou() {
               <SquareCard
                 key={c.id}
                 title={c.fields.title ?? 'Community pick'}
-                icon="bag-outline"
+                image={c.fields.imageUrl ? { uri: c.fields.imageUrl } : undefined}
+                icon={c.fields.imageUrl ? undefined : 'bag-outline'}
                 community
                 contributedBy={c.contributedByName}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName, contributedByUid: c.contributedByUid },
                   })
                 }
               />
@@ -906,7 +907,7 @@ export default function ForYou() {
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'podcast', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                    params: { id: c.id, type: 'podcast', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName, contributedByUid: c.contributedByUid },
                   })
                 }
               />
@@ -964,7 +965,7 @@ export default function ForYou() {
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
-                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName, contributedByUid: c.contributedByUid },
                   })
                 }
               />

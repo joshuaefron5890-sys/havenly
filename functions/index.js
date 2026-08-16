@@ -15,6 +15,13 @@ setGlobalOptions({ maxInstances: 10 });
 const GOOGLE_CLIENT_ID = '315662747088-dr7k9f6sbk4gs431v4j2c06hoob92mkm.apps.googleusercontent.com';
 const googleClientSecret = defineSecret('GOOGLE_OAUTH_CLIENT_SECRET');
 
+// eBay's Buy Browse API — a production keyset from developer.ebay.com
+// (My Account > Application Keys), set via
+// `firebase functions:secrets:set EBAY_CLIENT_ID` /
+// `firebase functions:secrets:set EBAY_CLIENT_SECRET`.
+const ebayClientId = defineSecret('EBAY_CLIENT_ID');
+const ebayClientSecret = defineSecret('EBAY_CLIENT_SECRET');
+
 const xmlParser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
 
 const CURRENT_USER_PRINCIPAL_BODY = `<?xml version="1.0" encoding="utf-8" ?>
@@ -788,6 +795,72 @@ const PRODUCT_SOURCES = [
   { name: 'Harkla', base: 'https://www.harkla.co' },
 ];
 
+// Not a Shopify store like the two above — used only to label eBay results
+// and to resolve item URLs (already absolute, so this base is effectively
+// unused by that resolution, just kept for shape-consistency with source).
+const EBAY_SOURCE = { name: 'eBay', base: 'https://www.ebay.com' };
+
+// Cached across warm function instances so a busy period isn't fetching a
+// fresh OAuth token on every single call — client-credentials tokens are
+// valid for ~2 hours (eBay's default), refreshed a minute early.
+let cachedEbayToken = null;
+
+async function getEbayAccessToken(clientId, clientSecret) {
+  if (cachedEbayToken && cachedEbayToken.expiresAt > Date.now() + 60_000) {
+    return cachedEbayToken.token;
+  }
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const res = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope',
+  });
+  if (!res.ok) throw new Error(`ebay-auth-failed: ${res.status}`);
+  const json = await res.json();
+  cachedEbayToken = { token: json.access_token, expiresAt: Date.now() + json.expires_in * 1000 };
+  return cachedEbayToken.token;
+}
+
+// Shaped to match the {item, source, tag} entries the Shopify sources
+// produce (see getRecommendedProducts below) — item.url/title/vendor/
+// image/body — so both feed the same dedupe/rank loop without it needing
+// to know eBay exists.
+async function searchEbay(term, tag, accessToken) {
+  try {
+    const res = await fetch(
+      `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(term)}&limit=5`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+        },
+      }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data?.itemSummaries;
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter((it) => typeof it?.itemWebUrl === 'string' && typeof it?.title === 'string')
+      .map((it) => ({
+        item: {
+          url: it.itemWebUrl,
+          title: it.title,
+          vendor: typeof it.seller?.username === 'string' ? it.seller.username : undefined,
+          image: typeof it.image?.imageUrl === 'string' ? it.image.imageUrl : undefined,
+          body: typeof it.shortDescription === 'string' ? it.shortDescription : '',
+        },
+        source: EBAY_SOURCE,
+        tag,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 // Shopify's predictive-search endpoint matches literally — a plain word
 // like "sensory" returns real results (verified via a one-off diagnostic),
 // but the long descriptive labels used during onboarding
@@ -814,7 +887,7 @@ const PRODUCT_SEARCH_TERMS = {
 // predictive-search endpoint per neurodivergence tag, so results lean
 // toward what's actually relevant to the child's needs rather than a
 // generic marketplace with no vetting.
-exports.getRecommendedProducts = onCall(async (request) => {
+exports.getRecommendedProducts = onCall({ secrets: [ebayClientId, ebayClientSecret] }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
@@ -844,8 +917,22 @@ exports.getRecommendedProducts = onCall(async (request) => {
     ? mappedSearches
     : [...mappedSearches, { tag: 'General', term: 'sensory' }];
 
-  const resultsPerSearch = await Promise.all(
-    PRODUCT_SOURCES.flatMap((source) =>
+  // eBay is optional — only attempted if both secrets are actually
+  // configured (see EBAY_CLIENT_ID/EBAY_CLIENT_SECRET above), and any
+  // failure getting a token (missing/invalid credentials, eBay outage)
+  // just means eBay results are skipped, same as a single Shopify source
+  // being unreachable already does below.
+  let ebayToken = null;
+  if (ebayClientId.value() && ebayClientSecret.value()) {
+    try {
+      ebayToken = await getEbayAccessToken(ebayClientId.value(), ebayClientSecret.value());
+    } catch {
+      ebayToken = null;
+    }
+  }
+
+  const resultsPerSearch = await Promise.all([
+    ...PRODUCT_SOURCES.flatMap((source) =>
       searches.map(async ({ tag, term }) => {
         try {
           const res = await fetch(
@@ -863,8 +950,9 @@ exports.getRecommendedProducts = onCall(async (request) => {
           return [];
         }
       })
-    )
-  );
+    ),
+    ...(ebayToken ? searches.map(({ tag, term }) => searchEbay(term, tag, ebayToken)) : []),
+  ]);
 
   // A product can turn up under more than one tag's search — dedupe by
   // absolute URL, rank higher the more of the child's tags it matched.

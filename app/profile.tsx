@@ -220,7 +220,6 @@ export default function Profile() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.back} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -416,9 +415,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 12,
+    gap: 12,
   },
   back: {
     width: 36,

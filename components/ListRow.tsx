@@ -53,7 +53,7 @@ export function ListRow({
           <View style={styles.communityBadge}>
             <Ionicons name="people" size={10} color={colors.community} />
             <Text style={styles.communityBadgeText} numberOfLines={1}>
-              Community{contributedBy ? ` · ${contributedBy}` : ''}
+              Contributed{contributedBy ? ` · ${contributedBy}` : ''}
             </Text>
           </View>
         ) : subtitle ? (

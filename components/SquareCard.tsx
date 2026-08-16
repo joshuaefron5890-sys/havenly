@@ -68,9 +68,9 @@ export function SquareCard({
         )}
         {community ? (
           <View style={styles.communityBadge}>
-            <Ionicons name="people" size={9} color={colors.community} />
+            <Ionicons name="people" size={8} color={colors.community} />
             <Text style={styles.communityBadgeText} numberOfLines={1}>
-              Community
+              Contributed
             </Text>
           </View>
         ) : badge ? (
@@ -188,21 +188,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 2,
     // White pill with blue text/icon — the thumbnail itself is blue for a
     // community item (see communityIconThumbnail, and any blue-toned real
     // photo), so a blue-on-blue badge would wash out. White stays legible
-    // against both that and an arbitrary product/podcast photo.
+    // against both that and an arbitrary product/podcast photo. A matching
+    // blue border keeps the pill defined even against a light/white patch
+    // of an arbitrary photo, where a plain white pill can disappear.
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.community,
     borderRadius: 6,
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
     paddingVertical: 2,
   },
   communityBadgeText: {
-    fontSize: 8,
+    // No uppercase transform here (unlike the accent `badge` below) — all
+    // caps would push "Contributed" past this pill's width; sized to fit
+    // this specific label at this specific pill width.
+    fontSize: 7,
     fontWeight: '700',
     color: colors.community,
-    textTransform: 'uppercase',
   },
   contributorRow: {
     flexDirection: 'row',

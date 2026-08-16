@@ -19,7 +19,9 @@ const GOOGLE_LOGO_URI =
 
 export const images: Record<string, ImageSourcePropType | undefined> = {
   googleLogo: { uri: GOOGLE_LOGO_URI },
-  onboardingHero: unsplash('photo-1606092195730-5d7b9af1efc5', 800, 500),
+  onboardingHero: {
+    uri: 'https://images.unsplash.com/photo-1550096141-7263640aa48c?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  },
   featureFindPeople: unsplash('photo-1607748862156-7c548e7e98f4', 300, 200),
   featureBuildCommunity: unsplash('photo-1777817530517-bd54a0574213', 300, 200),
   featureGetSupport: unsplash('photo-1708687045030-26702e62fc65', 300, 200),

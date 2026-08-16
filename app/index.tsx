@@ -26,12 +26,12 @@ const WHATS_INSIDE = [
   {
     icon: 'people-outline' as const,
     title: 'Matched by what matters',
-    subtitle: 'Shared neurodivergence, interests, and schedules — not just a zip code.',
+    subtitle: 'Shared neurodivergence, interests, and schedules, not just a zip code.',
   },
   {
     icon: 'chatbubble-outline' as const,
     title: 'Message & plan playdates',
-    subtitle: 'Propose a time and place, then accept, decline, or counter — right in the app.',
+    subtitle: 'Propose a time and place, then accept, decline, or counter, all in the app.',
   },
   {
     icon: 'calendar-outline' as const,
@@ -89,8 +89,8 @@ export default function Onboarding() {
         <Text style={styles.headline}>A community</Text>
         <Text style={styles.headlineAccent}>built around your child.</Text>
         <Text style={styles.subtext}>
-          Haven.ly is where families of neurodivergent children find each other — matched by what
-          actually matters, not just proximity, to build a village that understands.
+          Haven.ly is where families of neurodivergent children find each other. We match by what
+          actually matters, not just proximity, so you can build a village that understands.
         </Text>
 
         <View style={styles.features}>

@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../components/Photo';
@@ -14,6 +15,34 @@ const FEATURES = [
   { title: 'Find your people', subtitle: 'Families who truly get it', image: images.featureFindPeople },
   { title: 'Build community', subtitle: 'Events, groups & shared space', image: images.featureBuildCommunity },
   { title: 'Get real support', subtitle: 'Resources, helpers & guidance', image: images.featureGetSupport },
+];
+
+// What the app actually does today, not a generic pitch — each of these
+// maps to a real, shipped part of the product (match scoring, direct
+// messaging + playdate proposals, TACA-sourced local events, curated
+// products/podcasts/articles), so a new family knows what they're
+// signing up for rather than just how it feels.
+const WHATS_INSIDE = [
+  {
+    icon: 'people-outline' as const,
+    title: 'Matched by what matters',
+    subtitle: 'Shared neurodivergence, interests, and schedules — not just a zip code.',
+  },
+  {
+    icon: 'chatbubble-outline' as const,
+    title: 'Message & plan playdates',
+    subtitle: 'Propose a time and place, then accept, decline, or counter — right in the app.',
+  },
+  {
+    icon: 'calendar-outline' as const,
+    title: 'Events near you',
+    subtitle: 'In-person meetups within driving distance, plus virtual ones.',
+  },
+  {
+    icon: 'bag-outline' as const,
+    title: 'Picks made for your kid',
+    subtitle: 'Sensory products, podcasts, and articles matched to your child.',
+  },
 ];
 
 function joinCommunity() {
@@ -48,13 +77,20 @@ export default function Onboarding() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.brandRow}>
+          <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
+          <Text style={styles.brandWordmark}>
+            Haven<Text style={styles.brandWordmarkAccent}>.ly</Text>
+          </Text>
+        </View>
+
         <Photo source={images.onboardingHero} style={styles.hero} />
 
         <Text style={styles.headline}>A community</Text>
         <Text style={styles.headlineAccent}>built around your child.</Text>
         <Text style={styles.subtext}>
-          Haven.ly is where families of neurodivergent children find each other — to connect,
-          share, and build a village that actually understands.
+          Haven.ly is where families of neurodivergent children find each other — matched by what
+          actually matters, not just proximity, to build a village that understands.
         </Text>
 
         <View style={styles.features}>
@@ -63,6 +99,19 @@ export default function Onboarding() {
               <Photo source={feature.image} style={styles.featureImage} />
               <Text style={styles.featureTitle}>{feature.title}</Text>
               <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>WHAT'S INSIDE</Text>
+        <View style={styles.insideGrid}>
+          {WHATS_INSIDE.map((item) => (
+            <View key={item.title} style={styles.insideCard}>
+              <View style={styles.insideIconWrap}>
+                <Ionicons name={item.icon} size={20} color={colors.surface} />
+              </View>
+              <Text style={styles.insideTitle}>{item.title}</Text>
+              <Text style={styles.insideSubtitle}>{item.subtitle}</Text>
             </View>
           ))}
         </View>
@@ -93,6 +142,25 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 40,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  brandMark: {
+    width: 22,
+    height: 22,
+  },
+  brandWordmark: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  brandWordmarkAccent: {
+    color: colors.accent,
+    fontStyle: 'italic',
   },
   hero: {
     height: 220,
@@ -144,6 +212,45 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  insideGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 24,
+  },
+  insideCard: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 14,
+  },
+  insideIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  insideTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 3,
+  },
+  insideSubtitle: {
+    fontSize: 11,
+    color: colors.textMuted,
+    lineHeight: 15,
   },
   cta: {
     backgroundColor: colors.accent,

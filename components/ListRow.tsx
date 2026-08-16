@@ -41,7 +41,7 @@ export function ListRow({
   return (
     <Container style={styles.row} onPress={onPress}>
       {!image && icon ? (
-        <View style={[styles.thumbnail, styles.iconThumbnail]}>
+        <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
           <Ionicons name={icon} size={20} color={colors.surface} />
         </View>
       ) : (
@@ -104,6 +104,11 @@ const styles = StyleSheet.create({
     // White-on-black rather than the tinted thumbnail's accent color —
     // keeps the article row's fallback icon neutral instead of orange.
     backgroundColor: colors.text,
+  },
+  communityIconThumbnail: {
+    // Community-contributed items get a blue thumbnail instead of black,
+    // matching SquareCard's same treatment.
+    backgroundColor: colors.info,
   },
   heart: {
     padding: 2,

@@ -60,7 +60,7 @@ export function SquareCard({
             <Photo source={pairImages[1]} style={[styles.pairAvatar, styles.pairAvatarFront]} />
           </View>
         ) : !image && icon ? (
-          <View style={[styles.thumbnail, styles.iconThumbnail]}>
+          <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
             <Ionicons name={icon} size={22} color={colors.surface} />
           </View>
         ) : (
@@ -68,7 +68,7 @@ export function SquareCard({
         )}
         {community ? (
           <View style={styles.communityBadge}>
-            <Ionicons name="people" size={9} color={colors.surface} />
+            <Ionicons name="people" size={9} color={colors.info} />
             <Text style={styles.communityBadgeText} numberOfLines={1}>
               Community
             </Text>
@@ -131,6 +131,12 @@ const styles = StyleSheet.create({
     // matches ListRow's fallback icon treatment.
     backgroundColor: colors.text,
   },
+  communityIconThumbnail: {
+    // Community-contributed items get a blue thumbnail instead of black,
+    // so the card itself signals "community" at a glance, not just the
+    // small corner badge.
+    backgroundColor: colors.info,
+  },
   pairThumbnail: {
     overflow: 'visible',
   },
@@ -183,12 +189,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    // A soft blue (not the accent, not stark black) so it never gets
-    // confused with a status pill like "Proposed" — this one only ever
-    // means one thing. Solid rather than the muted tint used elsewhere for
-    // this same marker (see ListRow, contribution detail) since this one
-    // sits on top of an arbitrary photo and needs to stay legible.
-    backgroundColor: colors.info,
+    // White pill with blue text/icon — the thumbnail itself is blue for a
+    // community item (see communityIconThumbnail, and any blue-toned real
+    // photo), so a blue-on-blue badge would wash out. White stays legible
+    // against both that and an arbitrary product/podcast photo.
+    backgroundColor: colors.surface,
     borderRadius: 6,
     paddingHorizontal: 4,
     paddingVertical: 2,
@@ -196,7 +201,7 @@ const styles = StyleSheet.create({
   communityBadgeText: {
     fontSize: 8,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.info,
     textTransform: 'uppercase',
   },
   contributorRow: {

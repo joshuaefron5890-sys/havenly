@@ -75,6 +75,10 @@ export default function FamilyDetail() {
     }
   };
 
+  const proposePlaydate = () => {
+    Alert.alert('Coming soon', 'Proposing playdates isn’t available yet.');
+  };
+
   if (error) {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -176,6 +180,9 @@ export default function FamilyDetail() {
         </Pressable>
         <Pressable style={[styles.cta, messageBusy && styles.ctaDisabled]} onPress={openMessageThread} disabled={messageBusy}>
           <Text style={styles.ctaText}>{messageBusy ? 'Opening…' : 'Message'}</Text>
+        </Pressable>
+        <Pressable style={styles.ctaSecondary} onPress={proposePlaydate}>
+          <Text style={styles.ctaSecondaryText}>Propose a playdate</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -381,5 +388,20 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: 16,
     fontWeight: '700',
+  },
+  ctaSecondary: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  ctaSecondaryText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

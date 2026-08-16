@@ -10,10 +10,18 @@ import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import {
+  addFavoriteFamily,
+  addFavoritePodcast,
+  addFavoriteProduct,
+  addFavoriteResource,
   getFavoriteFamilyUids,
   getFavoritePodcastIds,
   getFavoriteProductUrls,
   getFavoriteResourceUrls,
+  removeFavoriteFamily,
+  removeFavoritePodcast,
+  removeFavoriteProduct,
+  removeFavoriteResource,
 } from '../../lib/favorites';
 import {
   familyDisplayName,
@@ -117,6 +125,32 @@ export default function ForYou() {
   const familiesLoading = families === null || favoriteFamilies === null;
   const mergedFamilies = familiesLoading ? [] : mergeFamilies(favoriteFamilies!, families!);
 
+  const toggleFamilyFavorite = async (family: SuggestedFamily) => {
+    const wasFavorited = favoriteFamilyUids.has(family.uid);
+    setFavoriteFamilyUids((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(family.uid) : next.add(family.uid);
+      return next;
+    });
+    setFavoriteFamilies((prev) => {
+      const list = prev ?? [];
+      return wasFavorited ? list.filter((f) => f.uid !== family.uid) : [...list, family];
+    });
+    try {
+      await (wasFavorited ? removeFavoriteFamily(family.uid) : addFavoriteFamily(family.uid));
+    } catch {
+      setFavoriteFamilyUids((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(family.uid) : next.delete(family.uid);
+        return next;
+      });
+      setFavoriteFamilies((prev) => {
+        const list = prev ?? [];
+        return wasFavorited ? [...list, family] : list.filter((f) => f.uid !== family.uid);
+      });
+    }
+  };
+
   // Products
   const [products, setProducts] = useState<RecommendedProduct[] | null>(null);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -155,6 +189,24 @@ export default function ForYou() {
 
   const sortedProducts = products ? sortFavoritedFirst(products, favoriteProductUrls, (p) => p.url) : null;
 
+  const toggleProductFavorite = async (product: RecommendedProduct) => {
+    const wasFavorited = favoriteProductUrls.has(product.url);
+    setFavoriteProductUrls((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(product.url) : next.add(product.url);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoriteProduct(product.url) : addFavoriteProduct(product.url));
+    } catch {
+      setFavoriteProductUrls((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(product.url) : next.delete(product.url);
+        return next;
+      });
+    }
+  };
+
   // Podcasts
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [podcastsError, setPodcastsError] = useState<string | null>(null);
@@ -190,6 +242,24 @@ export default function ForYou() {
   );
 
   const sortedPodcasts = podcasts ? sortFavoritedFirst(podcasts, favoritePodcastIds, (p) => p.id) : null;
+
+  const togglePodcastFavorite = async (podcast: PodcastSuggestion) => {
+    const wasFavorited = favoritePodcastIds.has(podcast.id);
+    setFavoritePodcastIds((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(podcast.id) : next.add(podcast.id);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoritePodcast(podcast.id) : addFavoritePodcast(podcast.id));
+    } catch {
+      setFavoritePodcastIds((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(podcast.id) : next.delete(podcast.id);
+        return next;
+      });
+    }
+  };
 
   // Articles
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
@@ -227,6 +297,24 @@ export default function ForYou() {
 
   const sortedArticles = articles ? sortFavoritedFirst(articles, favoriteResourceUrls, (a) => a.url) : null;
 
+  const toggleArticleFavorite = async (article: HealthResource) => {
+    const wasFavorited = favoriteResourceUrls.has(article.url);
+    setFavoriteResourceUrls((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(article.url) : next.add(article.url);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoriteResource(article.url) : addFavoriteResource(article.url));
+    } catch {
+      setFavoriteResourceUrls((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(article.url) : next.delete(article.url);
+        return next;
+      });
+    }
+  };
+
   // Events
   const [events, setEvents] = useState<NearbyEvent[] | null>(null);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -255,7 +343,7 @@ export default function ForYou() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHeader
-          title="Families"
+          title="Families like you"
           {...expandAction(mergedFamilies.length, familiesExpanded, setFamiliesExpanded)}
         />
         {familiesError ? (
@@ -274,6 +362,8 @@ export default function ForYou() {
                   title={familyDisplayName(family)}
                   subtitle={familySubtitle(family)}
                   image={photoUrl ? { uri: photoUrl } : undefined}
+                  favorited={favoriteFamilyUids.has(family.uid)}
+                  onToggleFavorite={() => toggleFamilyFavorite(family)}
                   onPress={() => router.push(`/family/${family.uid}`)}
                 />
               );
@@ -299,6 +389,8 @@ export default function ForYou() {
                 title={product.title}
                 subtitle={productSubtitle(product)}
                 image={product.imageUrl ? { uri: product.imageUrl } : undefined}
+                favorited={favoriteProductUrls.has(product.url)}
+                onToggleFavorite={() => toggleProductFavorite(product)}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',
@@ -337,6 +429,8 @@ export default function ForYou() {
                 title={podcast.title || 'Untitled podcast'}
                 subtitle={podcastSubtitle(podcast)}
                 image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
+                favorited={favoritePodcastIds.has(podcast.id)}
+                onToggleFavorite={() => togglePodcastFavorite(podcast)}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',
@@ -375,6 +469,8 @@ export default function ForYou() {
               title={article.title}
               subtitle={resourceSubtitle(article)}
               icon="document-text-outline"
+              favorited={favoriteResourceUrls.has(article.url)}
+              onToggleFavorite={() => toggleArticleFavorite(article)}
               onPress={() =>
                 router.push({
                   pathname: '/article/[id]',

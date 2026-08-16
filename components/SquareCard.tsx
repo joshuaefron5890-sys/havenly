@@ -6,29 +6,47 @@ import { Photo } from './Photo';
 
 // A square, image-forward card for dashboard grids — deliberately shows
 // less than a ListRow (title + one line of subtitle) since it links through
-// to a detail screen with the rest.
+// to a detail screen with the rest. Fixed pixel width rather than a
+// percentage-based flexBasis, and no flexGrow — a trailing incomplete row
+// (5 items in a 4-wide grid, say) leaves empty space instead of the last
+// couple of cards stretching to fill it.
 export function SquareCard({
   title,
   subtitle,
   image,
   icon,
   onPress,
+  favorited,
+  onToggleFavorite,
 }: {
   title: string;
   subtitle?: string;
   image?: ImageSourcePropType;
   icon?: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
+  favorited?: boolean;
+  onToggleFavorite?: () => void;
 }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      {!image && icon ? (
-        <View style={[styles.thumbnail, styles.iconThumbnail]}>
-          <Ionicons name={icon} size={28} color={colors.accent} />
-        </View>
-      ) : (
-        <Photo source={image} style={styles.thumbnail} />
-      )}
+      <View style={styles.thumbnailWrap}>
+        {!image && icon ? (
+          <View style={[styles.thumbnail, styles.iconThumbnail]}>
+            <Ionicons name={icon} size={22} color={colors.accent} />
+          </View>
+        ) : (
+          <Photo source={image} style={styles.thumbnail} />
+        )}
+        {onToggleFavorite ? (
+          <Pressable hitSlop={8} onPress={onToggleFavorite} style={styles.heart}>
+            <Ionicons
+              name={favorited ? 'heart' : 'heart-outline'}
+              size={14}
+              color={favorited ? colors.accent : colors.surface}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       <Text style={styles.title} numberOfLines={2}>
         {title}
       </Text>
@@ -41,31 +59,43 @@ export function SquareCard({
   );
 }
 
-export const CARD_GRID_COLUMNS = 3;
+const CARD_WIDTH = 76;
 
 const styles = StyleSheet.create({
   card: {
-    flexBasis: '30%',
-    flexGrow: 1,
+    width: CARD_WIDTH,
+  },
+  thumbnailWrap: {
+    marginBottom: 6,
   },
   thumbnail: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 14,
+    width: CARD_WIDTH,
+    height: CARD_WIDTH,
+    borderRadius: 12,
     backgroundColor: colors.accentMuted,
-    marginBottom: 6,
   },
   iconThumbnail: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heart: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(43,36,32,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.text,
   },
   subtitle: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textMuted,
     marginTop: 2,
   },

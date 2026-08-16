@@ -119,7 +119,13 @@ export default function Articles() {
     setContributions(result);
   };
 
-  const nothingToShow = sorted !== null && filtered?.length === 0 && filteredContributions.length === 0;
+  // Community contributions must render regardless of the health-resources
+  // fetch's own state — this used to live inside that fetch's error/loading
+  // branch, so a contributor's own just-submitted article would silently
+  // vanish behind "Couldn't load articles" whenever that unrelated feed had
+  // trouble.
+  const hasContent = (filtered?.length ?? 0) > 0 || filteredContributions.length > 0;
+  const doneLoadingArticles = sorted !== null || Boolean(error);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -134,61 +140,56 @@ export default function Articles() {
           <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
           <Text style={styles.contributeButtonText}>Contribute an article</Text>
         </Pressable>
-        {error ? (
-          <EmptyState text={`Couldn’t load articles (${error}).`} />
-        ) : sorted === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : (
+
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Search articles" />
+        {tagOptions.length > 2 ? <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} /> : null}
+
+        {error ? <EmptyState text={`Couldn’t load articles (${error}). Community picks still show below.`} /> : null}
+        {sorted === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
+
+        {hasContent ? (
           <>
-            <SearchBar value={query} onChangeText={setQuery} placeholder="Search articles" />
-            {tagOptions.length > 2 ? (
-              <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} />
-            ) : null}
-            {nothingToShow ? (
-              <EmptyState text="No articles match that search." />
-            ) : (
-              <>
-                {filtered?.map((article) => (
-                  <ListRow
-                    key={article.url}
-                    title={article.title}
-                    subtitle={resourceSubtitle(article)}
-                    icon="document-text-outline"
-                    favorited={favoriteUrls.has(article.url)}
-                    onToggleFavorite={() => toggleFavorite(article)}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/article/[id]',
-                        params: {
-                          id: encodeURIComponent(article.url),
-                          title: article.title,
-                          summary: article.summary,
-                          url: article.url,
-                          matchedTags: article.matchedTags.join(','),
-                        },
-                      })
-                    }
-                  />
-                ))}
-                {filteredContributions.map((c) => (
-                  <ListRow
-                    key={c.id}
-                    title={c.fields.title ?? 'Community pick'}
-                    icon="document-text-outline"
-                    community
-                    contributedBy={c.contributedByName}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/contribution/[id]',
-                        params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
-                      })
-                    }
-                  />
-                ))}
-              </>
-            )}
+            {filtered?.map((article) => (
+              <ListRow
+                key={article.url}
+                title={article.title}
+                subtitle={resourceSubtitle(article)}
+                icon="document-text-outline"
+                favorited={favoriteUrls.has(article.url)}
+                onToggleFavorite={() => toggleFavorite(article)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/article/[id]',
+                    params: {
+                      id: encodeURIComponent(article.url),
+                      title: article.title,
+                      summary: article.summary,
+                      url: article.url,
+                      matchedTags: article.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
+            {filteredContributions.map((c) => (
+              <ListRow
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="document-text-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'article', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
           </>
-        )}
+        ) : doneLoadingArticles ? (
+          <EmptyState text="No articles match that search." />
+        ) : null}
       </ScrollView>
 
       <ContributeModal
@@ -210,6 +211,9 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  spinner: {
+    marginVertical: 12,
   },
   contributeButton: {
     flexDirection: 'row',

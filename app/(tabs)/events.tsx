@@ -114,8 +114,13 @@ export default function Events() {
     setContributions(result);
   };
 
-  const nothingToShow =
-    events !== null && filteredEvents?.length === 0 && filteredContributions.length === 0 && !proposal;
+  // Community contributions are fetched and rendered independently of the
+  // real (TACA-sourced) events feed, and must stay that way — they used to
+  // live inside the same branch as the events error/loading state, so a
+  // contributor's own just-submitted event would silently vanish behind
+  // "Couldn't load events" whenever that unrelated feed had trouble.
+  const hasContent = Boolean(proposal) || (filteredEvents?.length ?? 0) > 0 || filteredContributions.length > 0;
+  const doneLoadingEvents = events !== null || Boolean(error);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -130,87 +135,78 @@ export default function Events() {
           <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
           <Text style={styles.contributeButtonText}>Contribute an event</Text>
         </Pressable>
-        {error ? (
-          <EmptyState text={`Couldn’t load events (${error}).`} />
-        ) : events === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : (
-          <>
-            {events.length > 0 ? (
-              <>
-                <SearchBar value={query} onChangeText={setQuery} placeholder="Search events" />
-                {filterOptions.length > 3 ? (
-                  <FilterChips options={filterOptions} selected={filter} onSelect={setFilter} />
-                ) : null}
-              </>
+
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Search events" />
+        {filterOptions.length > 3 ? <FilterChips options={filterOptions} selected={filter} onSelect={setFilter} /> : null}
+
+        {error ? <EmptyState text={`Couldn’t load nearby events (${error}). Community-submitted ones still show below.`} /> : null}
+        {events === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
+
+        {hasContent ? (
+          <View style={styles.grid}>
+            {proposal ? (
+              <SquareCard
+                key={`proposal-${proposal.id}`}
+                title={proposal.dateLabel}
+                subtitle={proposal.venue}
+                icon="calendar"
+                pairImages={
+                  proposalFamilyPhotos
+                    ? [
+                        proposalFamilyPhotos[0] ? { uri: proposalFamilyPhotos[0] } : undefined,
+                        proposalFamilyPhotos[1] ? { uri: proposalFamilyPhotos[1] } : undefined,
+                      ]
+                    : undefined
+                }
+                badge="Proposed"
+                onPress={() => router.push(`/proposal/${proposal.id}`)}
+              />
             ) : null}
-            {nothingToShow ? (
-              <EmptyState text="No events match that search." />
-            ) : (
-              <View style={styles.grid}>
-                {proposal ? (
-                  <SquareCard
-                    key={`proposal-${proposal.id}`}
-                    title={proposal.dateLabel}
-                    subtitle={proposal.venue}
-                    icon="calendar"
-                    pairImages={
-                      proposalFamilyPhotos
-                        ? [
-                            proposalFamilyPhotos[0] ? { uri: proposalFamilyPhotos[0] } : undefined,
-                            proposalFamilyPhotos[1] ? { uri: proposalFamilyPhotos[1] } : undefined,
-                          ]
-                        : undefined
-                    }
-                    badge="Proposed"
-                    onPress={() => router.push(`/proposal/${proposal.id}`)}
-                  />
-                ) : null}
-                {filteredEvents?.map((event) => (
-                  <SquareCard
-                    key={event.id}
-                    title={event.title}
-                    subtitle={eventSubtitle(event)}
-                    image={event.imageUrl ? { uri: event.imageUrl } : undefined}
-                    icon={event.imageUrl ? undefined : 'calendar-outline'}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/event/[id]',
-                        params: {
-                          id: String(event.id),
-                          title: event.title,
-                          eventDate: event.eventDate,
-                          venue: event.venue,
-                          address: event.address,
-                          imageUrl: event.imageUrl ?? '',
-                          link: event.link,
-                          categories: event.categories.join(','),
-                          distanceMiles: event.distanceMiles != null ? String(event.distanceMiles) : '',
-                          virtual: String(event.virtual),
-                        },
-                      })
-                    }
-                  />
-                ))}
-                {filteredContributions.map((c) => (
-                  <SquareCard
-                    key={c.id}
-                    title={c.fields.title ?? 'Community event'}
-                    icon="calendar-outline"
-                    community
-                    contributedBy={c.contributedByName}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/contribution/[id]',
-                        params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
-                      })
-                    }
-                  />
-                ))}
-              </View>
-            )}
-          </>
-        )}
+            {filteredEvents?.map((event) => (
+              <SquareCard
+                key={event.id}
+                title={event.title}
+                subtitle={eventSubtitle(event)}
+                image={event.imageUrl ? { uri: event.imageUrl } : undefined}
+                icon={event.imageUrl ? undefined : 'calendar-outline'}
+                onPress={() =>
+                  router.push({
+                    pathname: '/event/[id]',
+                    params: {
+                      id: String(event.id),
+                      title: event.title,
+                      eventDate: event.eventDate,
+                      venue: event.venue,
+                      address: event.address,
+                      imageUrl: event.imageUrl ?? '',
+                      link: event.link,
+                      categories: event.categories.join(','),
+                      distanceMiles: event.distanceMiles != null ? String(event.distanceMiles) : '',
+                      virtual: String(event.virtual),
+                    },
+                  })
+                }
+              />
+            ))}
+            {filteredContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community event'}
+                icon="calendar-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'event', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
+          </View>
+        ) : doneLoadingEvents ? (
+          <EmptyState text="No events match that search." />
+        ) : null}
       </ScrollView>
 
       <ContributeModal
@@ -237,6 +233,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  spinner: {
+    marginVertical: 12,
   },
   contributeButton: {
     flexDirection: 'row',

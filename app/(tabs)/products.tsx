@@ -124,7 +124,13 @@ export default function Products() {
     setContributions(result);
   };
 
-  const nothingToShow = sorted !== null && filtered?.length === 0 && filteredContributions.length === 0;
+  // Community contributions must render regardless of the recommended-
+  // products fetch's own state — this used to live inside that fetch's
+  // error/loading branch, so a contributor's own just-submitted product
+  // would silently vanish behind "Couldn't load products" whenever that
+  // unrelated feed had trouble.
+  const hasContent = (filtered?.length ?? 0) > 0 || filteredContributions.length > 0;
+  const doneLoadingProducts = sorted !== null || Boolean(error);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -139,64 +145,59 @@ export default function Products() {
           <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
           <Text style={styles.contributeButtonText}>Contribute a product</Text>
         </Pressable>
-        {error ? (
-          <EmptyState text={`Couldn’t load products (${error}).`} />
-        ) : sorted === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : (
-          <>
-            <SearchBar value={query} onChangeText={setQuery} placeholder="Search products" />
-            {tagOptions.length > 2 ? (
-              <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} />
-            ) : null}
-            {nothingToShow ? (
-              <EmptyState text="No products match that search." />
-            ) : (
-              <View style={styles.grid}>
-                {filtered?.map((product) => (
-                  <SquareCard
-                    key={product.url}
-                    title={product.title}
-                    subtitle={productSubtitle(product)}
-                    image={product.imageUrl ? { uri: product.imageUrl } : undefined}
-                    favorited={favoriteUrls.has(product.url)}
-                    onToggleFavorite={() => toggleFavorite(product)}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/product/[id]',
-                        params: {
-                          id: encodeURIComponent(product.url),
-                          title: product.title,
-                          vendor: product.vendor,
-                          source: product.source,
-                          imageUrl: product.imageUrl ?? '',
-                          url: product.url,
-                          description: product.description,
-                          matchedTags: product.matchedTags.join(','),
-                        },
-                      })
-                    }
-                  />
-                ))}
-                {filteredContributions.map((c) => (
-                  <SquareCard
-                    key={c.id}
-                    title={c.fields.title ?? 'Community pick'}
-                    icon="bag-outline"
-                    community
-                    contributedBy={c.contributedByName}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/contribution/[id]',
-                        params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
-                      })
-                    }
-                  />
-                ))}
-              </View>
-            )}
-          </>
-        )}
+
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Search products" />
+        {tagOptions.length > 2 ? <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} /> : null}
+
+        {error ? <EmptyState text={`Couldn’t load recommended products (${error}). Community picks still show below.`} /> : null}
+        {sorted === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
+
+        {hasContent ? (
+          <View style={styles.grid}>
+            {filtered?.map((product) => (
+              <SquareCard
+                key={product.url}
+                title={product.title}
+                subtitle={productSubtitle(product)}
+                image={product.imageUrl ? { uri: product.imageUrl } : undefined}
+                favorited={favoriteUrls.has(product.url)}
+                onToggleFavorite={() => toggleFavorite(product)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/product/[id]',
+                    params: {
+                      id: encodeURIComponent(product.url),
+                      title: product.title,
+                      vendor: product.vendor,
+                      source: product.source,
+                      imageUrl: product.imageUrl ?? '',
+                      url: product.url,
+                      description: product.description,
+                      matchedTags: product.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
+            {filteredContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="bag-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'product', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
+          </View>
+        ) : doneLoadingProducts ? (
+          <EmptyState text="No products match that search." />
+        ) : null}
       </ScrollView>
 
       <ContributeModal
@@ -223,6 +224,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  spinner: {
+    marginVertical: 12,
   },
   contributeButton: {
     flexDirection: 'row',

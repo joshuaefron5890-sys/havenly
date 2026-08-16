@@ -119,7 +119,13 @@ export default function Podcasts() {
     setContributions(result);
   };
 
-  const nothingToShow = sorted !== null && filtered?.length === 0 && filteredContributions.length === 0;
+  // Community contributions must render regardless of the podcast-
+  // suggestions fetch's own state — this used to live inside that fetch's
+  // error/loading branch, so a contributor's own just-submitted podcast
+  // would silently vanish behind "Couldn't load podcasts" whenever that
+  // unrelated feed had trouble.
+  const hasContent = (filtered?.length ?? 0) > 0 || filteredContributions.length > 0;
+  const doneLoadingPodcasts = sorted !== null || Boolean(error);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -134,65 +140,60 @@ export default function Podcasts() {
           <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
           <Text style={styles.contributeButtonText}>Contribute a podcast</Text>
         </Pressable>
-        {error ? (
-          <EmptyState text={`Couldn’t load podcasts (${error}).`} />
-        ) : sorted === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : (
-          <>
-            <SearchBar value={query} onChangeText={setQuery} placeholder="Search podcasts" />
-            {tagOptions.length > 2 ? (
-              <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} />
-            ) : null}
-            {nothingToShow ? (
-              <EmptyState text="No podcasts match that search." />
-            ) : (
-              <View style={styles.grid}>
-                {filtered?.map((podcast) => (
-                  <SquareCard
-                    key={podcast.id}
-                    title={podcast.title || 'Untitled podcast'}
-                    subtitle={podcastSubtitle(podcast)}
-                    image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
-                    favorited={favoriteIds.has(podcast.id)}
-                    onToggleFavorite={() => toggleFavorite(podcast)}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/podcast/[id]',
-                        params: {
-                          id: podcast.id,
-                          title: podcast.title,
-                          artist: podcast.artist,
-                          artworkUrl: podcast.artworkUrl ?? '',
-                          viewUrl: podcast.viewUrl ?? '',
-                          feedUrl: podcast.feedUrl ?? '',
-                          trackCount: podcast.trackCount != null ? String(podcast.trackCount) : '',
-                          genres: podcast.genres.join(','),
-                          matchedTags: podcast.matchedTags.join(','),
-                        },
-                      })
-                    }
-                  />
-                ))}
-                {filteredContributions.map((c) => (
-                  <SquareCard
-                    key={c.id}
-                    title={c.fields.title ?? 'Community pick'}
-                    icon="mic-outline"
-                    community
-                    contributedBy={c.contributedByName}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/contribution/[id]',
-                        params: { id: c.id, type: 'podcast', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
-                      })
-                    }
-                  />
-                ))}
-              </View>
-            )}
-          </>
-        )}
+
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Search podcasts" />
+        {tagOptions.length > 2 ? <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} /> : null}
+
+        {error ? <EmptyState text={`Couldn’t load podcast suggestions (${error}). Community picks still show below.`} /> : null}
+        {sorted === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
+
+        {hasContent ? (
+          <View style={styles.grid}>
+            {filtered?.map((podcast) => (
+              <SquareCard
+                key={podcast.id}
+                title={podcast.title || 'Untitled podcast'}
+                subtitle={podcastSubtitle(podcast)}
+                image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
+                favorited={favoriteIds.has(podcast.id)}
+                onToggleFavorite={() => toggleFavorite(podcast)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/podcast/[id]',
+                    params: {
+                      id: podcast.id,
+                      title: podcast.title,
+                      artist: podcast.artist,
+                      artworkUrl: podcast.artworkUrl ?? '',
+                      viewUrl: podcast.viewUrl ?? '',
+                      feedUrl: podcast.feedUrl ?? '',
+                      trackCount: podcast.trackCount != null ? String(podcast.trackCount) : '',
+                      genres: podcast.genres.join(','),
+                      matchedTags: podcast.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
+            {filteredContributions.map((c) => (
+              <SquareCard
+                key={c.id}
+                title={c.fields.title ?? 'Community pick'}
+                icon="mic-outline"
+                community
+                contributedBy={c.contributedByName}
+                onPress={() =>
+                  router.push({
+                    pathname: '/contribution/[id]',
+                    params: { id: c.id, type: 'podcast', fieldsJson: JSON.stringify(c.fields), contributedByName: c.contributedByName },
+                  })
+                }
+              />
+            ))}
+          </View>
+        ) : doneLoadingPodcasts ? (
+          <EmptyState text="No podcasts match that search." />
+        ) : null}
       </ScrollView>
 
       <ContributeModal
@@ -219,6 +220,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  spinner: {
+    marginVertical: 12,
   },
   contributeButton: {
     flexDirection: 'row',

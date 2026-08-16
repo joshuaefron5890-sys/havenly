@@ -41,7 +41,11 @@ export function ListRow({
       )}
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        {subtitle ? (
+          <Text style={styles.subtitle} numberOfLines={3}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
       {onToggleFavorite ? (
         <Pressable hitSlop={8} onPress={onToggleFavorite} style={styles.heart}>

@@ -870,44 +870,46 @@ exports.getRecommendedProducts = onCall(async (request) => {
 // was written in to check directly. Unauthenticated, meant to be opened
 // directly in a browser once — safe to delete once answered.
 exports.probeTacaEvents = onRequest(async (req, res) => {
-  const candidates = [
-    // "The Events Calendar" plugin — already ruled out (404), kept for
-    // completeness in this pass.
-    'https://tacanow.org/wp-json/tribe/events/v1/events?per_page=3',
-    'https://tacanow.org/wp-json/wp/v2/tribe_events?per_page=3',
-    // Modern Events Calendar
-    'https://tacanow.org/wp-json/mec/v1/events?per_page=3',
-    // Events Manager
-    'https://tacanow.org/wp-json/em/v1/events?per_page=3',
-    // A plain custom post type named "event"/"events", in case it's a
-    // hand-rolled or less common plugin
-    'https://tacanow.org/wp-json/wp/v2/event?per_page=3',
-    'https://tacanow.org/wp-json/wp/v2/events?per_page=3',
-  ];
-  const results = await Promise.all(
-    candidates.map(async (url) => {
-      try {
-        const response = await fetch(url);
-        const text = await response.text();
-        return { url, status: response.status, body: text.slice(0, 1500) };
-      } catch (err) {
-        return { url, error: String(err?.message ?? err) };
-      }
-    })
-  );
+  // The "event" custom post type is confirmed live — checking now whether
+  // location is a structured field (meta/acf/taxonomy) or just baked into
+  // the title's free text, and how many events + what date spread exist.
+  const out = {};
 
-  // Separately: the full list of registered post types, but just the
-  // names (the earlier pass showed this endpoint works, but the raw body
-  // is mostly Yoast SEO meta noise ahead of the useful part).
-  let postTypeNames = null;
   try {
-    const response = await fetch('https://tacanow.org/wp-json/wp/v2/types');
-    const data = await response.json();
-    postTypeNames = Object.keys(data ?? {});
+    const response = await fetch('https://tacanow.org/wp-json/wp/v2/event?per_page=1&_fields=');
+    const totalHeader = response.headers.get('x-wp-total');
+    const totalPagesHeader = response.headers.get('x-wp-totalpages');
+    const oneEvent = await response.json();
+    out.total = totalHeader;
+    out.totalPages = totalPagesHeader;
+    // Every top-level key on a single record — reveals whether there's a
+    // meta/acf/taxonomy field beyond the standard WP fields.
+    out.singleEventKeys = Array.isArray(oneEvent) && oneEvent[0] ? Object.keys(oneEvent[0]) : oneEvent;
   } catch (err) {
-    postTypeNames = { error: String(err?.message ?? err) };
+    out.singleEventError = String(err?.message ?? err);
+  }
+
+  try {
+    const response = await fetch('https://tacanow.org/wp-json/wp/v2/event?per_page=1');
+    const data = await response.json();
+    // The full record for one event, meta/acf included if present —
+    // separate from the keys-only pass above so this one isn't truncated
+    // by a shallow key list hiding nested structure.
+    out.fullSingleEvent = data;
+  } catch (err) {
+    out.fullSingleEventError = String(err?.message ?? err);
+  }
+
+  try {
+    const response = await fetch(
+      'https://tacanow.org/wp-json/wp/v2/event?per_page=30&orderby=date&order=asc&_fields=id,title,link,date'
+    );
+    const data = await response.json();
+    out.upcomingTitles = Array.isArray(data) ? data.map((e) => ({ title: e.title?.rendered, date: e.date, link: e.link })) : data;
+  } catch (err) {
+    out.upcomingTitlesError = String(err?.message ?? err);
   }
 
   res.set('Content-Type', 'application/json');
-  res.status(200).send(JSON.stringify({ postTypeNames, results }, null, 2));
+  res.status(200).send(JSON.stringify(out, null, 2));
 });

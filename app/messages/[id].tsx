@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,7 +17,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { familyDisplayName, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { markConversationRead, Message, sendMessage, subscribeToMessages } from '../../lib/messages';
+import { PlaydateProposal, respondToProposal, subscribeToMyProposals } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
+
+const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
+  proposed: 'Waiting for a response',
+  accepted: 'Accepted',
+  declined: 'Declined',
+};
 
 export default function MessageThread() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,6 +33,8 @@ export default function MessageThread() {
   const [family, setFamily] = useState<SuggestedFamily | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [proposals, setProposals] = useState<PlaydateProposal[]>([]);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   // The conversation id is a deterministic sorted "uidA_uidB" pair (see
@@ -35,6 +45,17 @@ export default function MessageThread() {
   useEffect(() => {
     if (!id) return;
     const unsubscribe = subscribeToMessages(id, setMessages);
+    return unsubscribe;
+  }, [id]);
+
+  // Live proposal statuses for this conversation, matched to messages by
+  // date (see PlaydateProposalDetails.date, embedded in the message at
+  // creation) — lets a proposal bubble react instantly when the other side
+  // accepts/declines, without duplicating status onto the message doc.
+  useEffect(() => {
+    const unsubscribe = subscribeToMyProposals((all) => {
+      setProposals(all.filter((p) => p.conversationId === id));
+    });
     return unsubscribe;
   }, [id]);
 
@@ -57,6 +78,23 @@ export default function MessageThread() {
       cancelled = true;
     };
   }, [otherUid]);
+
+  const respond = async (proposalId: string, status: 'accepted' | 'declined') => {
+    if (respondingId) return;
+    setRespondingId(proposalId);
+    try {
+      await respondToProposal(proposalId, status);
+    } catch {
+      Alert.alert('Couldn’t save your response', 'Please try again.');
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
+  const proposeNewTime = () => {
+    if (!otherUid) return;
+    router.push(`/propose-playdate?familyId=${otherUid}`);
+  };
 
   const handleSend = async () => {
     if (!id || !draft.trim() || sending) return;
@@ -95,6 +133,8 @@ export default function MessageThread() {
             messages.map((message) => {
               const mine = message.senderUid === user?.uid;
               if (message.type === 'playdate_proposal' && message.proposal) {
+                const liveProposal = proposals.find((p) => p.date === message.proposal?.date);
+                const canRespond = !mine && liveProposal?.status === 'proposed';
                 return (
                   <View key={message.id} style={styles.proposalCard}>
                     <View style={styles.proposalHeader}>
@@ -106,6 +146,31 @@ export default function MessageThread() {
                     <Text style={styles.proposalDate}>{message.proposal.dateLabel}</Text>
                     <Text style={styles.proposalVenue}>{message.proposal.venue}</Text>
                     {message.text ? <Text style={styles.proposalNote}>{message.text}</Text> : null}
+                    {liveProposal ? (
+                      canRespond ? (
+                        <View style={styles.proposalActions}>
+                          <Pressable
+                            style={[styles.proposalDeclineButton, respondingId === liveProposal.id && styles.proposalActionDisabled]}
+                            onPress={() => respond(liveProposal.id, 'declined')}
+                            disabled={respondingId === liveProposal.id}
+                          >
+                            <Text style={styles.proposalDeclineText}>Decline</Text>
+                          </Pressable>
+                          <Pressable
+                            style={[styles.proposalAcceptButton, respondingId === liveProposal.id && styles.proposalActionDisabled]}
+                            onPress={() => respond(liveProposal.id, 'accepted')}
+                            disabled={respondingId === liveProposal.id}
+                          >
+                            <Text style={styles.proposalAcceptText}>Accept</Text>
+                          </Pressable>
+                          <Pressable style={styles.proposalNewTimeButton} onPress={proposeNewTime}>
+                            <Text style={styles.proposalNewTimeText}>New time</Text>
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <Text style={styles.proposalStatus}>{STATUS_LABEL[liveProposal.status]}</Text>
+                      )
+                    ) : null}
                   </View>
                 );
               }
@@ -241,6 +306,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     marginTop: 6,
+  },
+  proposalStatus: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    marginTop: 8,
+  },
+  proposalActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  proposalActionDisabled: {
+    opacity: 0.6,
+  },
+  proposalAcceptButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  proposalAcceptText: {
+    color: colors.surface,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  proposalDeclineButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  proposalDeclineText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  proposalNewTimeButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  proposalNewTimeText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
   },
   inputRow: {
     flexDirection: 'row',

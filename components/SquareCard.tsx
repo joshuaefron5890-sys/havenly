@@ -70,7 +70,7 @@ export function SquareCard({
   );
 }
 
-const CARD_WIDTH = 76;
+export const CARD_WIDTH = 76;
 
 const styles = StyleSheet.create({
   card: {

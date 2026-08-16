@@ -6,7 +6,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
-import { SquareCard } from '../../components/SquareCard';
+import { CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import { fetchLatestProposal, PlaydateProposal } from '../../lib/playdateProposals';
@@ -44,6 +44,16 @@ const PAGE_SIZE = 6;
 // better anyway. A row list is denser than a 3-wide grid, so it gets its
 // own, smaller cap.
 const ARTICLE_PAGE_SIZE = 3;
+const GRID_GAP = 10;
+
+// Every square-card grid collapses to exactly one row by default — how
+// many cards that is depends on the actual measured width of the grid
+// (varies by device/window), so it's computed from a live layout
+// measurement rather than a fixed guess.
+function cardsPerRow(gridWidth: number | null): number {
+  if (!gridWidth) return 4;
+  return Math.max(1, Math.floor((gridWidth + GRID_GAP) / (CARD_WIDTH + GRID_GAP)));
+}
 
 // Only offers the toggle once there's actually more than pageSize to show
 // — no "View all" on a list that's already fully visible.
@@ -75,6 +85,13 @@ function mergeFamilies(favorited: SuggestedFamily[], suggested: SuggestedFamily[
 
 export default function ForYou() {
   const { user } = useAuth();
+
+  // Measured once from a zero-height spacer at the top of the scroll
+  // content — its width equals the grids' own width (both sit inside the
+  // same padded content container), and is what determines how many cards
+  // make up "one row" below.
+  const [gridWidth, setGridWidth] = useState<number | null>(null);
+  const perRow = cardsPerRow(gridWidth);
 
   // Families
   const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
@@ -359,9 +376,11 @@ export default function ForYou() {
       <ScreenHeader eyebrow="Haven.ly" title={firstName ? `For you, ${firstName}.` : 'For you.'} />
 
       <ScrollView contentContainerStyle={styles.content}>
+        <View onLayout={(e) => setGridWidth((prev) => prev ?? e.nativeEvent.layout.width)} />
+
         <SectionHeader
           title="Families like you"
-          {...expandAction(mergedFamilies.length, familiesExpanded, setFamiliesExpanded)}
+          {...expandAction(mergedFamilies.length, familiesExpanded, setFamiliesExpanded, perRow)}
         />
         {familiesError ? (
           <EmptyState text={`Couldn’t load families (${familiesError}).`} />
@@ -371,7 +390,7 @@ export default function ForYou() {
           <EmptyState text="No other families onboarded yet — check back soon." />
         ) : (
           <View style={styles.grid}>
-            {(familiesExpanded ? mergedFamilies : mergedFamilies.slice(0, PAGE_SIZE)).map((family) => {
+            {(familiesExpanded ? mergedFamilies : mergedFamilies.slice(0, perRow)).map((family) => {
               const photoUrl = familyPhoto(family);
               return (
                 <SquareCard
@@ -389,8 +408,64 @@ export default function ForYou() {
         )}
 
         <SectionHeader
+          title="Events"
+          {...expandAction(
+            (events?.length ?? 0) + (proposal ? 1 : 0),
+            eventsExpanded,
+            setEventsExpanded,
+            perRow
+          )}
+        />
+        {eventsError ? (
+          <EmptyState text={`Couldn’t load events (${eventsError}).`} />
+        ) : events === null ? (
+          <ActivityIndicator color={colors.accent} />
+        ) : events.length === 0 && !proposal ? (
+          <EmptyState text="No upcoming events found — check back soon." />
+        ) : (
+          <View style={styles.grid}>
+            {proposal ? (
+              <SquareCard
+                key={`proposal-${proposal.id}`}
+                title={proposal.dateLabel}
+                subtitle={proposal.venue}
+                icon="calendar"
+                badge="Proposed"
+                onPress={() => router.push(`/proposal/${proposal.id}`)}
+              />
+            ) : null}
+            {(eventsExpanded ? events : events.slice(0, Math.max(0, perRow - (proposal ? 1 : 0)))).map((event) => (
+              <SquareCard
+                key={event.id}
+                title={event.title}
+                subtitle={eventSubtitle(event)}
+                image={event.imageUrl ? { uri: event.imageUrl } : undefined}
+                icon={event.imageUrl ? undefined : 'calendar-outline'}
+                onPress={() =>
+                  router.push({
+                    pathname: '/event/[id]',
+                    params: {
+                      id: String(event.id),
+                      title: event.title,
+                      eventDate: event.eventDate,
+                      venue: event.venue,
+                      address: event.address,
+                      imageUrl: event.imageUrl ?? '',
+                      link: event.link,
+                      categories: event.categories.join(','),
+                      distanceMiles: event.distanceMiles != null ? String(event.distanceMiles) : '',
+                      virtual: String(event.virtual),
+                    },
+                  })
+                }
+              />
+            ))}
+          </View>
+        )}
+
+        <SectionHeader
           title="Products"
-          {...expandAction(sortedProducts?.length ?? 0, productsExpanded, setProductsExpanded)}
+          {...expandAction(sortedProducts?.length ?? 0, productsExpanded, setProductsExpanded, perRow)}
         />
         {productsError ? (
           <EmptyState text={`Couldn’t load products (${productsError}).`} />
@@ -400,7 +475,7 @@ export default function ForYou() {
           <EmptyState text="Add your child's neurodivergence info to see product picks." />
         ) : (
           <View style={styles.grid}>
-            {(productsExpanded ? sortedProducts : sortedProducts.slice(0, PAGE_SIZE)).map((product) => (
+            {(productsExpanded ? sortedProducts : sortedProducts.slice(0, perRow)).map((product) => (
               <SquareCard
                 key={product.url}
                 title={product.title}
@@ -430,7 +505,7 @@ export default function ForYou() {
 
         <SectionHeader
           title="Podcasts"
-          {...expandAction(sortedPodcasts?.length ?? 0, podcastsExpanded, setPodcastsExpanded)}
+          {...expandAction(sortedPodcasts?.length ?? 0, podcastsExpanded, setPodcastsExpanded, perRow)}
         />
         {podcastsError ? (
           <EmptyState text={`Couldn’t load podcasts (${podcastsError}).`} />
@@ -440,7 +515,7 @@ export default function ForYou() {
           <EmptyState text="Add your child's neurodivergence info to see podcast suggestions." />
         ) : (
           <View style={styles.grid}>
-            {(podcastsExpanded ? sortedPodcasts : sortedPodcasts.slice(0, PAGE_SIZE)).map((podcast) => (
+            {(podcastsExpanded ? sortedPodcasts : sortedPodcasts.slice(0, perRow)).map((podcast) => (
               <SquareCard
                 key={podcast.id}
                 title={podcast.title || 'Untitled podcast'}
@@ -502,57 +577,6 @@ export default function ForYou() {
               }
             />
           ))
-        )}
-
-        <SectionHeader
-          title="Events"
-          {...expandAction(events?.length ?? 0, eventsExpanded, setEventsExpanded)}
-        />
-        {eventsError ? (
-          <EmptyState text={`Couldn’t load events (${eventsError}).`} />
-        ) : events === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : events.length === 0 && !proposal ? (
-          <EmptyState text="No upcoming events found — check back soon." />
-        ) : (
-          <View style={styles.grid}>
-            {proposal ? (
-              <SquareCard
-                key={`proposal-${proposal.id}`}
-                title={proposal.dateLabel}
-                subtitle={proposal.venue}
-                icon="calendar"
-                badge="Proposed"
-                onPress={() => router.push(`/messages/${proposal.conversationId}`)}
-              />
-            ) : null}
-            {(eventsExpanded ? events : events.slice(0, PAGE_SIZE)).map((event) => (
-              <SquareCard
-                key={event.id}
-                title={event.title}
-                subtitle={eventSubtitle(event)}
-                image={event.imageUrl ? { uri: event.imageUrl } : undefined}
-                icon={event.imageUrl ? undefined : 'calendar-outline'}
-                onPress={() =>
-                  router.push({
-                    pathname: '/event/[id]',
-                    params: {
-                      id: String(event.id),
-                      title: event.title,
-                      eventDate: event.eventDate,
-                      venue: event.venue,
-                      address: event.address,
-                      imageUrl: event.imageUrl ?? '',
-                      link: event.link,
-                      categories: event.categories.join(','),
-                      distanceMiles: event.distanceMiles != null ? String(event.distanceMiles) : '',
-                      virtual: String(event.virtual),
-                    },
-                  })
-                }
-              />
-            ))}
-          </View>
         )}
       </ScrollView>
     </SafeAreaView>

@@ -516,14 +516,16 @@ exports.getPodcastSuggestions = onCall(async (request) => {
       )
     ),
   ];
-  if (!neurodivergence.length) {
-    return { podcasts: [] };
-  }
+  // A family with no neurodivergence tags on file yet (skipped that
+  // onboarding step, or only picked "Still figuring it out"/"Prefer not to
+  // say") would otherwise see a permanently empty section — fall back to a
+  // broadly-relevant search instead of nothing.
+  const searchTags = neurodivergence.length ? neurodivergence : ['neurodivergent kids'];
 
   // One search per tag, "parenting" appended to bias toward family-relevant
   // results instead of purely clinical/adult content.
   const resultsPerTag = await Promise.all(
-    neurodivergence.map(async (tag) => {
+    searchTags.map(async (tag) => {
       const term = encodeURIComponent(`${tag} parenting`);
       try {
         const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=podcast&limit=10`);
@@ -698,12 +700,12 @@ exports.getHealthResources = onCall(async (request) => {
       )
     ),
   ];
-  if (!neurodivergence.length) {
-    return { resources: [] };
-  }
+  // Same fallback reasoning as getPodcastSuggestions above — no tags on
+  // file shouldn't mean a permanently empty section.
+  const searchTags = neurodivergence.length ? neurodivergence : ['neurodevelopmental disorders'];
 
   const resultsPerTag = await Promise.all(
-    neurodivergence.map(async (tag) => {
+    searchTags.map(async (tag) => {
       try {
         const res = await fetch(
           `https://wsearch.nlm.nih.gov/ws/query?db=healthTopics&term=${encodeURIComponent(tag)}&retmax=5`
@@ -796,12 +798,13 @@ exports.getRecommendedProducts = onCall(async (request) => {
       )
     ),
   ];
-  const searches = neurodivergence
+  // Same fallback reasoning as getPodcastSuggestions above — no tags on
+  // file (or only unmapped ones like "Prefer not to say") shouldn't mean a
+  // permanently empty section.
+  const mappedSearches = neurodivergence
     .map((tag) => ({ tag, term: tag in PRODUCT_SEARCH_TERMS ? PRODUCT_SEARCH_TERMS[tag] : tag }))
     .filter((s) => s.term);
-  if (!searches.length) {
-    return { products: [] };
-  }
+  const searches = mappedSearches.length ? mappedSearches : [{ tag: 'General', term: 'sensory' }];
 
   const resultsPerSearch = await Promise.all(
     PRODUCT_SOURCES.flatMap((source) =>
@@ -956,10 +959,11 @@ exports.getNearbyEvents = onCall(async (request) => {
   // Sorted by most-recently-modified rather than paging through all ~100+
   // historical entries — TACA republishes their recurring meetups close to
   // the date, so the actively-maintained (i.e. actually upcoming) events
-  // cluster at the front of this ordering. 3 pages comfortably covers that
-  // without pulling years of stale entries.
+  // cluster at the front of this ordering. 5 pages (150 posts) comfortably
+  // covers that while still leaving room for an upcoming, further-out
+  // event that hasn't been touched recently to show up.
   const pages = await Promise.all(
-    [1, 2, 3].map(async (page) => {
+    [1, 2, 3, 4, 5].map(async (page) => {
       try {
         const res = await fetch(
           `https://tacanow.org/wp-json/wp/v2/event?per_page=30&page=${page}&orderby=modified&order=desc&_embed=wp:featuredmedia`
@@ -1016,8 +1020,14 @@ exports.getNearbyEvents = onCall(async (request) => {
     })
   );
 
+  // distanceMiles is null both for genuinely virtual events AND for an
+  // in-person event whose address failed to geocode (a transient lookup
+  // failure, or a zip the parser mis-extracted) — either way, "we don't
+  // know the distance" should fall back to showing it, same as the
+  // no-zip-on-file case just above, rather than silently dropping an
+  // event that just couldn't be measured.
   const filtered = myLocation
-    ? withDistance.filter((e) => e.virtual || (e.distanceMiles !== null && e.distanceMiles <= EVENT_RADIUS_MILES))
+    ? withDistance.filter((e) => e.distanceMiles === null || e.distanceMiles <= EVENT_RADIUS_MILES)
     : withDistance;
 
   const ranked = filtered.sort((a, b) => {

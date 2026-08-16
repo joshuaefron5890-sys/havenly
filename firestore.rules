@@ -61,8 +61,8 @@ service cloud.firestore {
     // proposal itself lives as a message in the conversation (see
     // lib/messages.ts's sendProposalMessage); this collection exists only
     // so the dashboard can cheaply find "do I have a pending proposal?"
-    // without a collection-group query across every conversation. No
-    // edit/cancel flow yet, so it's create + read only.
+    // without a collection-group query across every conversation, and so
+    // accept/decline status has one place to live.
     match /playdateProposals/{proposalId} {
       allow read: if request.auth != null
         && resource != null
@@ -70,8 +70,27 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.fromUid == request.auth.uid
         && request.auth.uid in request.resource.data.participantUids
-        && request.resource.data.participantUids.size() == 2;
-      allow update, delete: if false;
+        && request.resource.data.participantUids.size() == 2
+        && request.resource.data.status == 'proposed';
+      // Only the recipient can respond, only while still pending, and only
+      // the status field may change — every other field is pinned to its
+      // existing value.
+      allow update: if request.auth != null
+        && resource != null
+        && request.auth.uid == resource.data.toUid
+        && resource.data.status == 'proposed'
+        && request.resource.data.status in ['accepted', 'declined']
+        && request.resource.data.fromUid == resource.data.fromUid
+        && request.resource.data.toUid == resource.data.toUid
+        && request.resource.data.conversationId == resource.data.conversationId
+        && request.resource.data.participantUids == resource.data.participantUids
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.dateLabel == resource.data.dateLabel
+        && request.resource.data.windowLabel == resource.data.windowLabel
+        && request.resource.data.venue == resource.data.venue
+        && request.resource.data.note == resource.data.note
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
     }
   }
 }

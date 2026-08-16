@@ -501,7 +501,7 @@ export default function ForYou() {
     pairImages?: [ImageSourcePropType | undefined, ImageSourcePropType | undefined];
     icon?: 'calendar' | 'document-text-outline';
     badge: string;
-    badgeVariant?: 'accent' | 'positive';
+    badgeVariant?: 'accent' | 'positive' | 'warning';
     matchScore?: number;
     onPress: () => void;
   };
@@ -634,6 +634,7 @@ export default function ForYou() {
           subtitle: familySubtitle(f),
           image: photoUrl ? { uri: photoUrl } : undefined,
           badge: 'Suggested',
+          badgeVariant: 'warning',
           matchScore: f.matchScore,
           onPress: () => router.push(`/family/${f.uid}`),
         };

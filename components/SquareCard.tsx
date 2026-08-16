@@ -41,9 +41,10 @@ export function SquareCard({
   // Ignored when `community` is set, since that has its own fixed look.
   badge?: string;
   // 'positive' (green) for a settled/good-news status like "Confirmed";
+  // 'warning' (yellow) for an algorithmic suggestion like "Suggested";
   // 'accent' (orange, the default) for everything else, e.g. "Proposed"
   // still waiting on a response.
-  badgeVariant?: 'accent' | 'positive';
+  badgeVariant?: 'accent' | 'positive' | 'warning';
   // The standardized "this was added by a family, not curated" marker —
   // same dark icon+label pill everywhere it appears (here, ListRow, and the
   // contribution detail screen) so it always reads the same regardless of
@@ -79,7 +80,13 @@ export function SquareCard({
             </Text>
           </View>
         ) : badge ? (
-          <View style={[styles.badge, badgeVariant === 'positive' && styles.badgePositive]}>
+          <View
+            style={[
+              styles.badge,
+              badgeVariant === 'positive' && styles.badgePositive,
+              badgeVariant === 'warning' && styles.badgeWarning,
+            ]}
+          >
             <Text style={styles.badgeText} numberOfLines={1}>
               {badge}
             </Text>
@@ -208,6 +215,9 @@ const styles = StyleSheet.create({
   },
   badgePositive: {
     backgroundColor: colors.positive,
+  },
+  badgeWarning: {
+    backgroundColor: colors.warning,
   },
   communityBadge: {
     position: 'absolute',

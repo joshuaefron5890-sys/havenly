@@ -800,11 +800,19 @@ exports.getRecommendedProducts = onCall(async (request) => {
   ];
   // Same fallback reasoning as getPodcastSuggestions above — no tags on
   // file (or only unmapped ones like "Prefer not to say") shouldn't mean a
-  // permanently empty section.
+  // permanently empty section. But unlike the podcast/article searches
+  // (broad catalogs), Fun and Function/Harkla are small boutique stores —
+  // even a real, mapped tag can have thin or zero coverage there (e.g.
+  // "reading" for Dyslexia). So a generic "sensory" search always runs
+  // alongside whatever the child's tags produce, not only when there are
+  // no usable tags at all, to keep the section from coming back empty
+  // just because one specific term has nothing in stock.
   const mappedSearches = neurodivergence
     .map((tag) => ({ tag, term: tag in PRODUCT_SEARCH_TERMS ? PRODUCT_SEARCH_TERMS[tag] : tag }))
     .filter((s) => s.term);
-  const searches = mappedSearches.length ? mappedSearches : [{ tag: 'General', term: 'sensory' }];
+  const searches = mappedSearches.some((s) => s.term === 'sensory')
+    ? mappedSearches
+    : [...mappedSearches, { tag: 'General', term: 'sensory' }];
 
   const resultsPerSearch = await Promise.all(
     PRODUCT_SOURCES.flatMap((source) =>

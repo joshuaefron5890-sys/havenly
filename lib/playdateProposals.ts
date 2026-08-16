@@ -26,6 +26,19 @@ export type PlaydateProposal = {
   createdAt: Date | null;
 } & PlaydateProposalDetails;
 
+// dateLabel carries the full "Sat, Aug 22 · 10:00 AM–11:30 AM" range (see
+// formatSlotLabel in app/propose-playdate.tsx) — right for a detail view,
+// too long for a small square-card thumbnail. Re-derived from the raw ISO
+// `date` rather than string-splitting dateLabel, so it stays correct
+// regardless of how the range itself is formatted.
+export function proposalStartLabel(proposal: Pick<PlaydateProposal, 'date' | 'dateLabel'>): string {
+  const start = proposal.date ? new Date(proposal.date) : null;
+  if (!start || Number.isNaN(start.getTime())) return proposal.dateLabel;
+  const dateLabel = start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const time = start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${dateLabel} · ${time}`;
+}
+
 // A lightweight, denormalized record of a proposal — the actual proposal
 // lives as a message in the conversation (see lib/messages.ts's
 // sendProposalMessage, which is what the message center/unread badge

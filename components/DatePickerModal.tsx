@@ -289,11 +289,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   timeInput: {
-    flex: 1,
+    // Fixed, small width instead of flex — a flex item's default min-width
+    // is its own content width, so two of these plus the AM/PM group could
+    // refuse to shrink and overflow the card instead of fitting the row.
+    width: 44,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
     paddingVertical: 10,
+    paddingHorizontal: 0,
     textAlign: 'center',
     fontSize: 15,
     fontWeight: '700',

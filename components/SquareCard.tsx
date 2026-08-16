@@ -68,7 +68,7 @@ export function SquareCard({
         )}
         {community ? (
           <View style={styles.communityBadge}>
-            <Ionicons name="people" size={9} color={colors.info} />
+            <Ionicons name="people" size={9} color={colors.community} />
             <Text style={styles.communityBadgeText} numberOfLines={1}>
               Community
             </Text>
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     // Community-contributed items get a blue thumbnail instead of black,
     // so the card itself signals "community" at a glance, not just the
     // small corner badge.
-    backgroundColor: colors.info,
+    backgroundColor: colors.community,
   },
   pairThumbnail: {
     overflow: 'visible',
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   communityBadgeText: {
     fontSize: 8,
     fontWeight: '700',
-    color: colors.info,
+    color: colors.community,
     textTransform: 'uppercase',
   },
   contributorRow: {

@@ -51,7 +51,7 @@ export function ListRow({
         <Text style={styles.title}>{title}</Text>
         {community ? (
           <View style={styles.communityBadge}>
-            <Ionicons name="people" size={10} color={colors.info} />
+            <Ionicons name="people" size={10} color={colors.community} />
             <Text style={styles.communityBadgeText} numberOfLines={1}>
               Community{contributedBy ? ` · ${contributedBy}` : ''}
             </Text>
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   communityIconThumbnail: {
     // Community-contributed items get a blue thumbnail instead of black,
     // matching SquareCard's same treatment.
-    backgroundColor: colors.info,
+    backgroundColor: colors.community,
   },
   heart: {
     padding: 2,
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     // Soft muted blue rather than a solid dark pill — same treatment as
     // the "Accepted" badge above, since this sits on a plain card surface
     // rather than over a photo.
-    backgroundColor: colors.infoMuted,
+    backgroundColor: colors.communityMuted,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   communityBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.info,
+    color: colors.community,
   },
   title: {
     fontSize: 15,

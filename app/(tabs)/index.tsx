@@ -16,6 +16,7 @@ import {
   fetchLatestProposal,
   fetchPendingProposals,
   PlaydateProposal,
+  proposalStartLabel,
 } from '../../lib/playdateProposals';
 import {
   addFavoriteFamily,
@@ -509,7 +510,7 @@ export default function ForYou() {
       const photos = confirmedProposalPhotos[p.id];
       return {
         key: `confirmed-${p.id}`,
-        title: p.dateLabel,
+        title: proposalStartLabel(p),
         subtitle: p.venue,
         pairImages: photos
           ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
@@ -525,7 +526,7 @@ export default function ForYou() {
       const photos = pendingProposalPhotos[p.id];
       return {
         key: `proposed-${p.id}`,
-        title: p.dateLabel,
+        title: proposalStartLabel(p),
         subtitle: p.venue,
         pairImages: photos
           ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
@@ -768,7 +769,7 @@ export default function ForYou() {
             {proposal ? (
               <SquareCard
                 key={`proposal-${proposal.id}`}
-                title={proposal.dateLabel}
+                title={proposalStartLabel(proposal)}
                 subtitle={proposal.venue}
                 icon="calendar"
                 pairImages={

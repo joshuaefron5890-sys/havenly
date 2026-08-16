@@ -15,7 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import { familyPhoto, fetchFamiliesByUids } from '../../lib/families';
-import { fetchLatestProposal, PlaydateProposal } from '../../lib/playdateProposals';
+import { fetchLatestProposal, PlaydateProposal, proposalStartLabel } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -147,7 +147,7 @@ export default function Events() {
             {proposal ? (
               <SquareCard
                 key={`proposal-${proposal.id}`}
-                title={proposal.dateLabel}
+                title={proposalStartLabel(proposal)}
                 subtitle={proposal.venue}
                 icon="calendar"
                 pairImages={

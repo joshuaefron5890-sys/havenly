@@ -134,7 +134,11 @@ export default function MessageThread() {
               const mine = message.senderUid === user?.uid;
               if (message.type === 'playdate_proposal' && message.proposal) {
                 const liveProposal = proposals.find((p) => p.date === message.proposal?.date);
-                const canRespond = !mine && liveProposal?.status === 'proposed';
+                // Gated on the proposal's actual recipient, not just "not
+                // the sender of this message" — the two happen to coincide
+                // in a normal 1:1 thread, but pinning to toUid directly is
+                // unambiguous and matches app/proposal/[id].tsx's own check.
+                const canRespond = user?.uid === liveProposal?.toUid && liveProposal?.status === 'proposed';
                 return (
                   <View key={message.id} style={styles.proposalCard}>
                     <View style={styles.proposalHeader}>

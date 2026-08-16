@@ -316,6 +316,16 @@ function ageClosenessBonus(myChildren, theirChildren) {
   return 1;
 }
 
+// A same-city match is a real compatibility signal here, not just trivia —
+// it's what actually makes an in-person playdate feasible. Zip-radius
+// distance (rather than exact city match) would be a finer signal, but
+// that needs lat/long math this doesn't have yet; city+state is what's
+// available today.
+function locationBonus(me, target) {
+  if (!me.city || !target.city) return 0;
+  return me.city === target.city && me.state === target.state ? 8 : 0;
+}
+
 // Weighted, capped point system — deliberately not "% of everything that
 // overlaps," which would treat a shared taste in Pokémon the same as
 // shared neurodivergent experience. Heaviest weight goes to the two
@@ -341,7 +351,8 @@ function computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, s
     ageClosenessBonus(me.children, target.children) +
     Math.min(sharedInterests.length, 5) * 3 +
     Math.min(sharedSoundsGoodTo.length, 4) * 3 +
-    Math.min(sharedAvailability.length, 4) * 1.5;
+    Math.min(sharedAvailability.length, 4) * 1.5 +
+    locationBonus(me, target);
 
   return Math.round(Math.max(50, Math.min(97, 50 + points)));
 }
@@ -351,13 +362,17 @@ function computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, s
 // which fields of a user doc are actually safe to show someone else. User
 // docs also hold things that must never reach another user's device (a
 // Google Calendar refresh token, an Apple app-specific password), so this
-// hand-picks rather than passing the doc through.
+// hand-picks rather than passing the doc through. Note zipCode itself is
+// deliberately NOT included — city/state is what's shown publicly (see
+// contexts/OnboardingContext.tsx), the exact zip stays private.
 function toPublicFamily(uid, data) {
   return {
     uid,
     firstName: typeof data.firstName === 'string' ? data.firstName : '',
     lastName: typeof data.lastName === 'string' ? data.lastName : '',
     familyPhotoUrl: typeof data.familyPhotoUrl === 'string' ? data.familyPhotoUrl : null,
+    city: typeof data.city === 'string' ? data.city : '',
+    state: typeof data.state === 'string' ? data.state : '',
     children: Array.isArray(data.children)
       ? data.children.map((c) => ({
           name: typeof c?.name === 'string' ? c.name : '',

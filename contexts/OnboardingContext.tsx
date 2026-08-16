@@ -40,6 +40,13 @@ export type OnboardingProfile = {
   numNeurodivergentChildren: number;
   partnerAtHome: boolean | null;
   siblingsIncluded: string | null;
+  // city/state are derived from zipCode (see lib/zipcode.ts) and kept in
+  // sync with it — zipCode itself stays private (used for matching/future
+  // nearby-events lookups), while city/state are what's safe to show on
+  // the public family profile.
+  zipCode: string;
+  city: string;
+  state: string;
   // One entry per neurodivergent child (numNeurodivergentChildren of them) —
   // only their name is required, everything else is optional per child.
   children: ChildProfile[];
@@ -64,6 +71,9 @@ const initialProfile: OnboardingProfile = {
   numNeurodivergentChildren: 1,
   partnerAtHome: null,
   siblingsIncluded: null,
+  zipCode: '',
+  city: '',
+  state: '',
   children: [],
   siblingProfiles: [],
   interests: [],

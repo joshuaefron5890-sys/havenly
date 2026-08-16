@@ -105,9 +105,16 @@ export default function FamilyDetail() {
             </Pressable>
           </View>
           <View style={styles.heroBottomRow}>
-            <Text style={styles.heroTitle} numberOfLines={1}>
-              {familyName}
-            </Text>
+            <View style={styles.heroTitleWrap}>
+              <Text style={styles.heroTitle} numberOfLines={1}>
+                {familyName}
+              </Text>
+              {profile.city ? (
+                <Text style={styles.heroLocation} numberOfLines={1}>
+                  {profile.city}, {profile.state}
+                </Text>
+              ) : null}
+            </View>
             <View style={styles.matchBadge}>
               <Text style={styles.matchScore}>{profile.matchScore}</Text>
               <Text style={styles.matchLabel}>match</Text>
@@ -236,12 +243,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
-  heroTitle: {
+  heroTitleWrap: {
     flex: 1,
+    marginRight: 12,
+  },
+  heroTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: colors.surface,
-    marginRight: 12,
+  },
+  heroLocation: {
+    fontSize: 13,
+    color: colors.surface,
+    opacity: 0.85,
+    marginTop: 2,
   },
   matchBadge: {
     width: 52,

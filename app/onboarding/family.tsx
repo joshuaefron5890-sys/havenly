@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
+import { ZipCodeField } from '../../components/ZipCodeField';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { stepAfterFamily } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
@@ -25,6 +26,9 @@ export default function Family() {
   );
   const [partnerAtHome, setPartnerAtHome] = useState<boolean | null>(profile.partnerAtHome);
   const [siblings, setSiblings] = useState<string | null>(profile.siblingsIncluded);
+  const [zipCode, setZipCode] = useState(profile.zipCode);
+  const [city, setCity] = useState(profile.city);
+  const [state, setState] = useState(profile.state);
   const [familyPhotoUrl, setFamilyPhotoUrl] = useState<string | null>(profile.familyPhotoUrl);
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -70,6 +74,9 @@ export default function Family() {
       partnerAtHome,
       siblingsIncluded: siblings,
       familyPhotoUrl,
+      zipCode,
+      city,
+      state,
     };
     updateProfile(patch);
     const nextStep = stepAfterFamily({ numChildren: children, numNeurodivergentChildren: neurodivergentChildren });
@@ -154,6 +161,17 @@ export default function Family() {
             <Text style={styles.optionText}>{option}</Text>
           </Pressable>
         ))}
+
+        <ZipCodeField
+          zip={zipCode}
+          city={city}
+          state={state}
+          onChange={(next) => {
+            setZipCode(next.zip);
+            setCity(next.city);
+            setState(next.state);
+          }}
+        />
       </ScrollView>
 
       <View style={styles.footer}>

@@ -12,6 +12,8 @@ export type SuggestedFamily = {
   firstName: string;
   lastName: string;
   familyPhotoUrl: string | null;
+  city: string;
+  state: string;
   children: SuggestedFamilyChild[];
 };
 
@@ -69,6 +71,8 @@ export type FamilyProfile = {
   firstName: string;
   lastName: string;
   familyPhotoUrl: string | null;
+  city: string;
+  state: string;
   children: SuggestedFamilyChild[];
   sharedInterests: string[];
   sharedNeurodivergence: string[];

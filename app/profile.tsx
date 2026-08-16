@@ -256,6 +256,7 @@ export default function Profile() {
             value={profile.partnerAtHome == null ? '' : profile.partnerAtHome ? 'Yes' : 'No'}
           />
           <Field label="Siblings usually included" value={profile.siblingsIncluded ?? ''} />
+          <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
         </SectionCard>
 
         {profile.children.length > 0 && (

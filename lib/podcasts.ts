@@ -7,6 +7,9 @@ export type PodcastSuggestion = {
   artist: string;
   artworkUrl: string | null;
   viewUrl: string | null;
+  feedUrl: string | null;
+  trackCount: number | null;
+  genres: string[];
   matchedTags: string[];
 };
 
@@ -26,4 +29,16 @@ export async function fetchPodcastSuggestions(): Promise<PodcastSuggestion[]> {
 export function podcastSubtitle(podcast: PodcastSuggestion): string {
   const matches = podcast.matchedTags.length ? `Matches ${podcast.matchedTags.join(', ')}` : '';
   return [podcast.artist, matches].filter(Boolean).join(' · ');
+}
+
+// The show's own synopsis, fetched on demand from its RSS feed for the
+// podcast detail screen — the Search API result has no description field,
+// so this isn't available until asked for.
+export async function fetchPodcastDescription(feedUrl: string): Promise<string> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  const call = httpsCallable<{ feedUrl: string }, { description: string }>(functions, 'getPodcastDescription');
+  const result = await call({ feedUrl });
+  return result.data.description;
 }

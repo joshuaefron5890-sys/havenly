@@ -4,7 +4,11 @@ import { functions } from './firebase';
 export type HealthResource = {
   url: string;
   title: string;
+  // Short, search-term-highlighted excerpt — good for a card's subtitle.
   snippet: string;
+  // The topic's fuller summary, when MedlinePlus returned one — good for
+  // the article detail screen. Falls back to snippet if not available.
+  summary: string;
   matchedTags: string[];
 };
 

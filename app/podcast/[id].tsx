@@ -1,30 +1,55 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
 import { addFavoritePodcast, getFavoritePodcastIds, removeFavoritePodcast } from '../../lib/favorites';
+import { fetchPodcastDescription } from '../../lib/podcasts';
 import { colors } from '../../theme/colors';
 
 // Podcast data is public (Apple's iTunes Search API) and already fully
 // fetched client-side on the dashboard, so it's handed over via route
 // params instead of being re-fetched here — there's no "look up a podcast
-// by id" endpoint to call, and nothing here is sensitive.
+// by id" endpoint to call, and nothing here is sensitive. The synopsis is
+// the exception: the Search API doesn't return one, so it's fetched here
+// from the show's own RSS feed (feedUrl) once this screen actually opens.
 export default function PodcastDetail() {
-  const { id, title, artist, artworkUrl, viewUrl, matchedTags } = useLocalSearchParams<{
+  const { id, title, artist, artworkUrl, viewUrl, feedUrl, trackCount, genres, matchedTags } = useLocalSearchParams<{
     id: string;
     title?: string;
     artist?: string;
     artworkUrl?: string;
     viewUrl?: string;
+    feedUrl?: string;
+    trackCount?: string;
+    genres?: string;
     matchedTags?: string;
   }>();
   const { user } = useAuth();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [description, setDescription] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!feedUrl) {
+      setDescription('');
+      return;
+    }
+    let cancelled = false;
+    fetchPodcastDescription(feedUrl)
+      .then((result) => {
+        if (!cancelled) setDescription(result);
+      })
+      .catch(() => {
+        if (!cancelled) setDescription('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [feedUrl]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -53,6 +78,8 @@ export default function PodcastDetail() {
   };
 
   const tags = matchedTags ? matchedTags.split(',').filter(Boolean) : [];
+  const genreList = genres ? genres.split(',').filter(Boolean) : [];
+  const facts = [genreList.join(', '), trackCount ? `${trackCount} episodes` : ''].filter(Boolean).join(' · ');
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -71,6 +98,16 @@ export default function PodcastDetail() {
 
         <Text style={styles.title}>{title || 'Untitled podcast'}</Text>
         {artist ? <Text style={styles.artist}>{artist}</Text> : null}
+        {facts ? <Text style={styles.facts}>{facts}</Text> : null}
+
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>ABOUT THIS SHOW</Text>
+          {description === null ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : (
+            <Text style={styles.description}>{description || 'No description available.'}</Text>
+          )}
+        </View>
 
         {tags.length > 0 && (
           <View style={styles.card}>
@@ -153,7 +190,17 @@ const styles = StyleSheet.create({
   artist: {
     fontSize: 15,
     color: colors.textMuted,
+    marginBottom: 4,
+  },
+  facts: {
+    fontSize: 13,
+    color: colors.textMuted,
     marginBottom: 16,
+  },
+  description: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text,
   },
   card: {
     backgroundColor: colors.surface,

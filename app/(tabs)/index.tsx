@@ -26,7 +26,7 @@ import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '.
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 6;
 
 // Only offers the toggle once there's actually more than PAGE_SIZE to show
 // — no "View all" on a grid that's already fully visible.
@@ -281,6 +281,7 @@ export default function ForYou() {
                       source: product.source,
                       imageUrl: product.imageUrl ?? '',
                       url: product.url,
+                      description: product.description,
                       matchedTags: product.matchedTags.join(','),
                     },
                   })
@@ -317,6 +318,9 @@ export default function ForYou() {
                       artist: podcast.artist,
                       artworkUrl: podcast.artworkUrl ?? '',
                       viewUrl: podcast.viewUrl ?? '',
+                      feedUrl: podcast.feedUrl ?? '',
+                      trackCount: podcast.trackCount != null ? String(podcast.trackCount) : '',
+                      genres: podcast.genres.join(','),
                       matchedTags: podcast.matchedTags.join(','),
                     },
                   })
@@ -350,7 +354,7 @@ export default function ForYou() {
                     params: {
                       id: encodeURIComponent(article.url),
                       title: article.title,
-                      snippet: article.snippet,
+                      summary: article.summary,
                       url: article.url,
                       matchedTags: article.matchedTags.join(','),
                     },
@@ -379,6 +383,6 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
+    gap: 10,
   },
 });

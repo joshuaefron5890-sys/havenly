@@ -15,10 +15,10 @@ import { colors } from '../../theme/colors';
 // (not the route's [id], which is just an encoded copy) is the favorite
 // key, matching what getHealthResources uses server-side.
 export default function ArticleDetail() {
-  const { title, snippet, url, matchedTags } = useLocalSearchParams<{
+  const { title, summary, url, matchedTags } = useLocalSearchParams<{
     id: string;
     title?: string;
-    snippet?: string;
+    summary?: string;
     url: string;
     matchedTags?: string;
   }>();
@@ -73,9 +73,9 @@ export default function ArticleDetail() {
         <Text style={styles.title}>{title || 'Article'}</Text>
         <Text style={styles.attribution}>MedlinePlus</Text>
 
-        {snippet ? (
+        {summary ? (
           <View style={styles.card}>
-            <Text style={styles.snippet}>{snippet}</Text>
+            <Text style={styles.snippet}>{summary}</Text>
           </View>
         ) : null}
 

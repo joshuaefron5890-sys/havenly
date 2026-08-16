@@ -41,31 +41,31 @@ export function SquareCard({
   );
 }
 
-export const CARD_GRID_COLUMNS = 2;
+export const CARD_GRID_COLUMNS = 3;
 
 const styles = StyleSheet.create({
   card: {
-    flexBasis: '48%',
+    flexBasis: '30%',
     flexGrow: 1,
   },
   thumbnail: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 16,
+    borderRadius: 14,
     backgroundColor: colors.accentMuted,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   iconThumbnail: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.text,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
     marginTop: 2,
   },

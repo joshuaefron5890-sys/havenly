@@ -7,6 +7,7 @@ export type RecommendedProduct = {
   vendor: string;
   source: string;
   imageUrl: string | null;
+  description: string;
   matchedTags: string[];
 };
 

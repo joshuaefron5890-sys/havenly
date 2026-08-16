@@ -545,6 +545,13 @@ exports.getPodcastSuggestions = onCall(async (request) => {
                 ? podcast.artworkUrl100
                 : null,
           viewUrl: typeof podcast.collectionViewUrl === 'string' ? podcast.collectionViewUrl : null,
+          // The search API has no synopsis field — feedUrl lets the detail
+          // screen fetch one from the show's own RSS feed on demand (see
+          // getPodcastDescription) instead of every card in the list paying
+          // for an extra fetch it might not need.
+          feedUrl: typeof podcast.feedUrl === 'string' ? podcast.feedUrl : null,
+          trackCount: typeof podcast.trackCount === 'number' ? podcast.trackCount : null,
+          genres: Array.isArray(podcast.genres) ? podcast.genres.filter((g) => typeof g === 'string') : [],
           matchedTags: new Set([podcast.matchedTag]),
         });
       }
@@ -557,6 +564,45 @@ exports.getPodcastSuggestions = onCall(async (request) => {
     .slice(0, 15);
 
   return { podcasts };
+});
+
+// The show's own synopsis, for the podcast detail screen — pulled from its
+// RSS feed on demand (called once per detail-screen visit, not for every
+// card in a list) since the Search API result has no description field.
+function extractFirstTag(xml, tagName) {
+  const re = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i');
+  const match = re.exec(xml);
+  if (!match) return '';
+  // Show descriptions are usually CDATA-wrapped, and may embed their own
+  // HTML markup inside that — unwrap the CDATA before the usual
+  // decode-then-strip pass.
+  const cdataMatch = /<!\[CDATA\[([\s\S]*?)\]\]>/.exec(match[1]);
+  return stripHtml(cdataMatch ? cdataMatch[1] : match[1]);
+}
+
+exports.getPodcastDescription = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const feedUrl = typeof request.data?.feedUrl === 'string' ? request.data.feedUrl : '';
+  if (!feedUrl) {
+    throw new HttpsError('invalid-argument', 'Missing feedUrl.');
+  }
+  try {
+    const res = await fetch(feedUrl);
+    if (!res.ok) return { description: '' };
+    const xml = await res.text();
+    // Scoped to the channel (show-level), not the first <item> (an
+    // episode) — a feed's very first <description> tag is usually the
+    // show's own, but bounding the search to before the first <item>
+    // guards against a feed ordering things differently.
+    const firstItemIndex = xml.search(/<item\b/i);
+    const channelXml = firstItemIndex === -1 ? xml : xml.slice(0, firstItemIndex);
+    const description = extractFirstTag(channelXml, 'description') || extractFirstTag(channelXml, 'itunes:summary');
+    return { description };
+  } catch {
+    return { description: '' };
+  }
 });
 
 function decodeXmlEntities(str) {
@@ -597,9 +643,15 @@ function extractMedlinePlusDocuments(xml) {
     const url = decodeXmlEntities(match[1]);
     const body = match[2];
     const title = extractTaggedContent(body, 'title');
-    const snippet = extractTaggedContent(body, 'snippet') || extractTaggedContent(body, 'FullSummary');
+    // snippet is the short, search-term-highlighted excerpt (good for a
+    // card's subtitle); FullSummary is the topic's actual full summary
+    // (good for the detail screen) — kept separate instead of collapsing
+    // into one field, with each falling back to the other if MedlinePlus
+    // only returned one of them for a given result.
+    const snippet = extractTaggedContent(body, 'snippet');
+    const fullSummary = extractTaggedContent(body, 'FullSummary');
     if (url && title) {
-      docs.push({ url, title, snippet });
+      docs.push({ url, title, snippet: snippet || fullSummary, summary: fullSummary || snippet });
     }
   }
   return docs;
@@ -658,6 +710,7 @@ exports.getHealthResources = onCall(async (request) => {
           url: doc.url,
           title: doc.title,
           snippet: doc.snippet,
+          summary: doc.summary,
           matchedTags: new Set([doc.matchedTag]),
         });
       }
@@ -776,6 +829,10 @@ exports.getRecommendedProducts = onCall(async (request) => {
           vendor: typeof item.vendor === 'string' ? item.vendor : source.name,
           source: source.name,
           imageUrl: typeof item.image === 'string' ? item.image : null,
+          // The search response already includes each product's full HTML
+          // description (item.body) — no extra fetch needed, just strip it
+          // down to plain text for the product detail screen.
+          description: typeof item.body === 'string' ? stripHtml(item.body) : '',
           matchedTags: new Set([tag]),
         });
       }

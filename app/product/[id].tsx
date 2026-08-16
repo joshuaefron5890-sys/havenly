@@ -16,13 +16,14 @@ import { colors } from '../../theme/colors';
 // url (not the route's [id], which is just an encoded copy) is the
 // favorite key, matching what getRecommendedProducts uses server-side.
 export default function ProductDetail() {
-  const { title, vendor, source, imageUrl, url, matchedTags } = useLocalSearchParams<{
+  const { title, vendor, source, imageUrl, url, description, matchedTags } = useLocalSearchParams<{
     id: string;
     title?: string;
     vendor?: string;
     source?: string;
     imageUrl?: string;
     url: string;
+    description?: string;
     matchedTags?: string;
   }>();
   const { user } = useAuth();
@@ -75,6 +76,13 @@ export default function ProductDetail() {
         <Text style={styles.title}>{title || 'Product'}</Text>
         {(vendor || source) ? (
           <Text style={styles.vendor}>{[vendor, source].filter(Boolean).join(' · ')}</Text>
+        ) : null}
+
+        {description ? (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>DESCRIPTION</Text>
+            <Text style={styles.description}>{description}</Text>
+          </View>
         ) : null}
 
         {tags.length > 0 && (
@@ -172,6 +180,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     letterSpacing: 1.5,
     marginBottom: 10,
+  },
+  description: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text,
   },
   tags: {
     flexDirection: 'row',

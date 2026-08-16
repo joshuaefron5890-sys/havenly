@@ -570,11 +570,13 @@ function decodeXmlEntities(str) {
 
 // MedlinePlus's search results embed <span class="qt0">…</span> highlight
 // markup around matched terms right inside otherwise-plain-text fields —
-// this strips any such embedded tags and decodes entities, rather than
-// relying on the generic XML parser (used elsewhere in this file for
-// CalDAV) to handle that mixed content correctly.
+// and, in the live response, that markup itself is HTML-entity-escaped
+// (&lt;span…&gt;) rather than literal. Decoding entities has to happen
+// BEFORE stripping tags, or the escaped tags survive the strip untouched
+// and only turn back into literal (now-unstripped) tags once decoded.
 function stripHtml(str) {
-  return decodeXmlEntities(str.replace(/<[^>]+>/g, ''))
+  return decodeXmlEntities(str)
+    .replace(/<[^>]+>/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

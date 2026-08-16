@@ -18,6 +18,7 @@ import {
   SuggestedFamily,
 } from '../../lib/families';
 import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
+import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
 
 const TABS = ['My List', 'Discover'] as const;
@@ -99,6 +100,25 @@ export default function ForYou() {
     };
   }, [user]);
 
+  const [articles, setArticles] = useState<HealthResource[] | null>(null);
+  const [articlesError, setArticlesError] = useState<string | null>(null);
+  const [articlesExpanded, setArticlesExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchHealthResources()
+      .then((result) => {
+        if (!cancelled) setArticles(result);
+      })
+      .catch((err: any) => {
+        if (!cancelled) setArticlesError(err?.message ?? err?.code ?? 'unknown error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const firstName = user?.displayName?.split(' ')[0];
 
   return (
@@ -169,6 +189,27 @@ export default function ForYou() {
                   subtitle={podcastSubtitle(podcast)}
                   image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
                   onPress={podcast.viewUrl ? () => Linking.openURL(podcast.viewUrl!) : undefined}
+                />
+              ))
+            )}
+
+            <SectionHeader
+              title="Suggested articles"
+              {...expandAction(articles?.length ?? 0, articlesExpanded, setArticlesExpanded)}
+            />
+            {articlesError ? (
+              <EmptyState text={`Couldn’t load articles (${articlesError}).`} />
+            ) : articles === null ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : articles.length === 0 ? (
+              <EmptyState text="Add your child's neurodivergence info to see relevant articles." />
+            ) : (
+              (articlesExpanded ? articles : articles.slice(0, PAGE_SIZE)).map((article) => (
+                <ListRow
+                  key={article.url}
+                  title={article.title}
+                  subtitle={resourceSubtitle(article)}
+                  onPress={() => Linking.openURL(article.url)}
                 />
               ))
             )}

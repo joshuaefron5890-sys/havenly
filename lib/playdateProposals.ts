@@ -108,6 +108,24 @@ export async function fetchLatestProposal(): Promise<PlaydateProposal | null> {
   return proposals[0];
 }
 
+// Every still-pending proposal involving the signed-in user, soonest
+// first — powers the Home dashboard's "For You" highlights (second
+// priority, right after confirmed playdates). Same shape as
+// fetchAcceptedProposals; kept separate from fetchLatestProposal since
+// that one only needs the single most recent for the Events section's
+// badge card, not the full list.
+export async function fetchPendingProposals(): Promise<PlaydateProposal[]> {
+  const myUid = auth?.currentUser?.uid;
+  if (!myUid || !db) return [];
+  const q = query(collection(db, 'playdateProposals'), where('participantUids', 'array-contains', myUid));
+  const snap = await getDocs(q);
+  const proposals = snap.docs
+    .map((d) => parseProposal(d.id, d.data()))
+    .filter((p) => p.status === 'proposed');
+  proposals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return proposals;
+}
+
 // Every accepted (confirmed) playdate involving the signed-in user,
 // soonest first — powers the Home dashboard's "For You" highlights,
 // where a confirmed playdate is the single highest-priority thing to

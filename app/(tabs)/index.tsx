@@ -10,7 +10,12 @@ import { SectionHero } from '../../components/SectionHero';
 import { CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
-import { fetchAcceptedProposals, fetchLatestProposal, PlaydateProposal } from '../../lib/playdateProposals';
+import {
+  fetchAcceptedProposals,
+  fetchLatestProposal,
+  fetchPendingProposals,
+  PlaydateProposal,
+} from '../../lib/playdateProposals';
 import {
   addFavoriteFamily,
   addFavoritePodcast,
@@ -397,11 +402,17 @@ export default function ForYou() {
 
   // For You — a cross-category highlight reel above everything else,
   // prioritized in a fixed order: a confirmed playdate is the single most
-  // actionable thing on the whole dashboard, then anything already
-  // favorited (a signal the user gave directly), then families the match
-  // algorithm rates especially highly but haven't been favorited yet.
+  // actionable thing on the whole dashboard, then a proposed-but-not-yet-
+  // answered playdate (still needs someone to act on it), then anything
+  // already favorited (a signal the user gave directly), then families
+  // the match algorithm rates especially highly but haven't been
+  // favorited yet.
   const [confirmedProposals, setConfirmedProposals] = useState<PlaydateProposal[]>([]);
   const [confirmedProposalPhotos, setConfirmedProposalPhotos] = useState<
+    Record<string, [string | null, string | null]>
+  >({});
+  const [pendingProposals, setPendingProposals] = useState<PlaydateProposal[]>([]);
+  const [pendingProposalPhotos, setPendingProposalPhotos] = useState<
     Record<string, [string | null, string | null]>
   >({});
   const [forYouExpanded, setForYouExpanded] = useState(false);
@@ -412,6 +423,9 @@ export default function ForYou() {
       let cancelled = false;
       fetchAcceptedProposals().then((result) => {
         if (!cancelled) setConfirmedProposals(result);
+      });
+      fetchPendingProposals().then((result) => {
+        if (!cancelled) setPendingProposals(result);
       });
       return () => {
         cancelled = true;
@@ -440,6 +454,27 @@ export default function ForYou() {
     };
   }, [confirmedProposals]);
 
+  useEffect(() => {
+    if (!pendingProposals.length) {
+      setPendingProposalPhotos({});
+      return;
+    }
+    let cancelled = false;
+    const uids = [...new Set(pendingProposals.flatMap((p) => [p.fromUid, p.toUid]))];
+    fetchFamiliesByUids(uids).then((result) => {
+      if (cancelled) return;
+      const byUid = new Map(result.map((f) => [f.uid, familyPhoto(f)]));
+      const photos: Record<string, [string | null, string | null]> = {};
+      for (const p of pendingProposals) {
+        photos[p.id] = [byUid.get(p.fromUid) ?? null, byUid.get(p.toUid) ?? null];
+      }
+      setPendingProposalPhotos(photos);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingProposals]);
+
   type Highlight = {
     key: string;
     title: string;
@@ -463,6 +498,21 @@ export default function ForYou() {
           : undefined,
         icon: 'calendar',
         badge: 'Confirmed',
+        onPress: () => router.push(`/proposal/${p.id}`),
+      };
+    });
+
+    const proposed: Highlight[] = pendingProposals.map((p) => {
+      const photos = pendingProposalPhotos[p.id];
+      return {
+        key: `proposed-${p.id}`,
+        title: p.dateLabel,
+        subtitle: p.venue,
+        pairImages: photos
+          ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
+          : undefined,
+        icon: 'calendar',
+        badge: 'Proposed',
         onPress: () => router.push(`/proposal/${p.id}`),
       };
     });
@@ -566,10 +616,20 @@ export default function ForYou() {
         };
       });
 
-    return [...confirmed, ...favoritedFamilies, ...favoritedProducts, ...favoritedPodcasts, ...favoritedArticles, ...topMatches];
+    return [
+      ...confirmed,
+      ...proposed,
+      ...favoritedFamilies,
+      ...favoritedProducts,
+      ...favoritedPodcasts,
+      ...favoritedArticles,
+      ...topMatches,
+    ];
   }, [
     confirmedProposals,
     confirmedProposalPhotos,
+    pendingProposals,
+    pendingProposalPhotos,
     mergedFamilies,
     favoriteFamilyUids,
     products,
@@ -594,7 +654,7 @@ export default function ForYou() {
         <SectionHero
           photoSeed="havenly-for-you"
           title="For You"
-          description="Curates your confirmed playdates, anything you've favorited, and families that are an especially strong match — all in one place."
+          description="Curates your confirmed and proposed playdates, anything you've favorited, and families that are an especially strong match — all in one place."
         />
         {forYouLoading ? (
           <ActivityIndicator color={colors.accent} />

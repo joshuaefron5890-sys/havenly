@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Firebase CLI debug artifacts
+firebase-debug.log
+firestore-debug.log

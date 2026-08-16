@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // A user's own document. Every other user's account is only ever
+    // reachable through Cloud Functions (see functions/index.js's
+    // toPublicFamily comment) — those run with the Admin SDK and aren't
+    // subject to these rules at all, so this only needs to cover the
+    // "read/write my own doc" case the client actually does directly
+    // (onboarding, favorites, calendar connection state).
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Direct messages between two families. conversationId is a
+    // deterministic sorted-uid pair (see lib/messages.ts) so the same two
+    // people always land in the same thread, but these rules don't rely on
+    // that format — only on being one of the two listed participants.
+    match /conversations/{conversationId} {
+      function isParticipant() {
+        return request.auth != null && request.auth.uid in resource.data.participantUids;
+      }
+
+      allow read: if isParticipant();
+      allow create: if request.auth != null
+        && request.auth.uid in request.resource.data.participantUids
+        && request.resource.data.participantUids.size() == 2;
+      // Only lastMessage/lastMessageAt should ever change after creation —
+      // the participant list is fixed for the life of a conversation.
+      allow update: if isParticipant()
+        && request.resource.data.participantUids == resource.data.participantUids;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        function isConversationParticipant() {
+          return request.auth != null
+            && request.auth.uid in
+               get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids;
+        }
+
+        allow read: if isConversationParticipant();
+        // Can only ever send as yourself — senderUid can't be spoofed.
+        allow create: if isConversationParticipant() && request.resource.data.senderUid == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
 import { SettingsMenu } from './SettingsMenu';
@@ -12,7 +13,9 @@ export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title: stri
         <Text style={styles.title}>{title}</Text>
       </View>
       <View style={styles.icons}>
-        <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+        <Pressable onPress={() => router.push('/messages')} hitSlop={8}>
+          <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+        </Pressable>
         <SettingsMenu />
       </View>
     </View>

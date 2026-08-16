@@ -9,6 +9,7 @@ import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
 import { addFavoriteFamily, getFavoriteFamilyUids, removeFavoriteFamily } from '../../lib/favorites';
 import { familyDisplayName, FamilyProfile, fetchFamilyProfile } from '../../lib/families';
+import { getOrCreateConversation } from '../../lib/messages';
 import { colors } from '../../theme/colors';
 
 export default function FamilyDetail() {
@@ -18,6 +19,7 @@ export default function FamilyDetail() {
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [messageBusy, setMessageBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -60,8 +62,17 @@ export default function FamilyDetail() {
     }
   };
 
-  const proposePlaydate = () => {
-    Alert.alert('Coming soon', 'Proposing playdates isn’t available yet.');
+  const openMessageThread = async () => {
+    if (!id || messageBusy) return;
+    setMessageBusy(true);
+    try {
+      const conversationId = await getOrCreateConversation(id);
+      router.push(`/messages/${conversationId}`);
+    } catch {
+      Alert.alert('Couldn’t start that conversation', 'Please try again.');
+    } finally {
+      setMessageBusy(false);
+    }
   };
 
   if (error) {
@@ -163,8 +174,8 @@ export default function FamilyDetail() {
         <Pressable style={styles.heartOutlineButton} onPress={toggleFavorite}>
           <Ionicons name={favorited ? 'heart' : 'heart-outline'} size={20} color={colors.accent} />
         </Pressable>
-        <Pressable style={styles.cta} onPress={proposePlaydate}>
-          <Text style={styles.ctaText}>Propose a playdate</Text>
+        <Pressable style={[styles.cta, messageBusy && styles.ctaDisabled]} onPress={openMessageThread} disabled={messageBusy}>
+          <Text style={styles.ctaText}>{messageBusy ? 'Opening…' : 'Message'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -362,6 +373,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  ctaDisabled: {
+    opacity: 0.6,
   },
   ctaText: {
     color: colors.surface,

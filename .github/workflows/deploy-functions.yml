@@ -6,6 +6,8 @@ on:
     paths:
       - 'functions/**'
       - 'firebase.json'
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
       - '.github/workflows/deploy-functions.yml'
   workflow_dispatch: {}
 
@@ -29,8 +31,8 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Deploy functions
-        run: npx firebase-tools deploy --only functions --project "$FIREBASE_PROJECT_ID" --non-interactive --force
+      - name: Deploy functions and Firestore rules
+        run: npx firebase-tools deploy --only functions,firestore --project "$FIREBASE_PROJECT_ID" --non-interactive --force
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/service-account.json
           FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}

@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -860,4 +860,32 @@ exports.getRecommendedProducts = onCall(async (request) => {
     .slice(0, 15);
 
   return { products };
+});
+
+// Checking whether tacanow.org (The Autism Community in Action) exposes a
+// public WordPress REST API for its events — its URL patterns
+// (/family-resources/, /press-releases/) suggest WordPress, and "The
+// Events Calendar" plugin (if installed) exposes a public JSON events
+// endpoint by default. Can't reach the domain from the dev sandbox this
+// was written in to check directly. Unauthenticated, meant to be opened
+// directly in a browser once — safe to delete once answered.
+exports.probeTacaEvents = onRequest(async (req, res) => {
+  const candidates = [
+    'https://tacanow.org/wp-json/wp/v2/types',
+    'https://tacanow.org/wp-json/tribe/events/v1/events?per_page=3',
+    'https://tacanow.org/wp-json/wp/v2/tribe_events?per_page=3',
+  ];
+  const results = await Promise.all(
+    candidates.map(async (url) => {
+      try {
+        const response = await fetch(url);
+        const text = await response.text();
+        return { url, status: response.status, body: text.slice(0, 3000) };
+      } catch (err) {
+        return { url, error: String(err?.message ?? err) };
+      }
+    })
+  );
+  res.set('Content-Type', 'application/json');
+  res.status(200).send(JSON.stringify({ results }, null, 2));
 });

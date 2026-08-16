@@ -871,21 +871,43 @@ exports.getRecommendedProducts = onCall(async (request) => {
 // directly in a browser once — safe to delete once answered.
 exports.probeTacaEvents = onRequest(async (req, res) => {
   const candidates = [
-    'https://tacanow.org/wp-json/wp/v2/types',
+    // "The Events Calendar" plugin — already ruled out (404), kept for
+    // completeness in this pass.
     'https://tacanow.org/wp-json/tribe/events/v1/events?per_page=3',
     'https://tacanow.org/wp-json/wp/v2/tribe_events?per_page=3',
+    // Modern Events Calendar
+    'https://tacanow.org/wp-json/mec/v1/events?per_page=3',
+    // Events Manager
+    'https://tacanow.org/wp-json/em/v1/events?per_page=3',
+    // A plain custom post type named "event"/"events", in case it's a
+    // hand-rolled or less common plugin
+    'https://tacanow.org/wp-json/wp/v2/event?per_page=3',
+    'https://tacanow.org/wp-json/wp/v2/events?per_page=3',
   ];
   const results = await Promise.all(
     candidates.map(async (url) => {
       try {
         const response = await fetch(url);
         const text = await response.text();
-        return { url, status: response.status, body: text.slice(0, 3000) };
+        return { url, status: response.status, body: text.slice(0, 1500) };
       } catch (err) {
         return { url, error: String(err?.message ?? err) };
       }
     })
   );
+
+  // Separately: the full list of registered post types, but just the
+  // names (the earlier pass showed this endpoint works, but the raw body
+  // is mostly Yoast SEO meta noise ahead of the useful part).
+  let postTypeNames = null;
+  try {
+    const response = await fetch('https://tacanow.org/wp-json/wp/v2/types');
+    const data = await response.json();
+    postTypeNames = Object.keys(data ?? {});
+  } catch (err) {
+    postTypeNames = { error: String(err?.message ?? err) };
+  }
+
   res.set('Content-Type', 'application/json');
-  res.status(200).send(JSON.stringify({ results }, null, 2));
+  res.status(200).send(JSON.stringify({ postTypeNames, results }, null, 2));
 });

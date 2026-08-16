@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,15 @@ import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { useAuth } from '../../contexts/AuthContext';
-import { familyPhoto, familySubtitle, fetchSuggestedFamilies, SuggestedFamily } from '../../lib/families';
+import { getFavoriteFamilyUids } from '../../lib/favorites';
+import {
+  familyDisplayName,
+  familyPhoto,
+  familySubtitle,
+  fetchFamiliesByUids,
+  fetchSuggestedFamilies,
+  SuggestedFamily,
+} from '../../lib/families';
 import { colors } from '../../theme/colors';
 
 const TABS = ['My List', 'Discover'] as const;
@@ -35,6 +43,31 @@ export default function ForYou() {
       cancelled = true;
     };
   }, [user]);
+
+  const [myFamilies, setMyFamilies] = useState<SuggestedFamily[] | null>(null);
+  const [myFamiliesError, setMyFamiliesError] = useState<string | null>(null);
+
+  // Re-fetches every time this screen regains focus (not just on mount) —
+  // favoriting happens on the family detail screen, so coming back here
+  // needs to pick up whatever changed there.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let cancelled = false;
+      setMyFamiliesError(null);
+      getFavoriteFamilyUids(user.uid)
+        .then((ids) => fetchFamiliesByUids(ids))
+        .then((result) => {
+          if (!cancelled) setMyFamilies(result);
+        })
+        .catch((err: any) => {
+          if (!cancelled) setMyFamiliesError(err?.message ?? err?.code ?? 'unknown error');
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [user])
+  );
 
   const firstName = user?.displayName?.split(' ')[0];
 
@@ -70,7 +103,7 @@ export default function ForYou() {
                 return (
                   <ListRow
                     key={family.uid}
-                    title={family.firstName || 'A family'}
+                    title={familyDisplayName(family)}
                     subtitle={familySubtitle(family)}
                     image={photoUrl ? { uri: photoUrl } : undefined}
                     onPress={() => router.push(`/family/${family.uid}`)}
@@ -88,7 +121,26 @@ export default function ForYou() {
         ) : (
           <>
             <SectionHeader title="Families" action="Browse all" />
-            <EmptyState text="No connected families yet — find some under Discover." />
+            {myFamiliesError ? (
+              <EmptyState text={`Couldn’t load your families (${myFamiliesError}).`} />
+            ) : myFamilies === null ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : myFamilies.length === 0 ? (
+              <EmptyState text="No connected families yet — find some under Discover." />
+            ) : (
+              myFamilies.map((family) => {
+                const photoUrl = familyPhoto(family);
+                return (
+                  <ListRow
+                    key={family.uid}
+                    title={familyDisplayName(family)}
+                    subtitle={familySubtitle(family)}
+                    image={photoUrl ? { uri: photoUrl } : undefined}
+                    onPress={() => router.push(`/family/${family.uid}`)}
+                  />
+                );
+              })
+            )}
 
             <SectionHeader title="Playdates" action="View in Events" />
             <EmptyState text="No playdates yet." />

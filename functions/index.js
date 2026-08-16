@@ -291,12 +291,31 @@ exports.getGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (req
   return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });
 
+// Shared by every endpoint that hands another family's data to a client
+// (getSuggestedFamilies, getFamiliesByUids) — the single place that decides
+// which fields of a user doc are actually safe to show someone else. User
+// docs also hold things that must never reach another user's device (a
+// Google Calendar refresh token, an Apple app-specific password), so this
+// hand-picks rather than passing the doc through.
+function toPublicFamily(uid, data) {
+  return {
+    uid,
+    firstName: typeof data.firstName === 'string' ? data.firstName : '',
+    lastName: typeof data.lastName === 'string' ? data.lastName : '',
+    familyPhotoUrl: typeof data.familyPhotoUrl === 'string' ? data.familyPhotoUrl : null,
+    children: Array.isArray(data.children)
+      ? data.children.map((c) => ({
+          name: typeof c?.name === 'string' ? c.name : '',
+          age: typeof c?.age === 'string' ? c.age : '',
+          photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
+        }))
+      : [],
+  };
+}
+
 // Powers the "For You" screen's Discover tab. Runs server-side (Admin SDK)
-// rather than letting the client query the users collection directly,
-// because each user doc also holds things that must never reach another
-// user's device — a Google Calendar refresh token, an Apple app-specific
-// password — so this hand-picks only the fields that are actually safe to
-// show another family, instead of opening up broader Firestore read access.
+// rather than letting the client query the users collection directly, for
+// the same reason toPublicFamily exists — see its comment.
 exports.getSuggestedFamilies = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
@@ -306,21 +325,28 @@ exports.getSuggestedFamilies = onCall(async (request) => {
 
   const families = snap.docs
     .filter((doc) => doc.id !== request.auth.uid)
-    .map((doc) => {
-      const data = doc.data();
-      return {
-        uid: doc.id,
-        firstName: typeof data.firstName === 'string' ? data.firstName : '',
-        familyPhotoUrl: typeof data.familyPhotoUrl === 'string' ? data.familyPhotoUrl : null,
-        children: Array.isArray(data.children)
-          ? data.children.map((c) => ({
-              name: typeof c?.name === 'string' ? c.name : '',
-              age: typeof c?.age === 'string' ? c.age : '',
-              photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
-            }))
-          : [],
-      };
-    });
+    .map((doc) => toPublicFamily(doc.id, doc.data()));
+
+  return { families };
+});
+
+// Powers the "For You" screen's My List tab — given the uids a user has
+// favorited (client reads its own doc's favoriteFamilyUids array directly,
+// a normal Firestore read of one's own document), fetches their current
+// public info the same safe way getSuggestedFamilies does.
+exports.getFamiliesByUids = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const uids = Array.isArray(request.data?.uids)
+    ? request.data.uids.filter((u) => typeof u === 'string').slice(0, 50)
+    : [];
+  if (!uids.length) {
+    return { families: [] };
+  }
+
+  const snaps = await Promise.all(uids.map((uid) => admin.firestore().collection('users').doc(uid).get()));
+  const families = snaps.filter((snap) => snap.exists).map((snap) => toPublicFamily(snap.id, snap.data()));
 
   return { families };
 });
@@ -350,10 +376,12 @@ exports.getFamilyProfile = onCall(async (request) => {
   const me = meSnap.data() ?? {};
   const target = targetSnap.data() ?? {};
 
+  // Everything returned below is an INTERSECTION with the caller's own
+  // profile, not the target's full data — this screen is meant to show
+  // "what you two have in common," not a stranger's complete profile.
   const myInterests = Array.isArray(me.interests) ? me.interests : [];
   const theirInterests = Array.isArray(target.interests) ? target.interests : [];
   const sharedInterests = theirInterests.filter((i) => myInterests.includes(i));
-  const theirUniqueInterests = theirInterests.filter((i) => !myInterests.includes(i));
 
   const myNeurodivergence = new Set(
     (Array.isArray(me.children) ? me.children : []).flatMap((c) =>
@@ -369,6 +397,9 @@ exports.getFamilyProfile = onCall(async (request) => {
   ];
   const sharedNeurodivergence = theirNeurodivergence.filter((n) => myNeurodivergence.has(n));
 
+  const myPlayStyle = new Set(
+    (Array.isArray(me.children) ? me.children : []).flatMap((c) => (Array.isArray(c?.playStyle) ? c.playStyle : []))
+  );
   const theirPlayStyle = [
     ...new Set(
       (Array.isArray(target.children) ? target.children : []).flatMap((c) =>
@@ -376,6 +407,11 @@ exports.getFamilyProfile = onCall(async (request) => {
       )
     ),
   ];
+  const sharedPlayStyle = theirPlayStyle.filter((p) => myPlayStyle.has(p));
+
+  const myAvailability = new Set(Array.isArray(me.availability) ? me.availability : []);
+  const theirAvailability = Array.isArray(target.availability) ? target.availability : [];
+  const sharedAvailability = theirAvailability.filter((a) => myAvailability.has(a));
 
   // Placeholder scoring until real matching logic exists — rewards shared
   // interests and shared neurodivergent experience and nothing else for
@@ -383,21 +419,11 @@ exports.getFamilyProfile = onCall(async (request) => {
   const matchScore = Math.max(50, Math.min(98, 55 + sharedInterests.length * 6 + sharedNeurodivergence.length * 10));
 
   return {
-    uid: targetUid,
-    firstName: typeof target.firstName === 'string' ? target.firstName : '',
-    lastName: typeof target.lastName === 'string' ? target.lastName : '',
-    familyPhotoUrl: typeof target.familyPhotoUrl === 'string' ? target.familyPhotoUrl : null,
-    children: (Array.isArray(target.children) ? target.children : []).map((c) => ({
-      name: typeof c?.name === 'string' ? c.name : '',
-      age: typeof c?.age === 'string' ? c.age : '',
-      photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
-    })),
+    ...toPublicFamily(targetUid, target),
     sharedInterests,
-    theirUniqueInterests,
     sharedNeurodivergence,
-    theirNeurodivergence,
-    theirPlayStyle,
-    availability: Array.isArray(target.availability) ? target.availability : [],
+    sharedPlayStyle,
+    sharedAvailability,
     matchScore,
   };
 });

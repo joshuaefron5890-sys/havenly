@@ -6,16 +6,18 @@ import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
-import { FamilyProfile, fetchFamilyProfile } from '../../lib/families';
+import { useAuth } from '../../contexts/AuthContext';
+import { addFavoriteFamily, getFavoriteFamilyUids, removeFavoriteFamily } from '../../lib/favorites';
+import { familyDisplayName, FamilyProfile, fetchFamilyProfile } from '../../lib/families';
 import { colors } from '../../theme/colors';
 
 export default function FamilyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<FamilyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Local-only for now — there's no real favorites/connections system yet,
-  // so this doesn't persist anywhere.
   const [favorited, setFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -31,6 +33,32 @@ export default function FamilyDetail() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !user) return;
+    let cancelled = false;
+    getFavoriteFamilyUids(user.uid).then((ids) => {
+      if (!cancelled) setFavorited(ids.includes(id));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user]);
+
+  const toggleFavorite = async () => {
+    if (!id || favoriteBusy) return;
+    setFavoriteBusy(true);
+    const next = !favorited;
+    setFavorited(next); // optimistic — feels instant, reverted below on failure
+    try {
+      await (next ? addFavoriteFamily(id) : removeFavoriteFamily(id));
+    } catch {
+      setFavorited(!next);
+      Alert.alert('Couldn’t save that', 'Please try again.');
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
 
   const proposePlaydate = () => {
     Alert.alert('Coming soon', 'Proposing playdates isn’t available yet.');
@@ -57,7 +85,7 @@ export default function FamilyDetail() {
     );
   }
 
-  const familyName = profile.lastName ? `The ${profile.lastName} Family` : profile.firstName || 'This family';
+  const familyName = familyDisplayName(profile);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -72,7 +100,7 @@ export default function FamilyDetail() {
             <Pressable style={styles.back} onPress={() => router.back()}>
               <Ionicons name="chevron-back" size={20} color={colors.text} />
             </Pressable>
-            <Pressable style={styles.heartButton} onPress={() => setFavorited((f) => !f)}>
+            <Pressable style={styles.heartButton} onPress={toggleFavorite}>
               <Ionicons name={favorited ? 'heart' : 'heart-outline'} size={20} color={colors.surface} />
             </Pressable>
           </View>
@@ -109,41 +137,23 @@ export default function FamilyDetail() {
           ) : (
             <Text style={styles.emptyInline}>No shared interests yet.</Text>
           )}
-
-          {profile.theirUniqueInterests.length > 0 && (
-            <>
-              <View style={styles.divider} />
-              <Text style={styles.cardLabel}>{(profile.firstName || 'Their').toUpperCase()}'S INTERESTS</Text>
-              <View style={styles.tags}>
-                {profile.theirUniqueInterests.map((tag) => (
-                  <View key={tag} style={[styles.tag, styles.tagMuted]}>
-                    <Text style={[styles.tagText, styles.tagTextMuted]}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>PLAY STYLE & AVAILABILITY</Text>
+          <Text style={styles.cardLabel}>WHAT YOU HAVE IN COMMON</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Play style</Text>
-            <Text style={styles.infoValue}>{profile.theirPlayStyle.join(' · ') || 'Not shared yet'}</Text>
+            <Text style={styles.infoValue}>{profile.sharedPlayStyle.join(' · ') || 'No overlap yet'}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Best times</Text>
-            <Text style={styles.infoValue}>{profile.availability.join(' · ') || 'Not shared yet'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Navigating</Text>
-            <Text style={styles.infoValue}>{profile.theirNeurodivergence.join(' · ') || 'Not shared yet'}</Text>
+            <Text style={styles.infoLabel}>Times that work for both</Text>
+            <Text style={styles.infoValue}>{profile.sharedAvailability.join(' · ') || 'No overlap yet'}</Text>
           </View>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable style={styles.heartOutlineButton} onPress={() => setFavorited((f) => !f)}>
+        <Pressable style={styles.heartOutlineButton} onPress={toggleFavorite}>
           <Ionicons name={favorited ? 'heart' : 'heart-outline'} size={20} color={colors.accent} />
         </Pressable>
         <Pressable style={styles.cta} onPress={proposePlaydate}>
@@ -303,17 +313,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.accent,
-  },
-  tagMuted: {
-    backgroundColor: colors.border,
-  },
-  tagTextMuted: {
-    color: colors.textMuted,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginVertical: 14,
   },
   infoRow: {
     marginBottom: 12,

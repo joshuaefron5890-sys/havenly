@@ -10,6 +10,7 @@ export type SuggestedFamilyChild = {
 export type SuggestedFamily = {
   uid: string;
   firstName: string;
+  lastName: string;
   familyPhotoUrl: string | null;
   children: SuggestedFamilyChild[];
 };
@@ -27,6 +28,19 @@ export async function fetchSuggestedFamilies(): Promise<SuggestedFamily[]> {
   return result.data.families;
 }
 
+// Families the current user has favorited (see lib/favorites.ts for the
+// uid list itself), fetched the same safe server-side way as
+// fetchSuggestedFamilies.
+export async function fetchFamiliesByUids(uids: string[]): Promise<SuggestedFamily[]> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  if (!uids.length) return [];
+  const call = httpsCallable<{ uids: string[] }, { families: SuggestedFamily[] }>(functions, 'getFamiliesByUids');
+  const result = await call({ uids });
+  return result.data.families;
+}
+
 export function familyPhoto(family: SuggestedFamily): string | null {
   return family.familyPhotoUrl ?? family.children.find((c) => c.photoUrl)?.photoUrl ?? null;
 }
@@ -39,6 +53,17 @@ export function familySubtitle(family: SuggestedFamily): string {
   return kids || 'No kids listed yet';
 }
 
+// "The Frisch Family" — falls back to a first name, then a generic label,
+// for a family that hasn't set a last name.
+export function familyDisplayName(family: { firstName: string; lastName: string }): string {
+  if (family.lastName) return `The ${family.lastName} Family`;
+  if (family.firstName) return family.firstName;
+  return 'A family';
+}
+
+// Everything here is an intersection with the viewer's own profile, not the
+// target family's full data — functions/index.js getFamilyProfile only ever
+// returns what the two of you have in common.
 export type FamilyProfile = {
   uid: string;
   firstName: string;
@@ -46,11 +71,9 @@ export type FamilyProfile = {
   familyPhotoUrl: string | null;
   children: SuggestedFamilyChild[];
   sharedInterests: string[];
-  theirUniqueInterests: string[];
   sharedNeurodivergence: string[];
-  theirNeurodivergence: string[];
-  theirPlayStyle: string[];
-  availability: string[];
+  sharedPlayStyle: string[];
+  sharedAvailability: string[];
   // Placeholder scoring (functions/index.js getFamilyProfile) until real
   // matching logic exists.
   matchScore: number;

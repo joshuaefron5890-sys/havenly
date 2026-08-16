@@ -56,7 +56,7 @@ export default function FamilyDetail() {
     );
   }
 
-  const familyName = profile.firstName ? `The ${profile.firstName} Family` : 'This family';
+  const familyName = profile.lastName ? `The ${profile.lastName} Family` : profile.firstName || 'This family';
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -66,6 +66,7 @@ export default function FamilyDetail() {
             source={profile.familyPhotoUrl ? { uri: profile.familyPhotoUrl } : undefined}
             style={styles.heroImage}
           />
+          <View style={styles.heroScrim} />
           <View style={styles.heroTopRow}>
             <Pressable style={styles.back} onPress={() => router.back()}>
               <Ionicons name="chevron-back" size={20} color={colors.text} />
@@ -188,6 +189,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  // Darkens the photo so the white name/badge/icons stay legible regardless
+  // of how bright the underlying photo is.
+  heroScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   heroTopRow: {
     flexDirection: 'row',

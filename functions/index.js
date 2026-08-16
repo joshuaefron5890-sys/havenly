@@ -385,6 +385,7 @@ exports.getFamilyProfile = onCall(async (request) => {
   return {
     uid: targetUid,
     firstName: typeof target.firstName === 'string' ? target.firstName : '',
+    lastName: typeof target.lastName === 'string' ? target.lastName : '',
     familyPhotoUrl: typeof target.familyPhotoUrl === 'string' ? target.familyPhotoUrl : null,
     children: (Array.isArray(target.children) ? target.children : []).map((c) => ({
       name: typeof c?.name === 'string' ? c.name : '',

@@ -42,6 +42,7 @@ export function familySubtitle(family: SuggestedFamily): string {
 export type FamilyProfile = {
   uid: string;
   firstName: string;
+  lastName: string;
   familyPhotoUrl: string | null;
   children: SuggestedFamilyChild[];
   sharedInterests: string[];

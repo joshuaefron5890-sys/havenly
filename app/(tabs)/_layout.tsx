@@ -42,31 +42,24 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="events"
+        name="products"
         options={{
-          title: 'Events',
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+          title: 'Products',
+          tabBarIcon: ({ color, size }) => <Ionicons name="bag-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="resources"
+        name="podcasts"
         options={{
-          title: 'Resources',
-          tabBarIcon: ({ color, size }) => <Ionicons name="book-outline" size={size} color={color} />,
+          title: 'Podcasts',
+          tabBarIcon: ({ color, size }) => <Ionicons name="mic-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="treatments"
+        name="articles"
         options={{
-          title: 'Treatments',
-          tabBarIcon: ({ color, size }) => <Ionicons name="pulse-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="get-help"
-        options={{
-          title: 'Get Help',
-          tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
+          title: 'Articles',
+          tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />,
         }}
       />
     </Tabs>

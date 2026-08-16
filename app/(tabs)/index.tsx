@@ -62,6 +62,15 @@ function expandAction(count: number, expanded: boolean, setExpanded: (v: boolean
   return { action: expanded ? 'Show less' : 'View all', onAction: () => setExpanded(!expanded) };
 }
 
+// Products/Podcasts/Articles each have their own dedicated tab now (see
+// app/(tabs)/products.tsx etc.) — "View all" on the For You page navigates
+// there instead of expanding in place, unlike Families/Events which have
+// no such destination and still expand inline.
+function viewAllAction(count: number, pageSize: number, onPress: () => void) {
+  if (count <= pageSize) return {};
+  return { action: 'View all', onAction: onPress };
+}
+
 // Favorited items lead each section, everything else follows — the same
 // item never appears twice.
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
@@ -173,7 +182,6 @@ export default function ForYou() {
   const [products, setProducts] = useState<RecommendedProduct[] | null>(null);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [favoriteProductUrls, setFavoriteProductUrls] = useState<Set<string>>(new Set());
-  const [productsExpanded, setProductsExpanded] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -229,7 +237,6 @@ export default function ForYou() {
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [podcastsError, setPodcastsError] = useState<string | null>(null);
   const [favoritePodcastIds, setFavoritePodcastIds] = useState<Set<string>>(new Set());
-  const [podcastsExpanded, setPodcastsExpanded] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -283,7 +290,6 @@ export default function ForYou() {
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
   const [articlesError, setArticlesError] = useState<string | null>(null);
   const [favoriteResourceUrls, setFavoriteResourceUrls] = useState<Set<string>>(new Set());
-  const [articlesExpanded, setArticlesExpanded] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -465,7 +471,7 @@ export default function ForYou() {
 
         <SectionHeader
           title="Products"
-          {...expandAction(sortedProducts?.length ?? 0, productsExpanded, setProductsExpanded, perRow)}
+          {...viewAllAction(sortedProducts?.length ?? 0, perRow, () => router.push('/(tabs)/products'))}
         />
         {productsError ? (
           <EmptyState text={`Couldn’t load products (${productsError}).`} />
@@ -475,7 +481,7 @@ export default function ForYou() {
           <EmptyState text="Add your child's neurodivergence info to see product picks." />
         ) : (
           <View style={styles.grid}>
-            {(productsExpanded ? sortedProducts : sortedProducts.slice(0, perRow)).map((product) => (
+            {sortedProducts.slice(0, perRow).map((product) => (
               <SquareCard
                 key={product.url}
                 title={product.title}
@@ -505,7 +511,7 @@ export default function ForYou() {
 
         <SectionHeader
           title="Podcasts"
-          {...expandAction(sortedPodcasts?.length ?? 0, podcastsExpanded, setPodcastsExpanded, perRow)}
+          {...viewAllAction(sortedPodcasts?.length ?? 0, perRow, () => router.push('/(tabs)/podcasts'))}
         />
         {podcastsError ? (
           <EmptyState text={`Couldn’t load podcasts (${podcastsError}).`} />
@@ -515,7 +521,7 @@ export default function ForYou() {
           <EmptyState text="Add your child's neurodivergence info to see podcast suggestions." />
         ) : (
           <View style={styles.grid}>
-            {(podcastsExpanded ? sortedPodcasts : sortedPodcasts.slice(0, perRow)).map((podcast) => (
+            {sortedPodcasts.slice(0, perRow).map((podcast) => (
               <SquareCard
                 key={podcast.id}
                 title={podcast.title || 'Untitled podcast'}
@@ -546,7 +552,7 @@ export default function ForYou() {
 
         <SectionHeader
           title="Articles"
-          {...expandAction(sortedArticles?.length ?? 0, articlesExpanded, setArticlesExpanded, ARTICLE_PAGE_SIZE)}
+          {...viewAllAction(sortedArticles?.length ?? 0, ARTICLE_PAGE_SIZE, () => router.push('/(tabs)/articles'))}
         />
         {articlesError ? (
           <EmptyState text={`Couldn’t load articles (${articlesError}).`} />
@@ -555,7 +561,7 @@ export default function ForYou() {
         ) : sortedArticles.length === 0 ? (
           <EmptyState text="Add your child's neurodivergence info to see relevant articles." />
         ) : (
-          (articlesExpanded ? sortedArticles : sortedArticles.slice(0, ARTICLE_PAGE_SIZE)).map((article) => (
+          sortedArticles.slice(0, ARTICLE_PAGE_SIZE).map((article) => (
             <ListRow
               key={article.url}
               title={article.title}

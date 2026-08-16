@@ -479,3 +479,82 @@ exports.getFamilyProfile = onCall(async (request) => {
     matchScore,
   };
 });
+
+// Powers "Suggested podcasts" on the For You screen's Discover tab. Uses
+// Apple's iTunes Search API — free, unauthenticated, no API key — rather
+// than PodcastIndex, which requires a developer account PodcastIndex isn't
+// currently issuing to free-email signups. Runs server-side (not because
+// the API needs a secret — it doesn't — but to read the caller's own child
+// neurodivergence tags from Firestore and because a server-to-server
+// request sidesteps any CORS restriction a browser fetch might hit).
+exports.getPodcastSuggestions = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+
+  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const me = meSnap.data() ?? {};
+  const neurodivergence = [
+    ...new Set(
+      (Array.isArray(me.children) ? me.children : []).flatMap((c) =>
+        Array.isArray(c?.neurodivergence) ? c.neurodivergence : []
+      )
+    ),
+  ];
+  if (!neurodivergence.length) {
+    return { podcasts: [] };
+  }
+
+  // One search per tag, "parenting" appended to bias toward family-relevant
+  // results instead of purely clinical/adult content.
+  const resultsPerTag = await Promise.all(
+    neurodivergence.map(async (tag) => {
+      const term = encodeURIComponent(`${tag} parenting`);
+      try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=podcast&limit=10`);
+        if (!res.ok) return [];
+        const json = await res.json();
+        return Array.isArray(json.results) ? json.results.map((r) => ({ ...r, matchedTag: tag })) : [];
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  // A podcast can turn up under more than one tag's search — dedupe by
+  // feed and rank higher the more of the child's tags it matched, so a
+  // podcast relevant to both ADHD and sensory processing outranks one
+  // that only came up under a single search.
+  const byFeed = new Map();
+  for (const list of resultsPerTag) {
+    for (const podcast of list) {
+      const key = podcast.collectionId ?? podcast.feedUrl;
+      if (!key) continue;
+      const existing = byFeed.get(key);
+      if (existing) {
+        existing.matchedTags.add(podcast.matchedTag);
+      } else {
+        byFeed.set(key, {
+          id: String(key),
+          title: typeof podcast.collectionName === 'string' ? podcast.collectionName : '',
+          artist: typeof podcast.artistName === 'string' ? podcast.artistName : '',
+          artworkUrl:
+            typeof podcast.artworkUrl600 === 'string'
+              ? podcast.artworkUrl600
+              : typeof podcast.artworkUrl100 === 'string'
+                ? podcast.artworkUrl100
+                : null,
+          viewUrl: typeof podcast.collectionViewUrl === 'string' ? podcast.collectionViewUrl : null,
+          matchedTags: new Set([podcast.matchedTag]),
+        });
+      }
+    }
+  }
+
+  const podcasts = [...byFeed.values()]
+    .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
+    .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
+    .slice(0, 15);
+
+  return { podcasts };
+});

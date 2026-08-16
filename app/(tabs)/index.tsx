@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
@@ -17,6 +17,7 @@ import {
   fetchSuggestedFamilies,
   SuggestedFamily,
 } from '../../lib/families';
+import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
 import { colors } from '../../theme/colors';
 
 const TABS = ['My List', 'Discover'] as const;
@@ -69,6 +70,24 @@ export default function ForYou() {
     }, [user])
   );
 
+  const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
+  const [podcastsError, setPodcastsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchPodcastSuggestions()
+      .then((result) => {
+        if (!cancelled) setPodcasts(result);
+      })
+      .catch((err: any) => {
+        if (!cancelled) setPodcastsError(err?.message ?? err?.code ?? 'unknown error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const firstName = user?.displayName?.split(' ')[0];
 
   return (
@@ -117,6 +136,25 @@ export default function ForYou() {
 
             <SectionHeader title="Products" action="View all" />
             <EmptyState text="No product recommendations yet." />
+
+            <SectionHeader title="Suggested podcasts" />
+            {podcastsError ? (
+              <EmptyState text={`Couldn’t load podcasts (${podcastsError}).`} />
+            ) : podcasts === null ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : podcasts.length === 0 ? (
+              <EmptyState text="Add your child's neurodivergence info to see podcast suggestions." />
+            ) : (
+              podcasts.map((podcast) => (
+                <ListRow
+                  key={podcast.id}
+                  title={podcast.title || 'Untitled podcast'}
+                  subtitle={podcastSubtitle(podcast)}
+                  image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
+                  onPress={podcast.viewUrl ? () => Linking.openURL(podcast.viewUrl!) : undefined}
+                />
+              ))
+            )}
           </>
         ) : (
           <>

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
@@ -491,7 +492,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
-    letterSpacing: 0.3,
+    letterSpacing: 1.5,
     marginBottom: 4,
   },
   fieldValue: {
@@ -602,7 +603,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
-    letterSpacing: 0.3,
+    letterSpacing: 1.5,
     marginBottom: 6,
   },
   availabilitySlotRow: {

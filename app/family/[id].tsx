@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
@@ -243,7 +244,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   matchScore: {
-    fontSize: 16,
+    // A serif accent (Georgia, near-universal, so no webfont to bundle) —
+    // deliberately breaks from the app's usual sans-serif for a bit of
+    // editorial personality on the one big number on this screen.
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontSize: 18,
     fontWeight: '700',
     color: colors.accent,
   },
@@ -276,7 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
     marginBottom: 10,
   },
   emptyInline: {

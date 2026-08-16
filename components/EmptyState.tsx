@@ -1,4 +1,5 @@
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Text } from './AppText';
 import { colors } from '../theme/colors';
 
 export function EmptyState({ text }: { text: string }) {

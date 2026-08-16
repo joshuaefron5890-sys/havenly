@@ -1,4 +1,5 @@
-import { KeyboardTypeOptions, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardTypeOptions, StyleSheet, TextInput, View } from 'react-native';
+import { Text } from './AppText';
 import { colors } from '../theme/colors';
 
 export function FieldInput({
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
     marginBottom: 6,
   },
   optional: {

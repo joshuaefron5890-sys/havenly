@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
 import { WizardHeader } from '../../components/WizardHeader';
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
     marginBottom: 10,
     marginTop: 12,
   },

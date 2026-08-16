@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Text } from './AppText';
 import { MAX_CONTENT_WIDTH } from './ResponsiveContainer';
 import { useAuth } from '../contexts/AuthContext';
 import { signOutUser } from '../lib/firebase';

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './AppText';
 import { colors } from '../theme/colors';
 
 const PREVIEW_SIZE = 220;

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './AppText';
 import { colors } from '../theme/colors';
 
 const TOTAL_STEPS = 10;
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.accent,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
     marginBottom: 4,
   },
   title: {

@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from './AppText';
 import { colors } from '../theme/colors';
 
 export function SectionHeader({ title, action }: { title: string; action?: string }) {

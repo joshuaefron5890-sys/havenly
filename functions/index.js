@@ -1,4 +1,4 @@
-const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -672,50 +672,88 @@ exports.getHealthResources = onCall(async (request) => {
   return { resources };
 });
 
-// Neurodivergent-specialty retailers that might have a real product catalog
-// we can integrate for a "Recommended products" section — checking whether
-// any of them exposes Shopify's default public /products.json feed, since
-// the dev sandbox this was written in can't reach these domains itself to
-// find out. Unauthenticated on purpose: it's a one-time diagnostic to load
-// directly in a browser, not a feature endpoint — safe to delete once we
-// know the answer and build the real thing on top of it.
-const PRODUCT_SOURCE_CANDIDATES = [
+// Neurodivergent-specialty retailers confirmed (via a one-off diagnostic) to
+// expose Shopify's public predictive-search endpoint — the same JSON API
+// their own on-site search bar calls, so results are searchable by keyword
+// without needing a private Storefront API token. Two other candidates
+// (National Autism Resources, Different Roads to Learning) weren't Shopify
+// stores with this endpoint and were dropped.
+const PRODUCT_SOURCES = [
   { name: 'Fun and Function', base: 'https://funandfunction.com' },
   { name: 'Harkla', base: 'https://www.harkla.co' },
-  { name: 'National Autism Resources', base: 'https://nationalautismresources.com' },
-  { name: 'Different Roads to Learning', base: 'https://www.differentroads.com' },
 ];
 
-exports.probeProductSources = onRequest(async (req, res) => {
-  const results = await Promise.all(
-    PRODUCT_SOURCE_CANDIDATES.map(async (source) => {
-      try {
-        const response = await fetch(`${source.base}/products.json?limit=3`);
-        if (!response.ok) {
-          return { name: source.name, base: source.base, ok: false, status: response.status };
+// Powers "Products" on the Discover tab. Searches each retailer's
+// predictive-search endpoint per neurodivergence tag, so results lean
+// toward what's actually relevant to the child's needs rather than a
+// generic marketplace with no vetting.
+exports.getRecommendedProducts = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+
+  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const me = meSnap.data() ?? {};
+  const neurodivergence = [
+    ...new Set(
+      (Array.isArray(me.children) ? me.children : []).flatMap((c) =>
+        Array.isArray(c?.neurodivergence) ? c.neurodivergence : []
+      )
+    ),
+  ];
+  if (!neurodivergence.length) {
+    return { products: [] };
+  }
+
+  const resultsPerSearch = await Promise.all(
+    PRODUCT_SOURCES.flatMap((source) =>
+      neurodivergence.map(async (tag) => {
+        try {
+          const res = await fetch(
+            `${source.base}/search/suggest.json?q=${encodeURIComponent(tag)}&resources[type]=product&resources[limit]=5&resources[options][unavailable_products]=hide`
+          );
+          if (!res.ok) return [];
+          const data = await res.json();
+          const items = data?.resources?.results?.products;
+          if (!Array.isArray(items)) return [];
+          // Harkla's catalog also lists Thinkific-hosted courses alongside
+          // physical products — not something you can add to a playdate
+          // toy bag, so filter those out.
+          return items.filter((item) => item?.vendor !== 'Thinkific').map((item) => ({ item, source, tag }));
+        } catch {
+          return [];
         }
-        const data = await response.json();
-        const products = Array.isArray(data?.products) ? data.products : null;
-        if (!products) {
-          return { name: source.name, base: source.base, ok: false, note: 'Reachable, but no products.json shape' };
-        }
-        return {
-          name: source.name,
-          base: source.base,
-          ok: true,
-          count: products.length,
-          sample: products.slice(0, 2).map((p) => ({
-            title: p?.title,
-            vendor: p?.vendor,
-            productType: p?.product_type,
-            tags: p?.tags,
-          })),
-        };
-      } catch (err) {
-        return { name: source.name, base: source.base, ok: false, error: String(err?.message ?? err) };
-      }
-    })
+      })
+    )
   );
-  res.set('Content-Type', 'application/json');
-  res.status(200).send(JSON.stringify({ results }, null, 2));
+
+  // A product can turn up under more than one tag's search — dedupe by
+  // absolute URL, rank higher the more of the child's tags it matched.
+  const byUrl = new Map();
+  for (const list of resultsPerSearch) {
+    for (const { item, source, tag } of list) {
+      if (typeof item?.url !== 'string' || typeof item?.title !== 'string') continue;
+      const url = new URL(item.url, source.base).toString();
+      const existing = byUrl.get(url);
+      if (existing) {
+        existing.matchedTags.add(tag);
+      } else {
+        byUrl.set(url, {
+          url,
+          title: item.title,
+          vendor: typeof item.vendor === 'string' ? item.vendor : source.name,
+          source: source.name,
+          imageUrl: typeof item.image === 'string' ? item.image : null,
+          matchedTags: new Set([tag]),
+        });
+      }
+    }
+  }
+
+  const products = [...byUrl.values()]
+    .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
+    .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
+    .slice(0, 15);
+
+  return { products };
 });

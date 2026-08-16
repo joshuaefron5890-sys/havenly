@@ -18,6 +18,7 @@ import {
   SuggestedFamily,
 } from '../../lib/families';
 import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
+import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
 
@@ -80,6 +81,25 @@ export default function ForYou() {
       };
     }, [user])
   );
+
+  const [products, setProducts] = useState<RecommendedProduct[] | null>(null);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [productsExpanded, setProductsExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchRecommendedProducts()
+      .then((result) => {
+        if (!cancelled) setProducts(result);
+      })
+      .catch((err: any) => {
+        if (!cancelled) setProductsError(err?.message ?? err?.code ?? 'unknown error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [podcastsError, setPodcastsError] = useState<string | null>(null);
@@ -168,8 +188,27 @@ export default function ForYou() {
             <SectionHeader title="Suggested playdates" action="See more" />
             <EmptyState text="No playdate suggestions yet — check back once you've connected with families." />
 
-            <SectionHeader title="Products" action="View all" />
-            <EmptyState text="No product recommendations yet." />
+            <SectionHeader
+              title="Products"
+              {...expandAction(products?.length ?? 0, productsExpanded, setProductsExpanded)}
+            />
+            {productsError ? (
+              <EmptyState text={`Couldn’t load products (${productsError}).`} />
+            ) : products === null ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : products.length === 0 ? (
+              <EmptyState text="Add your child's neurodivergence info to see product picks." />
+            ) : (
+              (productsExpanded ? products : products.slice(0, PAGE_SIZE)).map((product) => (
+                <ListRow
+                  key={product.url}
+                  title={product.title}
+                  subtitle={productSubtitle(product)}
+                  image={product.imageUrl ? { uri: product.imageUrl } : undefined}
+                  onPress={() => Linking.openURL(product.url)}
+                />
+              ))
+            )}
 
             <SectionHeader
               title="Suggested podcasts"

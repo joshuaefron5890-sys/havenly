@@ -87,7 +87,7 @@ export function SquareCard({
               badgeVariant === 'warning' && styles.badgeWarning,
             ]}
           >
-            <Text style={styles.badgeText} numberOfLines={1}>
+            <Text style={[styles.badgeText, badgeVariant === 'warning' && styles.badgeTextDark]} numberOfLines={1}>
               {badge}
             </Text>
           </View>
@@ -217,7 +217,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.positive,
   },
   badgeWarning: {
-    backgroundColor: colors.warning,
+    // A bright, unambiguous yellow rather than colors.warning (a dark
+    // amber tuned for white text elsewhere in the app, see
+    // app/onboarding/calendar.tsx) — kept local to this badge rather than
+    // changing that shared token, paired with dark text below since white
+    // text on true yellow reads poorly.
+    backgroundColor: '#F5C518',
   },
   communityBadge: {
     position: 'absolute',
@@ -266,6 +271,9 @@ const styles = StyleSheet.create({
     color: colors.surface,
     textAlign: 'center',
     textTransform: 'uppercase',
+  },
+  badgeTextDark: {
+    color: colors.text,
   },
   title: {
     fontSize: 11,

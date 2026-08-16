@@ -209,6 +209,7 @@ export default function ForYou() {
                   key={article.url}
                   title={article.title}
                   subtitle={resourceSubtitle(article)}
+                  icon="document-text-outline"
                   onPress={() => Linking.openURL(article.url)}
                 />
               ))

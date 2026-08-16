@@ -60,6 +60,7 @@ export default function Resources() {
               key={resource.url}
               title={resource.title}
               subtitle={resourceSubtitle(resource)}
+              icon="document-text-outline"
               onPress={() => Linking.openURL(resource.url)}
             />
           ))

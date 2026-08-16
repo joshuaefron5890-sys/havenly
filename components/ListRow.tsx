@@ -9,18 +9,28 @@ export function ListRow({
   subtitle,
   badge,
   image,
+  icon,
   onPress,
 }: {
   title: string;
   subtitle?: string;
   badge?: string;
   image?: ImageSourcePropType;
+  // Shown instead of a blank placeholder box when there's no real image to
+  // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
+  icon?: keyof typeof Ionicons.glyphMap;
   onPress?: () => void;
 }) {
   const Container = onPress ? Pressable : View;
   return (
     <Container style={styles.row} onPress={onPress}>
-      <Photo source={image} style={styles.thumbnail} />
+      {!image && icon ? (
+        <View style={[styles.thumbnail, styles.iconThumbnail]}>
+          <Ionicons name={icon} size={20} color={colors.accent} />
+        </View>
+      ) : (
+        <Photo source={image} style={styles.thumbnail} />
+      )}
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -51,6 +61,10 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     backgroundColor: colors.accentMuted,
+  },
+  iconThumbnail: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   body: {
     flex: 1,

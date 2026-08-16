@@ -15,7 +15,7 @@ import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { familyDisplayName, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
-import { Message, sendMessage, subscribeToMessages } from '../../lib/messages';
+import { markConversationRead, Message, sendMessage, subscribeToMessages } from '../../lib/messages';
 import { colors } from '../../theme/colors';
 
 export default function MessageThread() {
@@ -37,6 +37,15 @@ export default function MessageThread() {
     const unsubscribe = subscribeToMessages(id, setMessages);
     return unsubscribe;
   }, [id]);
+
+  // Marks read on open, and again whenever the message list changes while
+  // this screen is already the one on screen — a message that arrives
+  // mid-conversation gets marked read too, not just whatever was there on
+  // first mount.
+  useEffect(() => {
+    if (!id || !messages) return;
+    markConversationRead(id);
+  }, [id, messages]);
 
   useEffect(() => {
     if (!otherUid) return;

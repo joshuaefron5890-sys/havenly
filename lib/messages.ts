@@ -17,6 +17,10 @@ export type Conversation = {
   participantUids: string[];
   lastMessage: string;
   lastMessageAt: Date | null;
+  // Per-participant "read up to" timestamp — a conversation is unread for
+  // a user when lastMessageAt is newer than their own entry here (or
+  // they have no entry yet at all).
+  readAt: Record<string, Date>;
 };
 
 export type Message = {
@@ -35,6 +39,12 @@ function conversationId(uidA: string, uidB: string): string {
 
 export function otherParticipant(conversation: Conversation, myUid: string): string | undefined {
   return conversation.participantUids.find((uid) => uid !== myUid);
+}
+
+export function isUnread(conversation: Conversation, myUid: string): boolean {
+  if (!conversation.lastMessageAt) return false;
+  const readAt = conversation.readAt[myUid];
+  return !readAt || conversation.lastMessageAt.getTime() > readAt.getTime();
 }
 
 // Creates the conversation doc if it doesn't exist yet, and returns its id
@@ -62,6 +72,16 @@ function toDate(value: unknown): Date | null {
   return value instanceof Timestamp ? value.toDate() : null;
 }
 
+function toDateMap(value: unknown): Record<string, Date> {
+  if (!value || typeof value !== 'object') return {};
+  const result: Record<string, Date> = {};
+  for (const [uid, ts] of Object.entries(value as Record<string, unknown>)) {
+    const date = toDate(ts);
+    if (date) result[uid] = date;
+  }
+  return result;
+}
+
 // Live-subscribes to the signed-in user's conversations. Sorted client-side
 // rather than via a Firestore orderBy, which would need a composite index
 // for the array-contains + orderBy combination — not worth it for what's
@@ -80,6 +100,7 @@ export function subscribeToConversations(callback: (conversations: Conversation[
         participantUids: Array.isArray(data.participantUids) ? data.participantUids : [],
         lastMessage: typeof data.lastMessage === 'string' ? data.lastMessage : '',
         lastMessageAt: toDate(data.lastMessageAt),
+        readAt: toDateMap(data.readAt),
       };
     });
     conversations.sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0));
@@ -118,5 +139,26 @@ export async function sendMessage(id: string, text: string): Promise<void> {
     text: trimmed,
     createdAt: serverTimestamp(),
   });
-  await setDoc(doc(db, 'conversations', id), { lastMessage: trimmed, lastMessageAt: serverTimestamp() }, { merge: true });
+  await setDoc(
+    doc(db, 'conversations', id),
+    {
+      lastMessage: trimmed,
+      lastMessageAt: serverTimestamp(),
+      // Sending a message counts as having read up to it yourself —
+      // otherwise your own outgoing message would show up as unread for
+      // you the next time this conversation is checked.
+      readAt: { [myUid]: serverTimestamp() },
+    },
+    { merge: true }
+  );
+}
+
+// Marks a conversation read up to now for the signed-in user. A plain
+// setDoc(..., {merge: true}) deep-merges nested map fields, so this only
+// ever touches the caller's own key in readAt — the other participant's
+// entry is untouched.
+export async function markConversationRead(id: string): Promise<void> {
+  const myUid = auth?.currentUser?.uid;
+  if (!myUid || !db) return;
+  await setDoc(doc(db, 'conversations', id), { readAt: { [myUid]: serverTimestamp() } }, { merge: true });
 }

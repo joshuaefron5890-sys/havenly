@@ -2,10 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
+import { useMessagesBadge } from '../contexts/MessagesContext';
 import { colors } from '../theme/colors';
 import { SettingsMenu } from './SettingsMenu';
 
 export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title: string }) {
+  const { hasUnread } = useMessagesBadge();
   return (
     <View style={styles.row}>
       <View>
@@ -13,8 +15,9 @@ export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title: stri
         <Text style={styles.title}>{title}</Text>
       </View>
       <View style={styles.icons}>
-        <Pressable onPress={() => router.push('/messages')} hitSlop={8}>
+        <Pressable onPress={() => router.push('/messages')} hitSlop={8} style={styles.messageIcon}>
           <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+          {hasUnread ? <View style={styles.badge} /> : null}
         </Pressable>
         <SettingsMenu />
       </View>
@@ -44,5 +47,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  messageIcon: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.accent,
+    borderWidth: 1.5,
+    borderColor: colors.background,
   },
 });

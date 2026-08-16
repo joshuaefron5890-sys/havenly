@@ -1,4 +1,4 @@
-const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -683,6 +683,28 @@ const PRODUCT_SOURCES = [
   { name: 'Harkla', base: 'https://www.harkla.co' },
 ];
 
+// Shopify's predictive-search endpoint matches literally — a plain word
+// like "sensory" returns real results (verified via a one-off diagnostic),
+// but the long descriptive labels used during onboarding
+// (app/onboarding/child.tsx's NEURODIVERGENCE_OPTIONS) mostly don't appear
+// verbatim anywhere in the catalog, so they returned nothing. Map each one
+// to a short, retail-friendly keyword instead; anything not listed here
+// (a future onboarding option, say) falls back to the label as-is.
+const PRODUCT_SEARCH_TERMS = {
+  Autism: 'autism',
+  ADHD: 'adhd',
+  Dyslexia: 'reading',
+  Dyspraxia: 'motor skills',
+  'Sensory processing differences': 'sensory',
+  'Communication differences': 'communication',
+  Anxiety: 'calming',
+  'Intellectual/developmental disability': 'developmental',
+  // No product-relevant keyword for these — skip rather than search for
+  // something meaningless like "prefer not to say".
+  'Still figuring it out': null,
+  'Prefer not to say': null,
+};
+
 // Powers "Products" on the Discover tab. Searches each retailer's
 // predictive-search endpoint per neurodivergence tag, so results lean
 // toward what's actually relevant to the child's needs rather than a
@@ -701,16 +723,19 @@ exports.getRecommendedProducts = onCall(async (request) => {
       )
     ),
   ];
-  if (!neurodivergence.length) {
+  const searches = neurodivergence
+    .map((tag) => ({ tag, term: tag in PRODUCT_SEARCH_TERMS ? PRODUCT_SEARCH_TERMS[tag] : tag }))
+    .filter((s) => s.term);
+  if (!searches.length) {
     return { products: [] };
   }
 
   const resultsPerSearch = await Promise.all(
     PRODUCT_SOURCES.flatMap((source) =>
-      neurodivergence.map(async (tag) => {
+      searches.map(async ({ tag, term }) => {
         try {
           const res = await fetch(
-            `${source.base}/search/suggest.json?q=${encodeURIComponent(tag)}&resources[type]=product&resources[limit]=5&resources[options][unavailable_products]=hide`
+            `${source.base}/search/suggest.json?q=${encodeURIComponent(term)}&resources[type]=product&resources[limit]=5&resources[options][unavailable_products]=hide`
           );
           if (!res.ok) return [];
           const data = await res.json();
@@ -729,11 +754,18 @@ exports.getRecommendedProducts = onCall(async (request) => {
 
   // A product can turn up under more than one tag's search — dedupe by
   // absolute URL, rank higher the more of the child's tags it matched.
+  // Shopify's search response tags each product url with tracking params
+  // (?_pos=…&_psq=…) that vary by query, so the same product could
+  // otherwise dedupe into multiple entries depending on which search
+  // surfaced it — strip those before using the url as the dedupe/favorite
+  // key.
   const byUrl = new Map();
   for (const list of resultsPerSearch) {
     for (const { item, source, tag } of list) {
       if (typeof item?.url !== 'string' || typeof item?.title !== 'string') continue;
-      const url = new URL(item.url, source.base).toString();
+      const resolved = new URL(item.url, source.base);
+      resolved.search = '';
+      const url = resolved.toString();
       const existing = byUrl.get(url);
       if (existing) {
         existing.matchedTags.add(tag);
@@ -756,28 +788,4 @@ exports.getRecommendedProducts = onCall(async (request) => {
     .slice(0, 15);
 
   return { products };
-});
-
-// The Products section is coming back empty — getRecommendedProducts'
-// /search/suggest.json response shape was never actually verified against
-// live data (only /products.json was, in the earlier probe), so before
-// guessing further: dump the raw response for a plain single-word query
-// against both stores. Same temporary-diagnostic pattern as before — safe
-// to delete once the real shape is confirmed.
-exports.probeProductSearch = onRequest(async (req, res) => {
-  const q = typeof req.query.q === 'string' ? req.query.q : 'sensory';
-  const results = await Promise.all(
-    PRODUCT_SOURCES.map(async (source) => {
-      const url = `${source.base}/search/suggest.json?q=${encodeURIComponent(q)}&resources[type]=product&resources[limit]=5&resources[options][unavailable_products]=hide`;
-      try {
-        const response = await fetch(url);
-        const text = await response.text();
-        return { name: source.name, url, status: response.status, body: text.slice(0, 4000) };
-      } catch (err) {
-        return { name: source.name, url, error: String(err?.message ?? err) };
-      }
-    })
-  );
-  res.set('Content-Type', 'application/json');
-  res.status(200).send(JSON.stringify({ q, results }, null, 2));
 });

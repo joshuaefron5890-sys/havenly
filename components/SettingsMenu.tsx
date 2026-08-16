@@ -43,7 +43,7 @@ export function SettingsMenu() {
     // screen instead of the true landing page, since both resolve to "/" —
     // a full reload sidesteps that ambiguity and guarantees a clean state.
     if (Platform.OS === 'web') {
-      window.location.href = '/havenly/';
+      window.location.href = '/';
     } else {
       router.replace('/');
     }

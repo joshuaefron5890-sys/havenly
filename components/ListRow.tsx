@@ -11,6 +11,8 @@ export function ListRow({
   image,
   icon,
   onPress,
+  favorited,
+  onToggleFavorite,
 }: {
   title: string;
   subtitle?: string;
@@ -20,6 +22,12 @@ export function ListRow({
   // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
   icon?: keyof typeof Ionicons.glyphMap;
   onPress?: () => void;
+  // Renders a heart button when provided. Its own onPress (rather than
+  // relying on event bubbling) is what keeps a tap on the heart from also
+  // triggering the row's onPress — same idiom SettingsMenu's modal uses to
+  // stop a tap on the menu from bubbling up to its backdrop.
+  favorited?: boolean;
+  onToggleFavorite?: () => void;
 }) {
   const Container = onPress ? Pressable : View;
   return (
@@ -35,6 +43,15 @@ export function ListRow({
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
+      {onToggleFavorite ? (
+        <Pressable hitSlop={8} onPress={onToggleFavorite} style={styles.heart}>
+          <Ionicons
+            name={favorited ? 'heart' : 'heart-outline'}
+            size={20}
+            color={favorited ? colors.accent : colors.textMuted}
+          />
+        </Pressable>
+      ) : null}
       {badge ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge}</Text>
@@ -65,6 +82,9 @@ const styles = StyleSheet.create({
   iconThumbnail: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  heart: {
+    padding: 2,
   },
   body: {
     flex: 1,

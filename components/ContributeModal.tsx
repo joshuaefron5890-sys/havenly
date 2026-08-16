@@ -19,6 +19,8 @@ export function ContributeModal({
   title,
   fields,
   defaultName,
+  initialValues,
+  submitLabel = 'Submit',
   onClose,
   onSubmit,
 }: {
@@ -26,11 +28,17 @@ export function ContributeModal({
   title: string;
   fields: ContributionField[];
   defaultName: string;
+  // Pre-fills the form — used when editing an existing contribution rather
+  // than creating a new one. Only read once at mount, same as defaultName,
+  // since each edit gets its own ContributeModal instance scoped to that
+  // one contribution rather than a shared/reused one.
+  initialValues?: Record<string, string>;
+  submitLabel?: string;
   onClose: () => void;
   onSubmit: (contributorName: string, values: Record<string, string>) => Promise<void>;
 }) {
   const [name, setName] = useState(defaultName);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(initialValues ?? {});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [datePickerKey, setDatePickerKey] = useState<string | null>(null);
@@ -83,7 +91,7 @@ export function ContributeModal({
     setError(null);
     try {
       await onSubmit(name, values);
-      setValues({});
+      setValues(initialValues ?? {});
       onClose();
     } catch {
       setError('Couldn’t submit that — please try again.');
@@ -209,7 +217,7 @@ export function ContributeModal({
               {submitting ? (
                 <ActivityIndicator color={colors.surface} />
               ) : (
-                <Text style={styles.submitText}>Submit</Text>
+                <Text style={styles.submitText}>{submitLabel}</Text>
               )}
             </Pressable>
           </View>

@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, Timestamp, where } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 export type ContributionType = 'product' | 'podcast' | 'article' | 'event';
@@ -112,6 +112,22 @@ export async function createContribution(
     contributedByName: contributorName.trim() || 'A Haven.ly family',
     createdAt: serverTimestamp(),
   });
+}
+
+// Only the original contributor can call this successfully — enforced
+// again server-side in firestore.rules, which also pins every field
+// except `fields`/`contributedByName`.
+export async function updateContribution(
+  id: string,
+  fields: Record<string, string>,
+  contributorName: string
+): Promise<void> {
+  if (!db) throw new Error('not-signed-in');
+  await setDoc(
+    doc(db, 'contributions', id),
+    { fields, contributedByName: contributorName.trim() || 'A Haven.ly family' },
+    { merge: true }
+  );
 }
 
 // Only filters by type (a single equality where — no composite index

@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ContributeModal } from '../../components/ContributeModal';
 import { Photo } from '../../components/Photo';
-import { CONTRIBUTION_SCHEMAS, ContributionType } from '../../lib/contributions';
+import { useAuth } from '../../contexts/AuthContext';
+import { CONTRIBUTION_SCHEMAS, ContributionType, updateContribution } from '../../lib/contributions';
 import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { colors } from '../../theme/colors';
 
@@ -14,13 +16,25 @@ import { colors } from '../../theme/colors';
 // same source the "Contribute" form used to collect them, so this never
 // needs updating when a form's fields change.
 export default function ContributionDetail() {
-  const { type, fieldsJson, contributedByName, contributedByUid } = useLocalSearchParams<{
+  const { id, type, fieldsJson, contributedByName, contributedByUid } = useLocalSearchParams<{
     id: string;
     type: string;
     fieldsJson?: string;
     contributedByName?: string;
     contributedByUid?: string;
   }>();
+  const { user } = useAuth();
+
+  const schema = CONTRIBUTION_SCHEMAS[type as ContributionType];
+
+  // Local, editable copies of what the route params passed in — updated in
+  // place after a successful edit so the screen reflects the change right
+  // away, without needing a refetch or a trip back to the list.
+  const [liveFields, setLiveFields] = useState<Record<string, string>>(() =>
+    fieldsJson ? JSON.parse(fieldsJson) : {}
+  );
+  const [liveContributedByName, setLiveContributedByName] = useState(contributedByName || 'A Haven.ly family');
+  const [editVisible, setEditVisible] = useState(false);
 
   const [family, setFamily] = useState<SuggestedFamily | null>(null);
 
@@ -40,13 +54,19 @@ export default function ContributionDetail() {
     };
   }, [contributedByUid]);
 
-  const schema = CONTRIBUTION_SCHEMAS[type as ContributionType];
-  const fields: Record<string, string> = fieldsJson ? JSON.parse(fieldsJson) : {};
-  const title = fields.title || 'Community contribution';
-  const url = fields.url?.trim();
+  const title = liveFields.title || 'Community contribution';
+  const url = liveFields.url?.trim();
   const photoUrl = family ? familyPhoto(family) : null;
   const imageField = schema?.fields.find((f) => f.type === 'image');
-  const contributedImageUrl = imageField ? fields[imageField.key]?.trim() : undefined;
+  const contributedImageUrl = imageField ? liveFields[imageField.key]?.trim() : undefined;
+  const isOwner = Boolean(user && contributedByUid && user.uid === contributedByUid);
+
+  const handleEditSubmit = async (name: string, values: Record<string, string>) => {
+    if (!id) return;
+    await updateContribution(id, values, name);
+    setLiveFields(values);
+    setLiveContributedByName(name);
+  };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -54,6 +74,12 @@ export default function ContributionDetail() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
+        {isOwner ? (
+          <Pressable style={styles.editButton} onPress={() => setEditVisible(true)}>
+            <Ionicons name="pencil" size={16} color={colors.text} />
+            <Text style={styles.editButtonText}>Edit</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -72,7 +98,7 @@ export default function ContributionDetail() {
           <Photo source={photoUrl ? { uri: photoUrl } : undefined} style={styles.contributorPhoto} />
           <View style={styles.contributorInfo}>
             <Text style={styles.contributorName} numberOfLines={1}>
-              {family ? familyDisplayName(family) : contributedByName || 'A Haven.ly family'}
+              {family ? familyDisplayName(family) : liveContributedByName}
             </Text>
             <Text style={styles.contributorSub}>Contributed this {schema?.noun ?? 'pick'}</Text>
           </View>
@@ -88,11 +114,11 @@ export default function ContributionDetail() {
 
         <View style={styles.card}>
           {schema?.fields
-            .filter((f) => f.type !== 'image' && f.key !== 'title' && (fields[f.key] ?? '').trim())
+            .filter((f) => f.type !== 'image' && f.key !== 'title' && (liveFields[f.key] ?? '').trim())
             .map((f) => (
               <View key={f.key} style={styles.row}>
                 <Text style={styles.rowLabel}>{f.label.toUpperCase()}</Text>
-                <Text style={styles.rowValue}>{fields[f.key]}</Text>
+                <Text style={styles.rowValue}>{liveFields[f.key]}</Text>
               </View>
             ))}
         </View>
@@ -104,6 +130,19 @@ export default function ContributionDetail() {
             <Text style={styles.ctaText}>Open link</Text>
           </Pressable>
         </View>
+      ) : null}
+
+      {schema ? (
+        <ContributeModal
+          visible={editVisible}
+          title={`Edit ${schema.noun}`}
+          fields={schema.fields}
+          defaultName={liveContributedByName}
+          initialValues={liveFields}
+          submitLabel="Save changes"
+          onClose={() => setEditVisible(false)}
+          onSubmit={handleEditSubmit}
+        />
       ) : null}
     </SafeAreaView>
   );
@@ -117,6 +156,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
@@ -128,6 +168,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 36,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    backgroundColor: colors.border,
+  },
+  editButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
   },
   content: {
     padding: 20,

@@ -182,9 +182,9 @@ export default function Products() {
                   <SquareCard
                     key={c.id}
                     title={c.fields.title ?? 'Community pick'}
-                    subtitle={`Contributed by ${c.contributedByName}`}
                     icon="bag-outline"
-                    badge="Community"
+                    community
+                    contributedBy={c.contributedByName}
                     onPress={() =>
                       router.push({
                         pathname: '/contribution/[id]',

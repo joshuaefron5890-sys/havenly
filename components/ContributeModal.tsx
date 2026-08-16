@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Text } from './AppText';
+import { DatePickerModal } from './DatePickerModal';
 import { FieldInput } from './FieldInput';
 import { ContributionField } from '../lib/contributions';
 import { colors } from '../theme/colors';
@@ -30,6 +31,7 @@ export function ContributeModal({
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [datePickerKey, setDatePickerKey] = useState<string | null>(null);
 
   const missingRequired = fields.some((f) => !f.optional && !(values[f.key] ?? '').trim());
   const canSubmit = Boolean(name.trim()) && !missingRequired && !submitting;
@@ -68,8 +70,24 @@ export function ContributeModal({
           </View>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <FieldInput label="Your name" placeholder="How should we credit you?" value={name} onChangeText={setName} />
-            {fields.map((f) =>
-              f.multiline ? (
+            {fields.map((f) => {
+              if (f.type === 'date') {
+                return (
+                  <View key={f.key} style={styles.dateWrap}>
+                    <Text style={styles.multilineLabel}>
+                      {f.label}
+                      {f.optional ? <Text style={styles.optional}> · optional</Text> : null}
+                    </Text>
+                    <Pressable style={styles.dateButton} onPress={() => setDatePickerKey(f.key)}>
+                      <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
+                      <Text style={values[f.key] ? styles.dateButtonText : styles.dateButtonPlaceholder}>
+                        {values[f.key] || 'Select a date'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              }
+              return f.multiline ? (
                 <View key={f.key} style={styles.multilineWrap}>
                   <Text style={styles.multilineLabel}>
                     {f.label}
@@ -93,8 +111,8 @@ export function ContributeModal({
                   value={values[f.key] ?? ''}
                   onChangeText={(text) => setValues((prev) => ({ ...prev, [f.key]: text }))}
                 />
-              )
-            )}
+              );
+            })}
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </ScrollView>
           <View style={styles.footer}>
@@ -112,6 +130,14 @@ export function ContributeModal({
           </View>
         </View>
       </View>
+      <DatePickerModal
+        visible={datePickerKey !== null}
+        onClose={() => setDatePickerKey(null)}
+        onConfirm={(label) => {
+          if (!datePickerKey) return;
+          setValues((prev) => ({ ...prev, [datePickerKey]: label }));
+        }}
+      />
     </Modal>
   );
 }
@@ -145,6 +171,28 @@ const styles = StyleSheet.create({
   },
   multilineWrap: {
     marginBottom: 16,
+  },
+  dateWrap: {
+    marginBottom: 16,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dateButtonText: {
+    fontSize: 15,
+    color: colors.text,
+  },
+  dateButtonPlaceholder: {
+    fontSize: 15,
+    color: colors.textMuted,
   },
   multilineLabel: {
     fontSize: 12,

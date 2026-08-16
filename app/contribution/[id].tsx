@@ -33,7 +33,7 @@ export default function ContributionDetail() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.communityBadge}>
-          <Ionicons name="people" size={14} color={colors.accent} />
+          <Ionicons name="people" size={14} color={colors.surface} />
           <Text style={styles.communityBadgeText}>Community contributed</Text>
         </View>
 
@@ -91,7 +91,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: colors.accentMuted,
+    // Same dark pill as the "Community" marker on cards throughout the app —
+    // kept one fixed look everywhere it shows up.
+    backgroundColor: colors.text,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -100,7 +102,7 @@ const styles = StyleSheet.create({
   communityBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.accent,
+    color: colors.surface,
   },
   title: {
     fontSize: 22,

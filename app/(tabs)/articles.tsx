@@ -174,9 +174,9 @@ export default function Articles() {
                   <ListRow
                     key={c.id}
                     title={c.fields.title ?? 'Community pick'}
-                    subtitle={`Contributed by ${c.contributedByName}`}
                     icon="document-text-outline"
-                    badge="Community"
+                    community
+                    contributedBy={c.contributedByName}
                     onPress={() =>
                       router.push({
                         pathname: '/contribution/[id]',

@@ -84,8 +84,8 @@ export default function MessageThread() {
     setRespondingId(proposalId);
     try {
       await respondToProposal(proposalId, status);
-    } catch {
-      Alert.alert('Couldn’t save your response', 'Please try again.');
+    } catch (err: any) {
+      Alert.alert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setRespondingId(null);
     }

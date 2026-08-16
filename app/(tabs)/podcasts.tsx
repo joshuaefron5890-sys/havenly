@@ -178,9 +178,9 @@ export default function Podcasts() {
                   <SquareCard
                     key={c.id}
                     title={c.fields.title ?? 'Community pick'}
-                    subtitle={`Contributed by ${c.contributedByName}`}
                     icon="mic-outline"
-                    badge="Community"
+                    community
+                    contributedBy={c.contributedByName}
                     onPress={() =>
                       router.push({
                         pathname: '/contribution/[id]',

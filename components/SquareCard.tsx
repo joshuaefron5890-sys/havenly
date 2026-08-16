@@ -20,6 +20,8 @@ export function SquareCard({
   favorited,
   onToggleFavorite,
   badge,
+  community,
+  contributedBy,
 }: {
   title: string;
   subtitle?: string;
@@ -34,7 +36,15 @@ export function SquareCard({
   onToggleFavorite?: () => void;
   // A small pill in the thumbnail's top-left corner (e.g. "Proposed" on a
   // pending playdate proposal) — opposite corner from the favorite heart.
+  // Ignored when `community` is set, since that has its own fixed look.
   badge?: string;
+  // The standardized "this was added by a family, not curated" marker —
+  // same dark icon+label pill everywhere it appears (here, ListRow, and the
+  // contribution detail screen) so it always reads the same regardless of
+  // section. Kept visually distinct from `badge` (which uses the accent
+  // color for playdate-status pills like "Proposed") on purpose.
+  community?: boolean;
+  contributedBy?: string;
 }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -51,7 +61,14 @@ export function SquareCard({
         ) : (
           <Photo source={image} style={styles.thumbnail} />
         )}
-        {badge ? (
+        {community ? (
+          <View style={styles.communityBadge}>
+            <Ionicons name="people" size={9} color={colors.surface} />
+            <Text style={styles.communityBadgeText} numberOfLines={1}>
+              Community
+            </Text>
+          </View>
+        ) : badge ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText} numberOfLines={1}>
               {badge}
@@ -71,7 +88,14 @@ export function SquareCard({
       <Text style={styles.title} numberOfLines={2}>
         {title}
       </Text>
-      {subtitle ? (
+      {contributedBy ? (
+        <View style={styles.contributorRow}>
+          <Ionicons name="person-circle-outline" size={11} color={colors.textMuted} />
+          <Text style={styles.contributorText} numberOfLines={1}>
+            {contributedBy}
+          </Text>
+        </View>
+      ) : subtitle ? (
         <Text style={styles.subtitle} numberOfLines={1}>
           {subtitle}
         </Text>
@@ -141,6 +165,39 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 4,
     paddingVertical: 2,
+  },
+  communityBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    // Fixed dark color (not the accent) so it never gets confused with a
+    // status pill like "Proposed" — this one only ever means one thing.
+    backgroundColor: colors.text,
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  communityBadgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: colors.surface,
+    textTransform: 'uppercase',
+  },
+  contributorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 2,
+  },
+  contributorText: {
+    flex: 1,
+    fontSize: 10,
+    color: colors.textMuted,
   },
   badgeText: {
     fontSize: 8,

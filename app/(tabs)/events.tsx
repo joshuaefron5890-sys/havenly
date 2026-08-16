@@ -196,9 +196,9 @@ export default function Events() {
                   <SquareCard
                     key={c.id}
                     title={c.fields.title ?? 'Community event'}
-                    subtitle={`Contributed by ${c.contributedByName}`}
                     icon="calendar-outline"
-                    badge="Community"
+                    community
+                    contributedBy={c.contributedByName}
                     onPress={() =>
                       router.push({
                         pathname: '/contribution/[id]',

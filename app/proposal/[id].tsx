@@ -46,8 +46,8 @@ export default function ProposalDetail() {
     setResponding(true);
     try {
       await respondToProposal(id, status);
-    } catch {
-      Alert.alert('Couldn’t save your response', 'Please try again.');
+    } catch (err: any) {
+      Alert.alert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setResponding(false);
     }

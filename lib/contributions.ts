@@ -9,6 +9,10 @@ export type ContributionField = {
   placeholder?: string;
   multiline?: boolean;
   optional?: boolean;
+  // 'date' renders a calendar + time picker instead of a plain text
+  // field (see components/DatePickerModal.tsx) — the value stored is
+  // still just the formatted label string, same as every other field.
+  type?: 'text' | 'date';
 };
 
 // One schema per content type — shared by the "Contribute" form on each
@@ -48,7 +52,7 @@ export const CONTRIBUTION_SCHEMAS: Record<
     noun: 'event',
     fields: [
       { key: 'title', label: 'Event name' },
-      { key: 'date', label: 'Date & time', placeholder: 'e.g. Sat, Sep 6 · 10:00 AM', optional: true },
+      { key: 'date', label: 'Date & time', type: 'date', optional: true },
       { key: 'venue', label: 'Location', placeholder: 'Address, or "Virtual"', optional: true },
       { key: 'url', label: 'Link', placeholder: 'https://…', optional: true },
       { key: 'description', label: 'Details', multiline: true, optional: true },

@@ -8,6 +8,8 @@ export function ListRow({
   title,
   subtitle,
   badge,
+  community,
+  contributedBy,
   image,
   icon,
   onPress,
@@ -17,6 +19,12 @@ export function ListRow({
   title: string;
   subtitle?: string;
   badge?: string;
+  // The standardized "added by a family, not curated" marker — same dark
+  // icon+label pill as SquareCard and the contribution detail screen use,
+  // combined with the contributor's name into one row. Takes priority over
+  // `subtitle` when set (contributions don't have a separate subtitle).
+  community?: boolean;
+  contributedBy?: string;
   image?: ImageSourcePropType;
   // Shown instead of a blank placeholder box when there's no real image to
   // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
@@ -41,7 +49,14 @@ export function ListRow({
       )}
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
-        {subtitle ? (
+        {community ? (
+          <View style={styles.communityBadge}>
+            <Ionicons name="people" size={10} color={colors.surface} />
+            <Text style={styles.communityBadgeText} numberOfLines={1}>
+              Community{contributedBy ? ` · ${contributedBy}` : ''}
+            </Text>
+          </View>
+        ) : subtitle ? (
           <Text style={styles.subtitle} numberOfLines={3}>
             {subtitle}
           </Text>
@@ -95,6 +110,22 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  communityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: colors.text,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+  },
+  communityBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.surface,
   },
   title: {
     fontSize: 15,

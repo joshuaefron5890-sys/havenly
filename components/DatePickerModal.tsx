@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
 
@@ -19,16 +19,32 @@ const MONTH_LABELS = [
   'November',
   'December',
 ];
-const MINUTES = ['00', '15', '30', '45'];
 
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
-function formatLabel(day: Date, hour12: number, minute: string, isPM: boolean): string {
+function formatLabel(day: Date, hourText: string, minuteText: string, isPM: boolean): string {
   const weekday = day.toLocaleDateString(undefined, { weekday: 'short' });
   const month = day.toLocaleDateString(undefined, { month: 'short' });
-  return `${weekday}, ${month} ${day.getDate()} · ${hour12}:${minute} ${isPM ? 'PM' : 'AM'}`;
+  const hour = clampHour(hourText);
+  const minute = clampMinute(minuteText);
+  return `${weekday}, ${month} ${day.getDate()} · ${hour}:${minute} ${isPM ? 'PM' : 'AM'}`;
+}
+
+// Typed input is free-form while the field has focus (so backspacing to an
+// empty string doesn't fight the user), then clamped into a valid,
+// consistently-formatted value on blur/confirm.
+function clampHour(text: string): string {
+  const n = parseInt(text, 10);
+  if (!Number.isFinite(n) || n < 1) return '12';
+  return String(Math.min(n, 12));
+}
+
+function clampMinute(text: string): string {
+  const n = parseInt(text, 10);
+  if (!Number.isFinite(n) || n < 0) return '00';
+  return String(Math.min(n, 59)).padStart(2, '0');
 }
 
 // A fully custom calendar + time picker — no native date-picker dependency,
@@ -49,8 +65,8 @@ export function DatePickerModal({
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [hour12, setHour12] = useState(10);
-  const [minute, setMinute] = useState('00');
+  const [hourText, setHourText] = useState('10');
+  const [minuteText, setMinuteText] = useState('00');
   const [isPM, setIsPM] = useState(false);
 
   const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
@@ -77,14 +93,6 @@ export function DatePickerModal({
     setSelectedDay(null);
   };
 
-  const cycleMinute = () => {
-    setMinute((prev) => MINUTES[(MINUTES.indexOf(prev) + 1) % MINUTES.length]);
-  };
-
-  const cycleHour = () => {
-    setHour12((prev) => (prev % 12) + 1);
-  };
-
   const isPastDay = (day: number) => {
     const candidate = new Date(viewYear, viewMonth, day);
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -94,7 +102,7 @@ export function DatePickerModal({
   const handleConfirm = () => {
     if (!selectedDay) return;
     const day = new Date(viewYear, viewMonth, selectedDay);
-    onConfirm(formatLabel(day, hour12, minute, isPM));
+    onConfirm(formatLabel(day, hourText, minuteText, isPM));
     onClose();
   };
 
@@ -146,16 +154,39 @@ export function DatePickerModal({
           <View style={styles.timeRow}>
             <Text style={styles.timeLabel}>TIME</Text>
             <View style={styles.timeControls}>
-              <Pressable style={styles.stepper} onPress={cycleHour}>
-                <Text style={styles.stepperText}>{hour12}</Text>
-              </Pressable>
+              <TextInput
+                style={styles.timeInput}
+                value={hourText}
+                onChangeText={(text) => setHourText(text.replace(/[^0-9]/g, '').slice(0, 2))}
+                onBlur={() => setHourText(clampHour(hourText))}
+                keyboardType="number-pad"
+                maxLength={2}
+                selectTextOnFocus
+              />
               <Text style={styles.timeColon}>:</Text>
-              <Pressable style={styles.stepper} onPress={cycleMinute}>
-                <Text style={styles.stepperText}>{minute}</Text>
-              </Pressable>
-              <Pressable style={styles.ampmToggle} onPress={() => setIsPM((prev) => !prev)}>
-                <Text style={styles.stepperText}>{isPM ? 'PM' : 'AM'}</Text>
-              </Pressable>
+              <TextInput
+                style={styles.timeInput}
+                value={minuteText}
+                onChangeText={(text) => setMinuteText(text.replace(/[^0-9]/g, '').slice(0, 2))}
+                onBlur={() => setMinuteText(clampMinute(minuteText))}
+                keyboardType="number-pad"
+                maxLength={2}
+                selectTextOnFocus
+              />
+              <View style={styles.ampmGroup}>
+                <Pressable
+                  style={[styles.ampmOption, !isPM && styles.ampmOptionSelected]}
+                  onPress={() => setIsPM(false)}
+                >
+                  <Text style={[styles.ampmText, !isPM && styles.ampmTextSelected]}>AM</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.ampmOption, isPM && styles.ampmOptionSelected]}
+                  onPress={() => setIsPM(true)}
+                >
+                  <Text style={[styles.ampmText, isPM && styles.ampmTextSelected]}>PM</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
 
@@ -257,15 +288,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  stepper: {
+  timeInput: {
     flex: 1,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
     paddingVertical: 10,
-    alignItems: 'center',
-  },
-  stepperText: {
+    textAlign: 'center',
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
@@ -275,13 +304,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
-  ampmToggle: {
-    flex: 1,
+  ampmGroup: {
+    flex: 1.4,
+    flexDirection: 'row',
     borderWidth: 1,
     borderColor: colors.accent,
     borderRadius: 12,
+    overflow: 'hidden',
+  },
+  ampmOption: {
+    flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
+  },
+  ampmOptionSelected: {
+    backgroundColor: colors.accent,
+  },
+  ampmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  ampmTextSelected: {
+    color: colors.surface,
   },
   footer: {
     flexDirection: 'row',

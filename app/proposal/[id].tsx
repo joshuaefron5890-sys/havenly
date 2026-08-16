@@ -117,26 +117,31 @@ export default function ProposalDetail() {
       </ScrollView>
 
       {canRespond ? (
-        <View style={styles.footer}>
-          <Pressable
-            style={[styles.declineButton, responding && styles.buttonDisabled]}
-            onPress={() => respond('declined')}
-            disabled={responding}
-          >
-            <Text style={styles.declineButtonText}>Decline</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.acceptButton, responding && styles.buttonDisabled]}
-            onPress={() => respond('accepted')}
-            disabled={responding}
-          >
-            <Text style={styles.acceptButtonText}>Accept</Text>
+        <View style={styles.footerStack}>
+          <View style={styles.footer}>
+            <Pressable
+              style={[styles.declineButton, responding && styles.buttonDisabled]}
+              onPress={() => respond('declined')}
+              disabled={responding}
+            >
+              <Text style={styles.declineButtonText}>Decline</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.acceptButton, responding && styles.buttonDisabled]}
+              onPress={() => respond('accepted')}
+              disabled={responding}
+            >
+              <Text style={styles.acceptButtonText}>Accept</Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.secondaryButton} onPress={proposeNewTime}>
+            <Text style={styles.secondaryButtonText}>Propose Update</Text>
           </Pressable>
         </View>
       ) : (
         <View style={styles.footer}>
           <Pressable style={styles.secondaryButton} onPress={proposeNewTime}>
-            <Text style={styles.secondaryButtonText}>Propose a new time or place</Text>
+            <Text style={styles.secondaryButtonText}>Propose Update</Text>
           </Pressable>
         </View>
       )}
@@ -231,6 +236,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 20,
+  },
+  footerStack: {
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   buttonDisabled: {
     opacity: 0.6,

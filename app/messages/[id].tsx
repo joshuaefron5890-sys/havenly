@@ -168,7 +168,7 @@ export default function MessageThread() {
                             <Text style={styles.proposalAcceptText}>Accept</Text>
                           </Pressable>
                           <Pressable style={styles.proposalNewTimeButton} onPress={proposeNewTime}>
-                            <Text style={styles.proposalNewTimeText}>New time</Text>
+                            <Text style={styles.proposalNewTimeText}>Propose Update</Text>
                           </Pressable>
                         </View>
                       ) : (

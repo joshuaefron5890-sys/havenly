@@ -15,6 +15,7 @@ export function SquareCard({
   subtitle,
   image,
   icon,
+  pairImages,
   onPress,
   favorited,
   onToggleFavorite,
@@ -24,6 +25,10 @@ export function SquareCard({
   subtitle?: string;
   image?: ImageSourcePropType;
   icon?: keyof typeof Ionicons.glyphMap;
+  // Two overlapping circular avatars instead of a single square image —
+  // for a playdate proposal, showing both families involved rather than a
+  // generic calendar icon. Takes priority over image/icon when given.
+  pairImages?: [ImageSourcePropType | undefined, ImageSourcePropType | undefined];
   onPress: () => void;
   favorited?: boolean;
   onToggleFavorite?: () => void;
@@ -34,7 +39,12 @@ export function SquareCard({
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.thumbnailWrap}>
-        {!image && icon ? (
+        {pairImages ? (
+          <View style={[styles.thumbnail, styles.pairThumbnail]}>
+            <Photo source={pairImages[0]} style={[styles.pairAvatar, styles.pairAvatarBack]} />
+            <Photo source={pairImages[1]} style={[styles.pairAvatar, styles.pairAvatarFront]} />
+          </View>
+        ) : !image && icon ? (
           <View style={[styles.thumbnail, styles.iconThumbnail]}>
             <Ionicons name={icon} size={22} color={colors.accent} />
           </View>
@@ -88,6 +98,25 @@ const styles = StyleSheet.create({
   iconThumbnail: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pairThumbnail: {
+    overflow: 'visible',
+  },
+  pairAvatar: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  pairAvatarBack: {
+    top: 8,
+    left: 4,
+  },
+  pairAvatarFront: {
+    bottom: 8,
+    right: 4,
   },
   heart: {
     position: 'absolute',

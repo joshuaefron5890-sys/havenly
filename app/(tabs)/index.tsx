@@ -342,8 +342,8 @@ export default function ForYou() {
   // Events
   const [events, setEvents] = useState<NearbyEvent[] | null>(null);
   const [eventsError, setEventsError] = useState<string | null>(null);
-  const [eventsExpanded, setEventsExpanded] = useState(false);
   const [proposal, setProposal] = useState<PlaydateProposal | null>(null);
+  const [proposalFamilyPhotos, setProposalFamilyPhotos] = useState<[string | null, string | null] | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -374,6 +374,25 @@ export default function ForYou() {
       };
     }, [user])
   );
+
+  // Both families involved in the proposal, for the side-by-side avatar
+  // pair on its card — not just "the other family", so the card reads the
+  // same regardless of whether the viewer proposed or was proposed to.
+  useEffect(() => {
+    if (!proposal) {
+      setProposalFamilyPhotos(null);
+      return;
+    }
+    let cancelled = false;
+    fetchFamiliesByUids([proposal.fromUid, proposal.toUid]).then((result) => {
+      if (cancelled) return;
+      const byUid = new Map(result.map((f) => [f.uid, familyPhoto(f)]));
+      setProposalFamilyPhotos([byUid.get(proposal.fromUid) ?? null, byUid.get(proposal.toUid) ?? null]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [proposal]);
 
   const firstName = user?.displayName?.split(' ')[0];
 
@@ -415,11 +434,10 @@ export default function ForYou() {
 
         <SectionHeader
           title="Events"
-          {...expandAction(
+          {...viewAllAction(
             (events?.length ?? 0) + (proposal ? 1 : 0),
-            eventsExpanded,
-            setEventsExpanded,
-            perRow
+            perRow,
+            () => router.push('/(tabs)/events')
           )}
         />
         {eventsError ? (
@@ -436,11 +454,16 @@ export default function ForYou() {
                 title={proposal.dateLabel}
                 subtitle={proposal.venue}
                 icon="calendar"
+                pairImages={
+                  proposalFamilyPhotos
+                    ? [proposalFamilyPhotos[0] ? { uri: proposalFamilyPhotos[0] } : undefined, proposalFamilyPhotos[1] ? { uri: proposalFamilyPhotos[1] } : undefined]
+                    : undefined
+                }
                 badge="Proposed"
                 onPress={() => router.push(`/proposal/${proposal.id}`)}
               />
             ) : null}
-            {(eventsExpanded ? events : events.slice(0, Math.max(0, perRow - (proposal ? 1 : 0)))).map((event) => (
+            {events.slice(0, Math.max(0, perRow - (proposal ? 1 : 0))).map((event) => (
               <SquareCard
                 key={event.id}
                 title={event.title}

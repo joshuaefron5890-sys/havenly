@@ -16,8 +16,17 @@ service cloud.firestore {
     // people always land in the same thread, but these rules don't rely on
     // that format — only on being one of the two listed participants.
     match /conversations/{conversationId} {
+      // resource is null for a document that doesn't exist yet — checking
+      // that first, before dereferencing resource.data, matters here:
+      // Firestore evaluates security rules for a get() even when the
+      // target doesn't exist, and a rule that reaches into resource.data
+      // on a null resource is denied outright rather than cleanly
+      // reporting "not found". (lib/messages.ts's getOrCreateConversation
+      // avoids ever needing this read on a not-yet-created conversation in
+      // the first place, but this guard keeps the rule itself correct on
+      // its own terms.)
       function isParticipant() {
-        return request.auth != null && request.auth.uid in resource.data.participantUids;
+        return request.auth != null && resource != null && request.auth.uid in resource.data.participantUids;
       }
 
       allow read: if isParticipant();
@@ -31,8 +40,12 @@ service cloud.firestore {
       allow delete: if false;
 
       match /messages/{messageId} {
+        // Same reasoning as isParticipant() above, via exists() this time
+        // since get() itself (not just .data access) is what would
+        // otherwise fail against a conversation that isn't there.
         function isConversationParticipant() {
           return request.auth != null
+            && exists(/databases/$(database)/documents/conversations/$(conversationId))
             && request.auth.uid in
                get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids;
         }

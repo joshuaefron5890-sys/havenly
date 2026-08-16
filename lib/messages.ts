@@ -2,7 +2,6 @@ import {
   addDoc,
   collection,
   doc,
-  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -38,25 +37,24 @@ export function otherParticipant(conversation: Conversation, myUid: string): str
   return conversation.participantUids.find((uid) => uid !== myUid);
 }
 
-// Creates the conversation doc if it doesn't exist yet — idempotent, since
-// the deterministic id means a second call for the same pair just finds
-// the existing one — and returns its id either way.
+// Creates the conversation doc if it doesn't exist yet, and returns its id
+// either way. Deliberately doesn't check first with a getDoc — Firestore
+// security rules evaluate a read against a non-existent document with
+// `resource` bound to null, so a rule that checks resource.data.* (ours
+// does, to confirm you're a participant) denies that read outright, before
+// ever finding out the doc simply isn't there yet. Writing unconditionally
+// sidesteps that: Firestore rules treat this as `create` when the doc is
+// new (governed by request.resource.data, no read required) and `update`
+// when it already exists. Only participantUids is written — the exact
+// same value every time — so re-opening an existing conversation never
+// clobbers its lastMessage/lastMessageAt.
 export async function getOrCreateConversation(otherUid: string): Promise<string> {
   const myUid = auth?.currentUser?.uid;
   if (!myUid || !db) {
     throw new Error('not-signed-in');
   }
   const id = conversationId(myUid, otherUid);
-  const ref = doc(db, 'conversations', id);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      participantUids: [myUid, otherUid],
-      lastMessage: '',
-      lastMessageAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-    });
-  }
+  await setDoc(doc(db, 'conversations', id), { participantUids: [myUid, otherUid] }, { merge: true });
   return id;
 }
 

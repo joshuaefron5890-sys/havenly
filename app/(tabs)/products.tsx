@@ -102,10 +102,10 @@ export default function Products() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader eyebrow="Haven.ly" title="Products." />
+      <ScreenHeader eyebrow="Haven.ly" />
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHero
-          photoSeed="havenly-products"
+          imageUrl="https://plus.unsplash.com/premium_photo-1701984402122-0df5fd84ac53?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           title="Hand-picked for your family"
           description="Sensory tools, calming aids, and everyday products from specialty retailers, matched to your child's neurodivergence tags."
         />

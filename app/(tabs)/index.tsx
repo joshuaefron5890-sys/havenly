@@ -642,17 +642,15 @@ export default function ForYou() {
 
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
 
-  const firstName = user?.displayName?.split(' ')[0];
-
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader eyebrow="Haven.ly" title={firstName ? `Home, ${firstName}.` : 'Home.'} />
+      <ScreenHeader eyebrow="Haven.ly" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View onLayout={(e) => setGridWidth((prev) => prev ?? e.nativeEvent.layout.width)} />
 
         <SectionHero
-          photoSeed="havenly-for-you"
+          imageUrl="https://picsum.photos/seed/havenly-for-you/800/450"
           title="For You"
           description="Curates your confirmed and proposed playdates, anything you've favorited, and families that are an especially strong match — all in one place."
         />

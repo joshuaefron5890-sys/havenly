@@ -6,13 +6,13 @@ import { useMessagesBadge } from '../contexts/MessagesContext';
 import { colors } from '../theme/colors';
 import { SettingsMenu } from './SettingsMenu';
 
-export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title: string }) {
+export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title?: string }) {
   const { hasUnread } = useMessagesBadge();
   return (
     <View style={styles.row}>
       <View>
         {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text style={styles.title}>{title}</Text>
+        {title ? <Text style={styles.title}>{title}</Text> : null}
       </View>
       <View style={styles.icons}>
         <Pressable onPress={() => router.push('/messages')} hitSlop={8} style={styles.messageIcon}>

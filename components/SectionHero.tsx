@@ -6,21 +6,21 @@ import { Photo } from './Photo';
 // A full-width photo banner at the top of each bottom-nav sub-page — what
 // this section is, with a real image instead of a small icon tile, in the
 // same "big photo + scrim + overlaid headline" style as the Resources
-// screen's featured-article card. `photoSeed` is a stable key into a
-// keyless stock-photo CDN (picsum.photos/seed/<key> always returns the
-// same image for the same key, no API token or curated asset needed).
+// screen's featured-article card. `imageUrl` is a specific hand-picked
+// photo (curated by the user, not a random/keyless placeholder) so each
+// section's banner actually matches what it's about.
 export function SectionHero({
-  photoSeed,
+  imageUrl,
   title,
   description,
 }: {
-  photoSeed: string;
+  imageUrl: string;
   title: string;
   description: string;
 }) {
   return (
     <View style={styles.hero}>
-      <Photo source={{ uri: `https://picsum.photos/seed/${photoSeed}/800/450` }} style={styles.image} />
+      <Photo source={{ uri: imageUrl }} style={styles.image} />
       <View style={styles.scrim} />
       <View style={styles.textWrap}>
         <Text style={styles.title}>{title}</Text>

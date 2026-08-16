@@ -241,7 +241,6 @@ export default function Profile() {
 
         <SectionCard title="Account" editHref="/onboarding/account?edit=1">
           <Field label="Name" value={fullName} />
-          <Field label="Pronouns" value={profile.pronouns ?? ''} />
         </SectionCard>
 
         <SectionCard title="Family" editHref="/onboarding/family?edit=1">

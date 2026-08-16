@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,8 +14,6 @@ import { exchangeGoogleSignInCode, saveGoogleCalendarRefreshToken } from '../../
 import { requestGoogleSignInWithCalendarCode } from '../../lib/googleIdentity';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
-
-const PRONOUNS = ['she/her', 'he/him', 'they/them', 'she/they', 'he/they'];
 
 function friendlyError(code: string): string {
   switch (code) {
@@ -53,7 +50,6 @@ export default function Account() {
   const [lastName, setLastName] = useState(profile.lastName);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [pronoun, setPronoun] = useState<string | null>(profile.pronouns);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
@@ -87,8 +83,8 @@ export default function Account() {
     }
 
     if (connectedGmail || editMode) {
-      updateOnboardingProfile({ firstName, lastName, pronouns: pronoun });
-      saveOnboardingStep({ firstName, lastName, pronouns: pronoun }, '/onboarding/family', { editMode });
+      updateOnboardingProfile({ firstName, lastName });
+      saveOnboardingStep({ firstName, lastName }, '/onboarding/family', { editMode });
       router.replace(editMode ? '/profile' : '/onboarding/family');
       return;
     }
@@ -110,8 +106,8 @@ export default function Account() {
     try {
       const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await updateProfile(credential.user, { displayName: `${firstName} ${lastName}`.trim() });
-      updateOnboardingProfile({ firstName, lastName, pronouns: pronoun });
-      saveOnboardingStep({ firstName, lastName, pronouns: pronoun }, '/onboarding/family');
+      updateOnboardingProfile({ firstName, lastName });
+      saveOnboardingStep({ firstName, lastName }, '/onboarding/family');
       router.push('/onboarding/family');
     } catch (err: any) {
       setError(friendlyError(err?.code ?? ''));
@@ -220,15 +216,6 @@ export default function Account() {
           </>
         )}
 
-        <Text style={styles.label}>
-          PRONOUNS<Text style={styles.optional}> · optional</Text>
-        </Text>
-        <View style={styles.chips}>
-          {PRONOUNS.map((p) => (
-            <Chip key={p} label={p} selected={pronoun === p} onPress={() => setPronoun(p)} />
-          ))}
-        </View>
-
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
@@ -270,22 +257,6 @@ const styles = StyleSheet.create({
   },
   half: {
     flex: 1,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 1.5,
-    marginBottom: 8,
-  },
-  optional: {
-    fontWeight: '400',
-    textTransform: 'none',
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   connectedRow: {
     flexDirection: 'row',

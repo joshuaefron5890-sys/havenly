@@ -34,7 +34,6 @@ export const emptySiblingProfile: SiblingProfile = { name: '', age: '', gender: 
 export type OnboardingProfile = {
   firstName: string;
   lastName: string;
-  pronouns: string | null;
   familyPhotoUrl: string | null;
   numChildren: number;
   numNeurodivergentChildren: number;
@@ -65,7 +64,6 @@ export type OnboardingProfile = {
 const initialProfile: OnboardingProfile = {
   firstName: '',
   lastName: '',
-  pronouns: null,
   familyPhotoUrl: null,
   numChildren: 1,
   numNeurodivergentChildren: 1,

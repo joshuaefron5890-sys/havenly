@@ -74,7 +74,7 @@ export async function routeSignedInUser(
       // yet — for "Sign in with Gmail" this can be a brand-new account
       // Firebase created transparently on first use (Google sign-in doesn't
       // distinguish sign-up from sign-in). Send it through the account step
-      // like a fresh sign-up would, so name/pronouns get a chance to be
+      // like a fresh sign-up would, so their name gets a chance to be
       // confirmed, instead of skipping straight past it to family.
       const isGoogleUser = user.providerData.some((p) => p.providerId === 'google.com');
       router.replace(isGoogleUser ? '/onboarding/account' : '/onboarding/family');

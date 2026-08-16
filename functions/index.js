@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -670,4 +670,52 @@ exports.getHealthResources = onCall(async (request) => {
     .slice(0, 15);
 
   return { resources };
+});
+
+// Neurodivergent-specialty retailers that might have a real product catalog
+// we can integrate for a "Recommended products" section — checking whether
+// any of them exposes Shopify's default public /products.json feed, since
+// the dev sandbox this was written in can't reach these domains itself to
+// find out. Unauthenticated on purpose: it's a one-time diagnostic to load
+// directly in a browser, not a feature endpoint — safe to delete once we
+// know the answer and build the real thing on top of it.
+const PRODUCT_SOURCE_CANDIDATES = [
+  { name: 'Fun and Function', base: 'https://funandfunction.com' },
+  { name: 'Harkla', base: 'https://www.harkla.co' },
+  { name: 'National Autism Resources', base: 'https://nationalautismresources.com' },
+  { name: 'Different Roads to Learning', base: 'https://www.differentroads.com' },
+];
+
+exports.probeProductSources = onRequest(async (req, res) => {
+  const results = await Promise.all(
+    PRODUCT_SOURCE_CANDIDATES.map(async (source) => {
+      try {
+        const response = await fetch(`${source.base}/products.json?limit=3`);
+        if (!response.ok) {
+          return { name: source.name, base: source.base, ok: false, status: response.status };
+        }
+        const data = await response.json();
+        const products = Array.isArray(data?.products) ? data.products : null;
+        if (!products) {
+          return { name: source.name, base: source.base, ok: false, note: 'Reachable, but no products.json shape' };
+        }
+        return {
+          name: source.name,
+          base: source.base,
+          ok: true,
+          count: products.length,
+          sample: products.slice(0, 2).map((p) => ({
+            title: p?.title,
+            vendor: p?.vendor,
+            productType: p?.product_type,
+            tags: p?.tags,
+          })),
+        };
+      } catch (err) {
+        return { name: source.name, base: source.base, ok: false, error: String(err?.message ?? err) };
+      }
+    })
+  );
+  res.set('Content-Type', 'application/json');
+  res.status(200).send(JSON.stringify({ results }, null, 2));
 });

@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -756,4 +756,28 @@ exports.getRecommendedProducts = onCall(async (request) => {
     .slice(0, 15);
 
   return { products };
+});
+
+// The Products section is coming back empty — getRecommendedProducts'
+// /search/suggest.json response shape was never actually verified against
+// live data (only /products.json was, in the earlier probe), so before
+// guessing further: dump the raw response for a plain single-word query
+// against both stores. Same temporary-diagnostic pattern as before — safe
+// to delete once the real shape is confirmed.
+exports.probeProductSearch = onRequest(async (req, res) => {
+  const q = typeof req.query.q === 'string' ? req.query.q : 'sensory';
+  const results = await Promise.all(
+    PRODUCT_SOURCES.map(async (source) => {
+      const url = `${source.base}/search/suggest.json?q=${encodeURIComponent(q)}&resources[type]=product&resources[limit]=5&resources[options][unavailable_products]=hide`;
+      try {
+        const response = await fetch(url);
+        const text = await response.text();
+        return { name: source.name, url, status: response.status, body: text.slice(0, 4000) };
+      } catch (err) {
+        return { name: source.name, url, error: String(err?.message ?? err) };
+      }
+    })
+  );
+  res.set('Content-Type', 'application/json');
+  res.status(200).send(JSON.stringify({ q, results }, null, 2));
 });

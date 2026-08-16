@@ -56,5 +56,22 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // A lightweight, denormalized mirror of a playdate proposal — the
+    // proposal itself lives as a message in the conversation (see
+    // lib/messages.ts's sendProposalMessage); this collection exists only
+    // so the dashboard can cheaply find "do I have a pending proposal?"
+    // without a collection-group query across every conversation. No
+    // edit/cancel flow yet, so it's create + read only.
+    match /playdateProposals/{proposalId} {
+      allow read: if request.auth != null
+        && resource != null
+        && request.auth.uid in resource.data.participantUids;
+      allow create: if request.auth != null
+        && request.resource.data.fromUid == request.auth.uid
+        && request.auth.uid in request.resource.data.participantUids
+        && request.resource.data.participantUids.size() == 2;
+      allow update, delete: if false;
+    }
   }
 }

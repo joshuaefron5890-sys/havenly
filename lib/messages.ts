@@ -23,11 +23,20 @@ export type Conversation = {
   readAt: Record<string, Date>;
 };
 
+export type PlaydateProposalDetails = {
+  date: string; // ISO
+  dateLabel: string; // "Sat, Aug 22 · 10:00–11:30 AM"
+  windowLabel: string; // which shared-availability window this slot came from
+  venue: string;
+};
+
 export type Message = {
   id: string;
   senderUid: string;
   text: string;
   createdAt: Date | null;
+  type: 'text' | 'playdate_proposal';
+  proposal: PlaydateProposalDetails | null;
 };
 
 // Sorted so the same two people always land on the same conversation id —
@@ -119,11 +128,22 @@ export function subscribeToMessages(id: string, callback: (messages: Message[]) 
     callback(
       snap.docs.map((d) => {
         const data = d.data();
+        const proposal = data.proposal;
         return {
           id: d.id,
           senderUid: typeof data.senderUid === 'string' ? data.senderUid : '',
           text: typeof data.text === 'string' ? data.text : '',
           createdAt: toDate(data.createdAt),
+          type: data.type === 'playdate_proposal' ? 'playdate_proposal' : 'text',
+          proposal:
+            proposal && typeof proposal === 'object'
+              ? {
+                  date: typeof proposal.date === 'string' ? proposal.date : '',
+                  dateLabel: typeof proposal.dateLabel === 'string' ? proposal.dateLabel : '',
+                  windowLabel: typeof proposal.windowLabel === 'string' ? proposal.windowLabel : '',
+                  venue: typeof proposal.venue === 'string' ? proposal.venue : '',
+                }
+              : null,
         };
       })
     );
@@ -149,6 +169,30 @@ export async function sendMessage(id: string, text: string): Promise<void> {
       // you the next time this conversation is checked.
       readAt: { [myUid]: serverTimestamp() },
     },
+    { merge: true }
+  );
+}
+
+// Sends a playdate proposal as a message — it goes through the exact same
+// conversation/inbox/unread-badge machinery as a plain text message (see
+// lib/playdateProposals.ts for the separate lightweight record this also
+// writes, which is what lets the Discover dashboard surface "you have a
+// pending proposal" without scanning every conversation's messages).
+export async function sendProposalMessage(id: string, proposal: PlaydateProposalDetails, note: string): Promise<void> {
+  const myUid = auth?.currentUser?.uid;
+  if (!myUid || !db) return;
+  const trimmedNote = note.trim();
+  await addDoc(collection(db, 'conversations', id, 'messages'), {
+    senderUid: myUid,
+    text: trimmedNote,
+    type: 'playdate_proposal',
+    proposal,
+    createdAt: serverTimestamp(),
+  });
+  const summary = `Proposed a playdate: ${proposal.dateLabel}`;
+  await setDoc(
+    doc(db, 'conversations', id),
+    { lastMessage: summary, lastMessageAt: serverTimestamp(), readAt: { [myUid]: serverTimestamp() } },
     { merge: true }
   );
 }

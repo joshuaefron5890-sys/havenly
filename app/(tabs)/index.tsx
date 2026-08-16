@@ -9,6 +9,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
+import { fetchLatestProposal, PlaydateProposal } from '../../lib/playdateProposals';
 import {
   addFavoriteFamily,
   addFavoritePodcast,
@@ -319,6 +320,7 @@ export default function ForYou() {
   const [events, setEvents] = useState<NearbyEvent[] | null>(null);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [eventsExpanded, setEventsExpanded] = useState(false);
+  const [proposal, setProposal] = useState<PlaydateProposal | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -334,6 +336,21 @@ export default function ForYou() {
       cancelled = true;
     };
   }, [user]);
+
+  // Re-checked on focus (not just mount) so sending a proposal and coming
+  // back here shows it right away.
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let cancelled = false;
+      fetchLatestProposal().then((result) => {
+        if (!cancelled) setProposal(result);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [user])
+  );
 
   const firstName = user?.displayName?.split(' ')[0];
 
@@ -495,10 +512,20 @@ export default function ForYou() {
           <EmptyState text={`Couldn’t load events (${eventsError}).`} />
         ) : events === null ? (
           <ActivityIndicator color={colors.accent} />
-        ) : events.length === 0 ? (
+        ) : events.length === 0 && !proposal ? (
           <EmptyState text="No upcoming events found — check back soon." />
         ) : (
           <View style={styles.grid}>
+            {proposal ? (
+              <SquareCard
+                key={`proposal-${proposal.id}`}
+                title={proposal.dateLabel}
+                subtitle={proposal.venue}
+                icon="calendar"
+                badge="Proposed"
+                onPress={() => router.push(`/messages/${proposal.conversationId}`)}
+              />
+            ) : null}
             {(eventsExpanded ? events : events.slice(0, PAGE_SIZE)).map((event) => (
               <SquareCard
                 key={event.id}

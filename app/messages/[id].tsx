@@ -94,6 +94,21 @@ export default function MessageThread() {
           ) : (
             messages.map((message) => {
               const mine = message.senderUid === user?.uid;
+              if (message.type === 'playdate_proposal' && message.proposal) {
+                return (
+                  <View key={message.id} style={styles.proposalCard}>
+                    <View style={styles.proposalHeader}>
+                      <Ionicons name="calendar" size={16} color={colors.accent} />
+                      <Text style={styles.proposalHeaderText}>
+                        {mine ? 'You proposed a playdate' : 'Playdate proposed'}
+                      </Text>
+                    </View>
+                    <Text style={styles.proposalDate}>{message.proposal.dateLabel}</Text>
+                    <Text style={styles.proposalVenue}>{message.proposal.venue}</Text>
+                    {message.text ? <Text style={styles.proposalNote}>{message.text}</Text> : null}
+                  </View>
+                );
+              }
               return (
                 <View key={message.id} style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
                   <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
@@ -192,6 +207,40 @@ const styles = StyleSheet.create({
   },
   bubbleTextMine: {
     color: colors.surface,
+  },
+  proposalCard: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.accentMuted,
+    borderRadius: 16,
+    padding: 14,
+    gap: 2,
+  },
+  proposalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  proposalHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accent,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  proposalDate: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  proposalVenue: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  proposalNote: {
+    fontSize: 14,
+    color: colors.text,
+    marginTop: 6,
   },
   inputRow: {
     flexDirection: 'row',

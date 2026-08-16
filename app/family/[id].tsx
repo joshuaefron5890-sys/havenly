@@ -76,7 +76,8 @@ export default function FamilyDetail() {
   };
 
   const proposePlaydate = () => {
-    Alert.alert('Coming soon', 'Proposing playdates isn’t available yet.');
+    if (!id) return;
+    router.push(`/propose-playdate?familyId=${id}`);
   };
 
   if (error) {

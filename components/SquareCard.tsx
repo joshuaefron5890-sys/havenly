@@ -18,6 +18,7 @@ export function SquareCard({
   onPress,
   favorited,
   onToggleFavorite,
+  badge,
 }: {
   title: string;
   subtitle?: string;
@@ -26,6 +27,9 @@ export function SquareCard({
   onPress: () => void;
   favorited?: boolean;
   onToggleFavorite?: () => void;
+  // A small pill in the thumbnail's top-left corner (e.g. "Proposed" on a
+  // pending playdate proposal) — opposite corner from the favorite heart.
+  badge?: string;
 }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -37,6 +41,13 @@ export function SquareCard({
         ) : (
           <Photo source={image} style={styles.thumbnail} />
         )}
+        {badge ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText} numberOfLines={1}>
+              {badge}
+            </Text>
+          </View>
+        ) : null}
         {onToggleFavorite ? (
           <Pressable hitSlop={8} onPress={onToggleFavorite} style={styles.heart}>
             <Ionicons
@@ -88,6 +99,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(43,36,32,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    backgroundColor: colors.accent,
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: colors.surface,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   title: {
     fontSize: 11,

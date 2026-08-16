@@ -1,4 +1,5 @@
-import { createContext, PropsWithChildren, useContext, useMemo, useState } from 'react';
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from './AuthContext';
 
 export type ChildProfile = {
   name: string;
@@ -84,6 +85,28 @@ const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 export function OnboardingProvider({ children }: PropsWithChildren) {
   const [profile, setProfile] = useState<OnboardingProfile>(initialProfile);
+  const { user } = useAuth();
+  // Tracks the uid this profile was last populated for — not component
+  // state, since changing it should never itself trigger a re-render.
+  const lastUidRef = useRef<string | null>(null);
+
+  // This context is a plain in-memory cache, populated by whichever account
+  // last hydrated or edited it — it has no built-in awareness of WHOSE data
+  // it's holding. If a different account signs in within the same page
+  // session (without an intervening full reload — e.g. onboarding a second
+  // test account right after finishing the first one), the previous
+  // person's fields would otherwise still be sitting in here, get merged
+  // with the new account's answers by updateProfile, and then get written
+  // straight into the new account's Firestore doc by the final onboarding
+  // step's setDoc(..., {...profile, ...}). Resetting whenever the signed-in
+  // uid actually changes closes that leak.
+  useEffect(() => {
+    const uid = user?.uid ?? null;
+    if (lastUidRef.current !== null && lastUidRef.current !== uid) {
+      setProfile(initialProfile);
+    }
+    lastUidRef.current = uid;
+  }, [user]);
 
   const value = useMemo<OnboardingContextValue>(
     () => ({

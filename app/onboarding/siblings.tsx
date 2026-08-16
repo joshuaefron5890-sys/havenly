@@ -71,7 +71,7 @@ export default function Siblings() {
     }
     const patch = { siblingProfiles: siblingsData };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/play-style');
+    saveOnboardingStep(patch, '/onboarding/play-style', { editMode });
     router.push(editMode ? '/profile' : '/onboarding/play-style');
   };
 

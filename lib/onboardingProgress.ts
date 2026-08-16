@@ -6,13 +6,28 @@ import { auth, db } from './firebase';
 
 // Best-effort — a failed save shouldn't block the wizard, since the
 // in-memory OnboardingContext still has everything for the current session.
-export async function saveOnboardingStep(patch: Partial<OnboardingProfile>, nextStep: string): Promise<void> {
+//
+// editMode matters here: these same step screens are reused from the
+// Profile screen to edit one section after onboarding is already done
+// (see e.g. app/onboarding/family.tsx's `?edit=1`). Without editMode,
+// every edit would stamp onboardingStep/onboardingComplete: false onto an
+// already-complete profile, and the next time routeSignedInUser ran (a
+// reload, a fresh sign-in) it would send a fully onboarded family back
+// into the wizard instead of the app. In edit mode this only merges the
+// changed fields, leaving onboardingComplete/onboardingStep untouched.
+export async function saveOnboardingStep(
+  patch: Partial<OnboardingProfile>,
+  nextStep: string,
+  options?: { editMode?: boolean }
+): Promise<void> {
   const uid = auth?.currentUser?.uid;
   if (!uid || !db) return;
   try {
     await setDoc(
       doc(db, 'users', uid),
-      { ...patch, onboardingStep: nextStep, onboardingComplete: false, updatedAt: serverTimestamp() },
+      options?.editMode
+        ? { ...patch, updatedAt: serverTimestamp() }
+        : { ...patch, onboardingStep: nextStep, onboardingComplete: false, updatedAt: serverTimestamp() },
       { merge: true }
     );
   } catch {

@@ -88,7 +88,7 @@ export default function Account() {
 
     if (connectedGmail || editMode) {
       updateOnboardingProfile({ firstName, lastName, pronouns: pronoun });
-      saveOnboardingStep({ firstName, lastName, pronouns: pronoun }, '/onboarding/family');
+      saveOnboardingStep({ firstName, lastName, pronouns: pronoun }, '/onboarding/family', { editMode });
       router.replace(editMode ? '/profile' : '/onboarding/family');
       return;
     }

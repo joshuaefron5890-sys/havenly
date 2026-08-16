@@ -36,7 +36,7 @@ export default function Goals() {
   const handleContinue = () => {
     const patch = { goals: selected };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/about-you');
+    saveOnboardingStep(patch, '/onboarding/about-you', { editMode });
     router.push(editMode ? '/profile' : '/onboarding/about-you');
   };
 

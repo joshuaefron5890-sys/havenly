@@ -69,7 +69,7 @@ export default function Calendar() {
       await connectGoogleCalendarBackend(code);
       setGoogleConnected(true);
       updateProfile({ googleCalendarConnected: true });
-      saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar');
+      saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar', { editMode });
     } catch (err: any) {
       if (err?.code === 'functions/unauthenticated') {
         setGoogleError('Your sign-in session has expired — log out and back in, then try Reconnect again.');
@@ -97,7 +97,7 @@ export default function Calendar() {
       await connectAppleCalendar(appleId.trim(), appPassword.trim());
       setAppleConnected(true);
       updateProfile({ appleCalendarConnected: true });
-      saveOnboardingStep({ appleCalendarConnected: true }, '/onboarding/calendar');
+      saveOnboardingStep({ appleCalendarConnected: true }, '/onboarding/calendar', { editMode });
       setAppleModalVisible(false);
       setAppleId('');
       setAppPassword('');

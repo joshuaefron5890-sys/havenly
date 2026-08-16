@@ -24,7 +24,7 @@ export default function Availability() {
   const handleContinue = () => {
     const patch = { availability: selected };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/calendar');
+    saveOnboardingStep(patch, '/onboarding/calendar', { editMode });
     router.push(editMode ? '/profile' : '/onboarding/calendar');
   };
 

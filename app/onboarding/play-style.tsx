@@ -59,7 +59,7 @@ export default function PlayStyle() {
   const handleContinue = () => {
     const patch = { children: childrenData };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/interests');
+    saveOnboardingStep(patch, '/onboarding/interests', { editMode });
     router.push(editMode ? '/profile' : '/onboarding/interests');
   };
 

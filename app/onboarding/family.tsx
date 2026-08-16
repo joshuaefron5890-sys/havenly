@@ -80,7 +80,7 @@ export default function Family() {
     };
     updateProfile(patch);
     const nextStep = stepAfterFamily({ numChildren: children, numNeurodivergentChildren: neurodivergentChildren });
-    saveOnboardingStep(patch, nextStep);
+    saveOnboardingStep(patch, nextStep, { editMode });
     router.push(editMode ? '/profile' : nextStep);
   };
 

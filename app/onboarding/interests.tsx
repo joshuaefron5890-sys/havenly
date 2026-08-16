@@ -23,7 +23,7 @@ export default function Interests() {
   const handleContinue = () => {
     const patch = { interests: selected };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/goals');
+    saveOnboardingStep(patch, '/onboarding/goals', { editMode });
     router.push(editMode ? '/profile' : '/onboarding/goals');
   };
 

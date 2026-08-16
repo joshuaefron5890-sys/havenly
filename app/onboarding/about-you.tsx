@@ -34,7 +34,7 @@ export default function AboutYou() {
   const handleContinue = () => {
     const patch = { personality, soundsGoodTo: soundsGood };
     updateProfile(patch);
-    saveOnboardingStep(patch, '/onboarding/availability');
+    saveOnboardingStep(patch, '/onboarding/availability', { editMode });
     router.push(editMode ? '/profile' : '/onboarding/availability');
   };
 

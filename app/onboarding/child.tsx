@@ -93,7 +93,7 @@ export default function Child() {
       numChildren: profile.numChildren,
       numNeurodivergentChildren: profile.numNeurodivergentChildren,
     });
-    saveOnboardingStep(patch, nextStep);
+    saveOnboardingStep(patch, nextStep, { editMode });
     router.push(editMode ? '/profile' : nextStep);
   };
 

@@ -117,7 +117,11 @@ export default function FamilyDetail() {
               <Ionicons name="chevron-back" size={20} color={colors.text} />
             </Pressable>
             <Pressable style={styles.heartButton} onPress={toggleFavorite}>
-              <Ionicons name={favorited ? 'heart' : 'heart-outline'} size={20} color={colors.surface} />
+              <Ionicons
+                name={favorited ? 'heart' : 'heart-outline'}
+                size={20}
+                color={favorited ? colors.accent : colors.text}
+              />
             </Pressable>
           </View>
           <View style={styles.heroBottomRow}>
@@ -177,7 +181,11 @@ export default function FamilyDetail() {
 
       <View style={styles.footer}>
         <Pressable style={styles.heartOutlineButton} onPress={toggleFavorite}>
-          <Ionicons name={favorited ? 'heart' : 'heart-outline'} size={20} color={colors.accent} />
+          <Ionicons
+            name={favorited ? 'heart' : 'heart-outline'}
+            size={20}
+            color={favorited ? colors.accent : colors.textMuted}
+          />
         </Pressable>
         <Pressable style={[styles.cta, messageBusy && styles.ctaDisabled]} onPress={openMessageThread} disabled={messageBusy}>
           <Text style={styles.ctaText}>{messageBusy ? 'Opening…' : 'Message'}</Text>
@@ -253,7 +261,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -371,7 +379,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },

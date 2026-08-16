@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { useMessagesBadge } from '../contexts/MessagesContext';
 import { colors } from '../theme/colors';
@@ -11,7 +11,12 @@ export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title?: str
   return (
     <View style={styles.row}>
       <View>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+        {eyebrow ? (
+          <View style={styles.eyebrowRow}>
+            <Image source={require('../assets/logo-mark.png')} style={styles.mark} resizeMode="contain" />
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+          </View>
+        ) : null}
         {title ? <Text style={styles.title}>{title}</Text> : null}
       </View>
       <View style={styles.icons}>
@@ -33,6 +38,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  mark: {
+    width: 16,
+    height: 16,
   },
   eyebrow: {
     fontSize: 13,

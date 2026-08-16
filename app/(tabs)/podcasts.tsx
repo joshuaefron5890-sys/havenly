@@ -1,14 +1,19 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
+import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { SearchBar } from '../../components/SearchBar';
+import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { addFavoritePodcast, getFavoritePodcastIds, removeFavoritePodcast } from '../../lib/favorites';
 import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
 import { colors } from '../../theme/colors';
+
+const ALL = 'All';
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -24,6 +29,8 @@ export default function Podcasts() {
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState(ALL);
 
   useEffect(() => {
     if (!user) return;
@@ -55,6 +62,23 @@ export default function Podcasts() {
 
   const sorted = podcasts ? sortFavoritedFirst(podcasts, favoriteIds, (p) => p.id) : null;
 
+  const tagOptions = useMemo(() => {
+    if (!sorted) return [ALL];
+    const tags = new Set<string>();
+    sorted.forEach((p) => p.matchedTags.forEach((t) => tags.add(t)));
+    return [ALL, ...[...tags].sort()];
+  }, [sorted]);
+
+  const filtered = useMemo(() => {
+    if (!sorted) return null;
+    const q = query.trim().toLowerCase();
+    return sorted.filter((p) => {
+      if (tagFilter !== ALL && !p.matchedTags.includes(tagFilter)) return false;
+      if (q && !p.title.toLowerCase().includes(q) && !p.artist.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [sorted, query, tagFilter]);
+
   const toggleFavorite = async (podcast: PodcastSuggestion) => {
     const wasFavorited = favoriteIds.has(podcast.id);
     setFavoriteIds((prev) => {
@@ -77,6 +101,11 @@ export default function Podcasts() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Haven.ly" title="Podcasts." />
       <ScrollView contentContainerStyle={styles.content}>
+        <SectionHero
+          icon="mic-outline"
+          title="Shows worth a listen"
+          description="Podcasts about neurodivergence, parenting, and everyday life, matched to your child's neurodivergence tags."
+        />
         {error ? (
           <EmptyState text={`Couldn’t load podcasts (${error}).`} />
         ) : sorted === null ? (
@@ -84,34 +113,44 @@ export default function Podcasts() {
         ) : sorted.length === 0 ? (
           <EmptyState text="No podcast suggestions yet." />
         ) : (
-          <View style={styles.grid}>
-            {sorted.map((podcast) => (
-              <SquareCard
-                key={podcast.id}
-                title={podcast.title || 'Untitled podcast'}
-                subtitle={podcastSubtitle(podcast)}
-                image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
-                favorited={favoriteIds.has(podcast.id)}
-                onToggleFavorite={() => toggleFavorite(podcast)}
-                onPress={() =>
-                  router.push({
-                    pathname: '/podcast/[id]',
-                    params: {
-                      id: podcast.id,
-                      title: podcast.title,
-                      artist: podcast.artist,
-                      artworkUrl: podcast.artworkUrl ?? '',
-                      viewUrl: podcast.viewUrl ?? '',
-                      feedUrl: podcast.feedUrl ?? '',
-                      trackCount: podcast.trackCount != null ? String(podcast.trackCount) : '',
-                      genres: podcast.genres.join(','),
-                      matchedTags: podcast.matchedTags.join(','),
-                    },
-                  })
-                }
-              />
-            ))}
-          </View>
+          <>
+            <SearchBar value={query} onChangeText={setQuery} placeholder="Search podcasts" />
+            {tagOptions.length > 2 ? (
+              <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} />
+            ) : null}
+            {filtered && filtered.length === 0 ? (
+              <EmptyState text="No podcasts match that search." />
+            ) : (
+              <View style={styles.grid}>
+                {filtered?.map((podcast) => (
+                  <SquareCard
+                    key={podcast.id}
+                    title={podcast.title || 'Untitled podcast'}
+                    subtitle={podcastSubtitle(podcast)}
+                    image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
+                    favorited={favoriteIds.has(podcast.id)}
+                    onToggleFavorite={() => toggleFavorite(podcast)}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/podcast/[id]',
+                        params: {
+                          id: podcast.id,
+                          title: podcast.title,
+                          artist: podcast.artist,
+                          artworkUrl: podcast.artworkUrl ?? '',
+                          viewUrl: podcast.viewUrl ?? '',
+                          feedUrl: podcast.feedUrl ?? '',
+                          trackCount: podcast.trackCount != null ? String(podcast.trackCount) : '',
+                          genres: podcast.genres.join(','),
+                          matchedTags: podcast.matchedTags.join(','),
+                        },
+                      })
+                    }
+                  />
+                ))}
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

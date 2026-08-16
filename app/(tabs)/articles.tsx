@@ -1,14 +1,19 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
+import { FilterChips } from '../../components/FilterChips';
 import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { SearchBar } from '../../components/SearchBar';
+import { SectionHero } from '../../components/SectionHero';
 import { useAuth } from '../../contexts/AuthContext';
 import { addFavoriteResource, getFavoriteResourceUrls, removeFavoriteResource } from '../../lib/favorites';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
+
+const ALL = 'All';
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -24,6 +29,8 @@ export default function Articles() {
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState(ALL);
 
   useEffect(() => {
     if (!user) return;
@@ -55,6 +62,23 @@ export default function Articles() {
 
   const sorted = articles ? sortFavoritedFirst(articles, favoriteUrls, (a) => a.url) : null;
 
+  const tagOptions = useMemo(() => {
+    if (!sorted) return [ALL];
+    const tags = new Set<string>();
+    sorted.forEach((a) => a.matchedTags.forEach((t) => tags.add(t)));
+    return [ALL, ...[...tags].sort()];
+  }, [sorted]);
+
+  const filtered = useMemo(() => {
+    if (!sorted) return null;
+    const q = query.trim().toLowerCase();
+    return sorted.filter((a) => {
+      if (tagFilter !== ALL && !a.matchedTags.includes(tagFilter)) return false;
+      if (q && !a.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [sorted, query, tagFilter]);
+
   const toggleFavorite = async (article: HealthResource) => {
     const wasFavorited = favoriteUrls.has(article.url);
     setFavoriteUrls((prev) => {
@@ -77,6 +101,11 @@ export default function Articles() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Haven.ly" title="Articles." />
       <ScrollView contentContainerStyle={styles.content}>
+        <SectionHero
+          icon="document-text-outline"
+          title="Vetted guides & articles"
+          description="Health and parenting information from MedlinePlus, matched to your child's neurodivergence tags."
+        />
         {error ? (
           <EmptyState text={`Couldn’t load articles (${error}).`} />
         ) : sorted === null ? (
@@ -84,28 +113,38 @@ export default function Articles() {
         ) : sorted.length === 0 ? (
           <EmptyState text="No articles yet." />
         ) : (
-          sorted.map((article) => (
-            <ListRow
-              key={article.url}
-              title={article.title}
-              subtitle={resourceSubtitle(article)}
-              icon="document-text-outline"
-              favorited={favoriteUrls.has(article.url)}
-              onToggleFavorite={() => toggleFavorite(article)}
-              onPress={() =>
-                router.push({
-                  pathname: '/article/[id]',
-                  params: {
-                    id: encodeURIComponent(article.url),
-                    title: article.title,
-                    summary: article.summary,
-                    url: article.url,
-                    matchedTags: article.matchedTags.join(','),
-                  },
-                })
-              }
-            />
-          ))
+          <>
+            <SearchBar value={query} onChangeText={setQuery} placeholder="Search articles" />
+            {tagOptions.length > 2 ? (
+              <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} />
+            ) : null}
+            {filtered && filtered.length === 0 ? (
+              <EmptyState text="No articles match that search." />
+            ) : (
+              filtered?.map((article) => (
+                <ListRow
+                  key={article.url}
+                  title={article.title}
+                  subtitle={resourceSubtitle(article)}
+                  icon="document-text-outline"
+                  favorited={favoriteUrls.has(article.url)}
+                  onToggleFavorite={() => toggleFavorite(article)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/article/[id]',
+                      params: {
+                        id: encodeURIComponent(article.url),
+                        title: article.title,
+                        summary: article.summary,
+                        url: article.url,
+                        matchedTags: article.matchedTags.join(','),
+                      },
+                    })
+                  }
+                />
+              ))
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

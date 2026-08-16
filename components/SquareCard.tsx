@@ -23,6 +23,7 @@ export function SquareCard({
   badgeVariant = 'accent',
   community,
   contributedBy,
+  matchScore,
 }: {
   title: string;
   subtitle?: string;
@@ -50,6 +51,10 @@ export function SquareCard({
   // color for playdate-status pills like "Proposed") on purpose.
   community?: boolean;
   contributedBy?: string;
+  // A small circle in the thumbnail's bottom-right corner — kept separate
+  // from `badge` (top, spans the width) so a card can carry both a status
+  // label like "Suggested" and its match percentage at once.
+  matchScore?: number;
 }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -88,6 +93,13 @@ export function SquareCard({
               color={favorited ? colors.accent : colors.surface}
             />
           </Pressable>
+        ) : null}
+        {matchScore != null ? (
+          <View style={styles.matchScoreBadge}>
+            <Text style={styles.matchScoreText} numberOfLines={1}>
+              {matchScore}%
+            </Text>
+          </View>
         ) : null}
       </View>
       <Text style={styles.title} numberOfLines={2}>
@@ -176,6 +188,23 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 4,
     paddingVertical: 2,
+  },
+  matchScoreBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    minWidth: 24,
+    height: 18,
+    paddingHorizontal: 3,
+    borderRadius: 9,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchScoreText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.surface,
   },
   badgePositive: {
     backgroundColor: colors.positive,

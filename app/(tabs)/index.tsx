@@ -502,6 +502,7 @@ export default function ForYou() {
     icon?: 'calendar' | 'document-text-outline';
     badge: string;
     badgeVariant?: 'accent' | 'positive';
+    matchScore?: number;
     onPress: () => void;
   };
 
@@ -547,6 +548,7 @@ export default function ForYou() {
           subtitle: familySubtitle(f),
           image: photoUrl ? { uri: photoUrl } : undefined,
           badge: 'Favorited',
+          matchScore: f.matchScore,
           onPress: () => router.push(`/family/${f.uid}`),
         };
       });
@@ -631,7 +633,8 @@ export default function ForYou() {
           title: familyDisplayName(f),
           subtitle: familySubtitle(f),
           image: photoUrl ? { uri: photoUrl } : undefined,
-          badge: `${f.matchScore}% match`,
+          badge: 'Suggested',
+          matchScore: f.matchScore,
           onPress: () => router.push(`/family/${f.uid}`),
         };
       });
@@ -718,6 +721,7 @@ export default function ForYou() {
                   icon={h.icon}
                   badge={h.badge}
                   badgeVariant={h.badgeVariant}
+                  matchScore={h.matchScore}
                   onPress={h.onPress}
                 />
               ))}
@@ -747,6 +751,7 @@ export default function ForYou() {
                   image={photoUrl ? { uri: photoUrl } : undefined}
                   favorited={favoriteFamilyUids.has(family.uid)}
                   onToggleFavorite={() => toggleFamilyFavorite(family)}
+                  matchScore={family.matchScore}
                   onPress={() => router.push(`/family/${family.uid}`)}
                 />
               );

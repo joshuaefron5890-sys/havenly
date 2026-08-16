@@ -63,7 +63,7 @@ function expandAction(count: number, expanded: boolean, setExpanded: (v: boolean
 }
 
 // Products/Podcasts/Articles each have their own dedicated tab now (see
-// app/(tabs)/products.tsx etc.) — "View all" on the For You page navigates
+// app/(tabs)/products.tsx etc.) — "View all" on the Home page navigates
 // there instead of expanding in place, unlike Families/Events which have
 // no such destination and still expand inline.
 function viewAllAction(count: number, pageSize: number, onPress: () => void) {
@@ -398,7 +398,7 @@ export default function ForYou() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader eyebrow="Haven.ly" title={firstName ? `For you, ${firstName}.` : 'For you.'} />
+      <ScreenHeader eyebrow="Haven.ly" title={firstName ? `Home, ${firstName}.` : 'Home.'} />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View onLayout={(e) => setGridWidth((prev) => prev ?? e.nativeEvent.layout.width)} />

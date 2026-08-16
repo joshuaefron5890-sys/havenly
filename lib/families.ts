@@ -38,3 +38,32 @@ export function familySubtitle(family: SuggestedFamily): string {
     .join(' · ');
   return kids || 'No kids listed yet';
 }
+
+export type FamilyProfile = {
+  uid: string;
+  firstName: string;
+  familyPhotoUrl: string | null;
+  children: SuggestedFamilyChild[];
+  sharedInterests: string[];
+  theirUniqueInterests: string[];
+  sharedNeurodivergence: string[];
+  theirNeurodivergence: string[];
+  theirPlayStyle: string[];
+  availability: string[];
+  // Placeholder scoring (functions/index.js getFamilyProfile) until real
+  // matching logic exists.
+  matchScore: number;
+};
+
+// The public profile screen (app/family/[id].tsx), tapped from a Discover
+// row — fetched server-side (getFamilyProfile) since it needs the caller's
+// own profile too, to compute what's actually shared with the target
+// family, without handing that comparison data to the client to do itself.
+export async function fetchFamilyProfile(uid: string): Promise<FamilyProfile> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  const call = httpsCallable<{ uid: string }, FamilyProfile>(functions, 'getFamilyProfile');
+  const result = await call({ uid });
+  return result.data;
+}

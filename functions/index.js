@@ -324,3 +324,79 @@ exports.getSuggestedFamilies = onCall(async (request) => {
 
   return { families };
 });
+
+// Powers the family public-profile screen (tapped from a Discover row).
+// Runs server-side, like getSuggestedFamilies, both to keep the same
+// private fields out of reach and because it needs the CALLER's own
+// profile too — to compute what's actually shared with the target family —
+// without handing that comparison data to the client to do itself.
+exports.getFamilyProfile = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const targetUid = typeof request.data?.uid === 'string' ? request.data.uid : '';
+  if (!targetUid) {
+    throw new HttpsError('invalid-argument', 'Missing family uid.');
+  }
+
+  const [meSnap, targetSnap] = await Promise.all([
+    admin.firestore().collection('users').doc(request.auth.uid).get(),
+    admin.firestore().collection('users').doc(targetUid).get(),
+  ]);
+  if (!targetSnap.exists) {
+    throw new HttpsError('not-found', 'That family could not be found.');
+  }
+
+  const me = meSnap.data() ?? {};
+  const target = targetSnap.data() ?? {};
+
+  const myInterests = Array.isArray(me.interests) ? me.interests : [];
+  const theirInterests = Array.isArray(target.interests) ? target.interests : [];
+  const sharedInterests = theirInterests.filter((i) => myInterests.includes(i));
+  const theirUniqueInterests = theirInterests.filter((i) => !myInterests.includes(i));
+
+  const myNeurodivergence = new Set(
+    (Array.isArray(me.children) ? me.children : []).flatMap((c) =>
+      Array.isArray(c?.neurodivergence) ? c.neurodivergence : []
+    )
+  );
+  const theirNeurodivergence = [
+    ...new Set(
+      (Array.isArray(target.children) ? target.children : []).flatMap((c) =>
+        Array.isArray(c?.neurodivergence) ? c.neurodivergence : []
+      )
+    ),
+  ];
+  const sharedNeurodivergence = theirNeurodivergence.filter((n) => myNeurodivergence.has(n));
+
+  const theirPlayStyle = [
+    ...new Set(
+      (Array.isArray(target.children) ? target.children : []).flatMap((c) =>
+        Array.isArray(c?.playStyle) ? c.playStyle : []
+      )
+    ),
+  ];
+
+  // Placeholder scoring until real matching logic exists — rewards shared
+  // interests and shared neurodivergent experience and nothing else for
+  // now, just so the screen has a number to show while that's built out.
+  const matchScore = Math.max(50, Math.min(98, 55 + sharedInterests.length * 6 + sharedNeurodivergence.length * 10));
+
+  return {
+    uid: targetUid,
+    firstName: typeof target.firstName === 'string' ? target.firstName : '',
+    familyPhotoUrl: typeof target.familyPhotoUrl === 'string' ? target.familyPhotoUrl : null,
+    children: (Array.isArray(target.children) ? target.children : []).map((c) => ({
+      name: typeof c?.name === 'string' ? c.name : '',
+      age: typeof c?.age === 'string' ? c.age : '',
+      photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
+    })),
+    sharedInterests,
+    theirUniqueInterests,
+    sharedNeurodivergence,
+    theirNeurodivergence,
+    theirPlayStyle,
+    availability: Array.isArray(target.availability) ? target.availability : [],
+    matchScore,
+  };
+});

@@ -1,7 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ImageSourcePropType, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ImageSourcePropType, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text } from '../../components/AppText';
 import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { ScreenHeader } from '../../components/ScreenHeader';
@@ -666,6 +668,17 @@ export default function ForYou() {
 
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
 
+  // confirmedProposals is already sorted soonest-first, so the first one
+  // that falls within the next 7 days (if any) is the one to surface.
+  const upcomingPlaydate = useMemo(() => {
+    const now = Date.now();
+    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+    return confirmedProposals.find((p) => {
+      const t = new Date(p.date).getTime();
+      return !Number.isNaN(t) && t >= now && t <= now + oneWeekMs;
+    });
+  }, [confirmedProposals]);
+
   // Each preview row below caps at one row (perRow, or ARTICLE_PAGE_SIZE for
   // the article list) — community contributions get first claim on those
   // slots (per the same "community first" ordering as the dedicated tabs),
@@ -701,6 +714,27 @@ export default function ForYou() {
           title="For You"
           description="Curates your confirmed and proposed playdates, anything you've favorited, and families that are an especially strong match — all in one place."
         />
+        {upcomingPlaydate ? (
+          <Pressable
+            style={styles.playdateBanner}
+            onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}
+          >
+            <View style={styles.playdateBannerIcon}>
+              <Ionicons name="calendar" size={20} color={colors.positive} />
+            </View>
+            <View style={styles.playdateBannerText}>
+              <Text style={styles.playdateBannerTitle}>Upcoming playdate</Text>
+              <Text style={styles.playdateBannerSubtitle}>
+                {proposalStartLabel(upcomingPlaydate)}
+                {upcomingPlaydate.venue ? ` · ${upcomingPlaydate.venue}` : ''}
+              </Text>
+            </View>
+            <View style={styles.playdateBannerCta}>
+              <Text style={styles.playdateBannerCtaText}>View details</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.positive} />
+            </View>
+          </Pressable>
+        ) : null}
         {forYouLoading ? (
           <ActivityIndicator color={colors.accent} />
         ) : highlights.length === 0 ? (
@@ -1019,5 +1053,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  playdateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.positiveMuted,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    gap: 12,
+  },
+  playdateBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playdateBannerText: {
+    flex: 1,
+  },
+  playdateBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  playdateBannerSubtitle: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  playdateBannerCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  playdateBannerCtaText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.positive,
   },
 });

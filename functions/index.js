@@ -875,30 +875,45 @@ exports.getRecommendedProducts = onCall(async (request) => {
   // otherwise dedupe into multiple entries depending on which search
   // surfaced it — strip those before using the url as the dedupe/favorite
   // key.
+  //
+  // resultsPerSearch is grouped [source][term] (every one of Fun and
+  // Function's terms, then every one of Harkla's, etc.) — flattening it in
+  // that order would let whichever source comes first in PRODUCT_SOURCES
+  // fill the whole list below on ties (most products only match one tag,
+  // and Array#sort is stable), permanently starving out any source later
+  // in the array regardless of how relevant its results are. Round-robin
+  // across the lists instead, so every source gets a fair turn before the
+  // cap below is reached.
+  const interleaved = [];
+  const maxListLength = Math.max(0, ...resultsPerSearch.map((list) => list.length));
+  for (let i = 0; i < maxListLength; i++) {
+    for (const list of resultsPerSearch) {
+      if (list[i]) interleaved.push(list[i]);
+    }
+  }
+
   const byUrl = new Map();
-  for (const list of resultsPerSearch) {
-    for (const { item, source, tag } of list) {
-      if (typeof item?.url !== 'string' || typeof item?.title !== 'string') continue;
-      const resolved = new URL(item.url, source.base);
-      resolved.search = '';
-      const url = resolved.toString();
-      const existing = byUrl.get(url);
-      if (existing) {
-        existing.matchedTags.add(tag);
-      } else {
-        byUrl.set(url, {
-          url,
-          title: item.title,
-          vendor: typeof item.vendor === 'string' ? item.vendor : source.name,
-          source: source.name,
-          imageUrl: typeof item.image === 'string' ? item.image : null,
-          // The search response already includes each product's full HTML
-          // description (item.body) — no extra fetch needed, just strip it
-          // down to plain text for the product detail screen.
-          description: typeof item.body === 'string' ? stripHtml(item.body) : '',
-          matchedTags: new Set([tag]),
-        });
-      }
+  for (const { item, source, tag } of interleaved) {
+    if (typeof item?.url !== 'string' || typeof item?.title !== 'string') continue;
+    const resolved = new URL(item.url, source.base);
+    resolved.search = '';
+    const url = resolved.toString();
+    const existing = byUrl.get(url);
+    if (existing) {
+      existing.matchedTags.add(tag);
+    } else {
+      byUrl.set(url, {
+        url,
+        title: item.title,
+        vendor: typeof item.vendor === 'string' ? item.vendor : source.name,
+        source: source.name,
+        imageUrl: typeof item.image === 'string' ? item.image : null,
+        // The search response already includes each product's full HTML
+        // description (item.body) — no extra fetch needed, just strip it
+        // down to plain text for the product detail screen.
+        description: typeof item.body === 'string' ? stripHtml(item.body) : '',
+        matchedTags: new Set([tag]),
+      });
     }
   }
 

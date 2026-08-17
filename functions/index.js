@@ -15,13 +15,6 @@ setGlobalOptions({ maxInstances: 10 });
 const GOOGLE_CLIENT_ID = '315662747088-dr7k9f6sbk4gs431v4j2c06hoob92mkm.apps.googleusercontent.com';
 const googleClientSecret = defineSecret('GOOGLE_OAUTH_CLIENT_SECRET');
 
-// Etsy Open API v3 — a Keystring from etsy.com/developers (My Apps), set
-// via `firebase functions:secrets:set ETSY_API_KEY`. Only the Keystring is
-// needed (sent as the x-api-key header) for a public, read-only listings
-// search like this one; the app's Shared Secret is only for OAuth-flow
-// endpoints that act on behalf of a specific Etsy user, which this isn't.
-const etsyApiKey = defineSecret('ETSY_API_KEY');
-
 const xmlParser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
 
 const CURRENT_USER_PRINCIPAL_BODY = `<?xml version="1.0" encoding="utf-8" ?>
@@ -795,51 +788,6 @@ const PRODUCT_SOURCES = [
   { name: 'Harkla', base: 'https://www.harkla.co' },
 ];
 
-// Not a Shopify store like the two above — used only to label Etsy results
-// and to resolve a listing's URL if it's ever returned relative (Etsy's API
-// returns absolute listing URLs in practice, so this base is effectively
-// unused, just kept for shape-consistency with source).
-const ETSY_SOURCE = { name: 'Etsy', base: 'https://www.etsy.com' };
-
-// Shaped to match the {item, source, tag} entries the Shopify sources
-// produce (see getRecommendedProducts below) — item.url/title/vendor/
-// image/body — so both feed the same dedupe/rank loop without it needing
-// to know Etsy exists. Field names (results[].url/title/images[].url_570xN/
-// description) are from Etsy's Open API v3 docs at the time this was
-// written and not verified against a live response — a mismatch here just
-// means empty Etsy results (caught below), not a crash.
-async function searchEtsy(term, tag, apiKey) {
-  try {
-    const res = await fetch(
-      `https://openapi.etsy.com/v3/application/listings/active?keywords=${encodeURIComponent(term)}&limit=5&includes=Images`,
-      { headers: { 'x-api-key': apiKey } }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    const items = data?.results;
-    if (!Array.isArray(items)) return [];
-    return items
-      .filter((it) => typeof it?.listing_id !== 'undefined' && typeof it?.title === 'string')
-      .map((it) => ({
-        item: {
-          url: typeof it.url === 'string' ? it.url : `https://www.etsy.com/listing/${it.listing_id}`,
-          title: it.title,
-          image:
-            typeof it.images?.[0]?.url_570xN === 'string'
-              ? it.images[0].url_570xN
-              : typeof it.images?.[0]?.url_fullxfull === 'string'
-                ? it.images[0].url_fullxfull
-                : undefined,
-          body: typeof it.description === 'string' ? it.description : '',
-        },
-        source: ETSY_SOURCE,
-        tag,
-      }));
-  } catch {
-    return [];
-  }
-}
-
 // Shopify's predictive-search endpoint matches literally — a plain word
 // like "sensory" returns real results (verified via a one-off diagnostic),
 // but the long descriptive labels used during onboarding
@@ -866,7 +814,7 @@ const PRODUCT_SEARCH_TERMS = {
 // predictive-search endpoint per neurodivergence tag, so results lean
 // toward what's actually relevant to the child's needs rather than a
 // generic marketplace with no vetting.
-exports.getRecommendedProducts = onCall({ secrets: [etsyApiKey] }, async (request) => {
+exports.getRecommendedProducts = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
@@ -896,15 +844,8 @@ exports.getRecommendedProducts = onCall({ secrets: [etsyApiKey] }, async (reques
     ? mappedSearches
     : [...mappedSearches, { tag: 'General', term: 'sensory' }];
 
-  // Etsy is optional — only attempted if the secret is actually configured
-  // (see ETSY_API_KEY above), and skipped silently (not an error) if it's
-  // unset, or once set, until Etsy actually approves the key (pending
-  // review returns 401/403, caught below) — same reasoning as Fun and
-  // Function/Harkla already being individually best-effort.
-  const etsyKey = etsyApiKey.value();
-
-  const resultsPerSearch = await Promise.all([
-    ...PRODUCT_SOURCES.flatMap((source) =>
+  const resultsPerSearch = await Promise.all(
+    PRODUCT_SOURCES.flatMap((source) =>
       searches.map(async ({ tag, term }) => {
         try {
           const res = await fetch(
@@ -922,9 +863,8 @@ exports.getRecommendedProducts = onCall({ secrets: [etsyApiKey] }, async (reques
           return [];
         }
       })
-    ),
-    ...(etsyKey ? searches.map(({ tag, term }) => searchEtsy(term, tag, etsyKey)) : []),
-  ]);
+    )
+  );
 
   // A product can turn up under more than one tag's search — dedupe by
   // absolute URL, rank higher the more of the child's tags it matched.

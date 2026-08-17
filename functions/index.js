@@ -782,10 +782,19 @@ exports.getHealthResources = onCall(async (request) => {
 // their own on-site search bar calls, so results are searchable by keyword
 // without needing a private Storefront API token. Two other candidates
 // (National Autism Resources, Different Roads to Learning) weren't Shopify
-// stores with this endpoint and were dropped.
+// stores with this endpoint and were dropped. The four below couldn't be
+// verified live either (this environment's network egress is blocked for
+// nearly every external domain) — each is independently try/catch'd in
+// getRecommendedProducts below, so one turning out not to be a compatible
+// Shopify store just means it silently contributes zero results, not a
+// broken build; drop it from this list if that's what happens in practice.
 const PRODUCT_SOURCES = [
   { name: 'Fun and Function', base: 'https://funandfunction.com' },
   { name: 'Harkla', base: 'https://www.harkla.co' },
+  { name: 'Stimtastic', base: 'https://www.stimtastic.co' },
+  { name: 'ARK Therapeutic', base: 'https://www.arktherapeutic.com' },
+  { name: 'Chewigem', base: 'https://chewigem.com' },
+  { name: 'TheraSpecs', base: 'https://theraspecs.com' },
 ];
 
 // Shopify's predictive-search endpoint matches literally — a plain word

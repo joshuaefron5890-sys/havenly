@@ -64,16 +64,19 @@ export function isUnread(conversation: Conversation, myUid: string): boolean {
 // ever finding out the doc simply isn't there yet. Writing unconditionally
 // sidesteps that: Firestore rules treat this as `create` when the doc is
 // new (governed by request.resource.data, no read required) and `update`
-// when it already exists. Only participantUids is written — the exact
-// same value every time — so re-opening an existing conversation never
-// clobbers its lastMessage/lastMessageAt.
+// when it already exists. Only participantUids is written, sorted (same
+// order regardless of who's "me" here) so re-opening an existing
+// conversation always writes the identical value — belt and suspenders
+// alongside firestore.rules' own order-independent equality check on this
+// field, since this used to write [myUid, otherUid] unsorted and could
+// otherwise land in different order depending on who created the doc.
 export async function getOrCreateConversation(otherUid: string): Promise<string> {
   const myUid = auth?.currentUser?.uid;
   if (!myUid || !db) {
     throw new Error('not-signed-in');
   }
   const id = conversationId(myUid, otherUid);
-  await setDoc(doc(db, 'conversations', id), { participantUids: [myUid, otherUid] }, { merge: true });
+  await setDoc(doc(db, 'conversations', id), { participantUids: [myUid, otherUid].sort() }, { merge: true });
   return id;
 }
 

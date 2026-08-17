@@ -1022,6 +1022,7 @@ function haversineMiles(a, b) {
 const TRIBE_EVENT_SOURCES = [
   { name: 'Golden Gate Regional Center', base: 'https://www.ggrc.org' },
   { name: 'Regional Center of the East Bay', base: 'https://rceb.org' },
+  { name: 'Support for Families of Children with Disabilities', base: 'https://www.supportforfamilies.org' },
 ];
 
 async function fetchTribeEvents(source) {

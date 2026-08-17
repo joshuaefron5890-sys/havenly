@@ -980,6 +980,26 @@ async function geocodeZip(zip) {
   }
 }
 
+// Same free lookup as geocodeZip, but for sources (like GGRC's Events
+// Calendar API below) that hand back a venue's city/state without a zip.
+// Zippopotam supports a city-level path the same way it supports a zip —
+// coarser than an exact zip, but plenty precise for a 50-mile driving-
+// distance filter.
+async function geocodeCityState(city, state) {
+  if (!city || !state) return null;
+  try {
+    const res = await fetch(`https://api.zippopotam.us/us/${state}/${encodeURIComponent(city)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const place = Array.isArray(data?.places) ? data.places[0] : null;
+    const lat = parseFloat(place?.latitude);
+    const lon = parseFloat(place?.longitude);
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+  } catch {
+    return null;
+  }
+}
+
 function haversineMiles(a, b) {
   const toRad = (d) => (d * Math.PI) / 180;
   const R = 3958.8;
@@ -991,16 +1011,38 @@ function haversineMiles(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+// Regional/local orgs that run WordPress's "The Events Calendar" plugin,
+// which exposes its own dedicated REST API — structured start/end dates, a
+// venue object with city/state, and an explicit is_virtual flag, all
+// without an API key. A cleaner shape than TACA's generic post type +
+// regex-scraped address (see extractTacaLocation above), and the same
+// zero-key, no-approval pattern as PRODUCT_SOURCES — new orgs can be added
+// here once confirmed (by hitting <base>/wp-json/tribe/events/v1/events)
+// to run the same plugin.
+const TRIBE_EVENT_SOURCES = [{ name: 'Golden Gate Regional Center', base: 'https://www.ggrc.org' }];
+
+async function fetchTribeEvents(source) {
+  try {
+    const res = await fetch(`${source.base}/wp-json/tribe/events/v1/events?per_page=50`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.events) ? data.events : [];
+  } catch {
+    return [];
+  }
+}
+
 // A driving day trip, not "somewhere in the same state" — nobody's
 // driving 500 miles for a coffee talk.
 const EVENT_RADIUS_MILES = 50;
 
-// Powers the "Events" section on the Discover tab. In-person events within
-// driving distance lead, closest first; virtual events (no parseable
-// address — TACA's webinars don't have a "Location" block) always show,
-// since distance is meaningless for those. Without a zip on file yet,
-// falls back to showing everything soonest-first rather than hiding every
-// in-person event for lack of a distance to compare.
+// Powers the "Events" section on the Discover tab, merging TACA (national)
+// with TRIBE_EVENT_SOURCES (regional/local orgs). In-person events within
+// driving distance lead, closest first; virtual events — no parseable
+// address for TACA, or an explicit is_virtual flag from a Tribe source —
+// always show, since distance is meaningless for those. Without a zip on
+// file yet, falls back to showing everything soonest-first rather than
+// hiding every in-person event for lack of a distance to compare.
 exports.getNearbyEvents = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
@@ -1017,30 +1059,33 @@ exports.getNearbyEvents = onCall(async (request) => {
   // cluster at the front of this ordering. 5 pages (150 posts) comfortably
   // covers that while still leaving room for an upcoming, further-out
   // event that hasn't been touched recently to show up.
-  const pages = await Promise.all(
-    [1, 2, 3, 4, 5].map(async (page) => {
-      try {
-        const res = await fetch(
-          `https://tacanow.org/wp-json/wp/v2/event?per_page=30&page=${page}&orderby=modified&order=desc&_embed=wp:featuredmedia`
-        );
-        if (!res.ok) return [];
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
-      } catch {
-        return [];
-      }
-    })
-  );
+  const [pages, tribeResults] = await Promise.all([
+    Promise.all(
+      [1, 2, 3, 4, 5].map(async (page) => {
+        try {
+          const res = await fetch(
+            `https://tacanow.org/wp-json/wp/v2/event?per_page=30&page=${page}&orderby=modified&order=desc&_embed=wp:featuredmedia`
+          );
+          if (!res.ok) return [];
+          const data = await res.json();
+          return Array.isArray(data) ? data : [];
+        } catch {
+          return [];
+        }
+      })
+    ),
+    Promise.all(TRIBE_EVENT_SOURCES.map(fetchTribeEvents)),
+  ]);
 
   const now = Date.now();
-  const candidates = pages
+  const tacaCandidates = pages
     .flat()
     .map((e) => {
       const eventDate = parseTacaEventDate(e.event_date);
       const location = extractTacaLocation(e.content?.rendered ?? '');
       const media = e._embedded?.['wp:featuredmedia']?.[0];
       return {
-        id: e.id,
+        id: `taca-${e.id}`,
         title: typeof e.title?.rendered === 'string' ? decodeXmlEntities(e.title.rendered) : '',
         link: typeof e.link === 'string' ? e.link : '',
         eventDate,
@@ -1054,23 +1099,55 @@ exports.getNearbyEvents = onCall(async (request) => {
     })
     .filter((e) => e.title && e.link && e.eventDate && e.eventDate.getTime() >= now);
 
-  // Geocode each candidate's zip — deduped, since recurring meetups often
-  // reuse the same venue/zip — to get an actual driving-relevant distance.
-  const zipCache = new Map();
+  const tribeCandidates = tribeResults
+    .flatMap((events, i) => {
+      const source = TRIBE_EVENT_SOURCES[i];
+      return events.map((e) => {
+        const eventDate =
+          typeof e.utc_start_date === 'string' ? new Date(`${e.utc_start_date.replace(' ', 'T')}Z`) : null;
+        const venue = e.venue?.venue;
+        return {
+          id: `${source.name}-${e.id}`,
+          title: typeof e.title === 'string' ? decodeXmlEntities(e.title) : '',
+          link: typeof e.url === 'string' ? e.url : '',
+          eventDate,
+          venue: typeof venue === 'string' ? venue : '',
+          imageUrl: typeof e.image?.url === 'string' ? e.image.url : null,
+          categories: (Array.isArray(e.categories) ? e.categories : [])
+            .map((c) => (typeof c?.name === 'string' ? c.name : ''))
+            .filter(Boolean),
+          isVirtual: Boolean(e.is_virtual),
+          address: typeof e.venue?.address === 'string' ? e.venue.address : '',
+          city: typeof e.venue?.city === 'string' ? e.venue.city : '',
+          state: typeof e.venue?.state === 'string' ? e.venue.state : '',
+        };
+      });
+    })
+    .filter((e) => e.title && e.link && e.eventDate && e.eventDate.getTime() >= now);
+
+  const candidates = [...tacaCandidates, ...tribeCandidates];
+
+  // Geocode each candidate's location — deduped, since recurring meetups
+  // often reuse the same venue — to get an actual driving-relevant
+  // distance. TACA candidates only ever carry a zip (or nothing);
+  // tribeCandidates may carry a zip-less city/state instead, so this tries
+  // a zip first and falls back to city/state.
+  const locationCache = new Map();
   const withDistance = await Promise.all(
     candidates.map(async (e) => {
-      if (!e.zip) {
-        // No parseable address at all — a webinar/virtual event, which
-        // has no meaningful distance and always shows.
-        const { zip, ...rest } = e;
-        return { ...rest, distanceMiles: null, virtual: true };
+      if (e.isVirtual || (!e.zip && !(e.city && e.state))) {
+        // No parseable address at all (or explicitly virtual) — a
+        // webinar, which has no meaningful distance and always shows.
+        const { zip, city, state, isVirtual, ...rest } = e;
+        return { ...rest, city: city ?? '', state: state ?? '', distanceMiles: null, virtual: true };
       }
-      if (!zipCache.has(e.zip)) {
-        zipCache.set(e.zip, geocodeZip(e.zip));
+      const key = e.zip ? `zip:${e.zip}` : `city:${e.city}|${e.state}`;
+      if (!locationCache.has(key)) {
+        locationCache.set(key, e.zip ? geocodeZip(e.zip) : geocodeCityState(e.city, e.state));
       }
-      const eventLocation = await zipCache.get(e.zip);
+      const eventLocation = await locationCache.get(key);
       const distanceMiles = myLocation && eventLocation ? haversineMiles(myLocation, eventLocation) : null;
-      const { zip, ...rest } = e;
+      const { zip, isVirtual, ...rest } = e;
       return { ...rest, distanceMiles, virtual: false };
     })
   );

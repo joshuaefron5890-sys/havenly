@@ -2,7 +2,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from './firebase';
 
 export type NearbyEvent = {
-  id: number;
+  id: string;
   title: string;
   link: string;
   eventDate: string; // ISO

@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { addFavoriteProduct, getFavoriteProductUrls, removeFavoriteProduct } from '../../lib/favorites';
 import { colors } from '../../theme/colors';
 
@@ -50,7 +51,7 @@ export default function ProductDetail() {
       await (next ? addFavoriteProduct(url) : removeFavoriteProduct(url));
     } catch {
       setFavorited(!next);
-      Alert.alert('Couldn’t save that', 'Please try again.');
+      showAlert('Couldn’t save that', 'Please try again.');
     } finally {
       setFavoriteBusy(false);
     }

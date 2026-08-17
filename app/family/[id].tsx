@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { addFavoriteFamily, getFavoriteFamilyUids, removeFavoriteFamily } from '../../lib/favorites';
 import { familyDisplayName, FamilyProfile, fetchFamilyProfile } from '../../lib/families';
 import { getOrCreateConversation } from '../../lib/messages';
@@ -56,7 +57,7 @@ export default function FamilyDetail() {
       await (next ? addFavoriteFamily(id) : removeFavoriteFamily(id));
     } catch {
       setFavorited(!next);
-      Alert.alert('Couldn’t save that', 'Please try again.');
+      showAlert('Couldn’t save that', 'Please try again.');
     } finally {
       setFavoriteBusy(false);
     }
@@ -69,7 +70,7 @@ export default function FamilyDetail() {
       const conversationId = await getOrCreateConversation(id);
       router.push(`/messages/${conversationId}`);
     } catch {
-      Alert.alert('Couldn’t start that conversation', 'Please try again.');
+      showAlert('Couldn’t start that conversation', 'Please try again.');
     } finally {
       setMessageBusy(false);
     }

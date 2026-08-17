@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { familyDisplayName, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
@@ -47,7 +48,7 @@ export default function ProposalDetail() {
     try {
       await respondToProposal(id, status);
     } catch (err: any) {
-      Alert.alert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
+      showAlert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setResponding(false);
     }

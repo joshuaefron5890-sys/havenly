@@ -3,7 +3,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,6 +14,7 @@ import {
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { familyDisplayName, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { markConversationRead, Message, sendMessage, subscribeToMessages } from '../../lib/messages';
 import { PlaydateProposal, respondToProposal, subscribeToMyProposals } from '../../lib/playdateProposals';
@@ -85,7 +85,7 @@ export default function MessageThread() {
     try {
       await respondToProposal(proposalId, status);
     } catch (err: any) {
-      Alert.alert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
+      showAlert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setRespondingId(null);
     }

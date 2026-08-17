@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../components/EmptyState';
 import { FieldInput } from '../components/FieldInput';
 import { useOnboarding } from '../contexts/OnboardingContext';
+import { showAlert } from '../lib/alert';
 import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
 import { familyDisplayName, FamilyProfile, fetchFamilyProfile } from '../lib/families';
 import { getGoogleFreeBusy } from '../lib/googleCalendar';
@@ -102,7 +103,7 @@ export default function ProposePlaydate() {
       );
       router.replace(`/messages/${conversationId}`);
     } catch (err: any) {
-      Alert.alert('Couldn’t send that proposal', err?.message ?? err?.code ?? 'Please try again.');
+      showAlert('Couldn’t send that proposal', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setSubmitting(false);
     }

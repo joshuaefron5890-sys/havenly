@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { addFavoritePodcast, getFavoritePodcastIds, removeFavoritePodcast } from '../../lib/favorites';
 import { fetchPodcastDescription } from '../../lib/podcasts';
 import { colors } from '../../theme/colors';
@@ -71,7 +72,7 @@ export default function PodcastDetail() {
       await (next ? addFavoritePodcast(id) : removeFavoritePodcast(id));
     } catch {
       setFavorited(!next);
-      Alert.alert('Couldn’t save that', 'Please try again.');
+      showAlert('Couldn’t save that', 'Please try again.');
     } finally {
       setFavoriteBusy(false);
     }

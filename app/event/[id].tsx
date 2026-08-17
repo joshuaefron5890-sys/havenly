@@ -6,15 +6,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
 import { colors } from '../../theme/colors';
 
-// Event data comes from TACA's public events feed and is already fully
-// fetched client-side on the dashboard, so it's handed over via route
-// params instead of being re-fetched here — there's no "look up an event
-// by id" endpoint, and nothing here is sensitive.
+// Event data comes from a public events feed (TACA, or one of the regional
+// centers/family-support orgs in functions/index.js's TRIBE_EVENT_SOURCES)
+// and is already fully fetched client-side on the dashboard, so it's
+// handed over via route params instead of being re-fetched here — there's
+// no "look up an event by id" endpoint, and nothing here is sensitive.
 export default function EventDetail() {
-  const { title, eventDate, venue, address, imageUrl, link, categories, distanceMiles, virtual } =
+  const { title, source, eventDate, venue, address, imageUrl, link, categories, distanceMiles, virtual } =
     useLocalSearchParams<{
       id: string;
       title?: string;
+      source?: string;
       eventDate?: string;
       venue?: string;
       address?: string;
@@ -80,7 +82,7 @@ export default function EventDetail() {
           </View>
         )}
 
-        <Text style={styles.attribution}>From The Autism Community in Action (TACA)</Text>
+        {source ? <Text style={styles.attribution}>From {source}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>

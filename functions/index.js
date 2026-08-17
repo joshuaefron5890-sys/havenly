@@ -1090,6 +1090,7 @@ exports.getNearbyEvents = onCall(async (request) => {
       const media = e._embedded?.['wp:featuredmedia']?.[0];
       return {
         id: `taca-${e.id}`,
+        source: 'The Autism Community in Action (TACA)',
         title: typeof e.title?.rendered === 'string' ? decodeXmlEntities(e.title.rendered) : '',
         link: typeof e.link === 'string' ? e.link : '',
         eventDate,
@@ -1112,6 +1113,7 @@ exports.getNearbyEvents = onCall(async (request) => {
         const venue = e.venue?.venue;
         return {
           id: `${source.name}-${e.id}`,
+          source: source.name,
           title: typeof e.title === 'string' ? decodeXmlEntities(e.title) : '',
           link: typeof e.url === 'string' ? e.url : '',
           eventDate,
@@ -1166,13 +1168,11 @@ exports.getNearbyEvents = onCall(async (request) => {
     ? withDistance.filter((e) => e.distanceMiles === null || e.distanceMiles <= EVENT_RADIUS_MILES)
     : withDistance;
 
-  const ranked = filtered.sort((a, b) => {
-    if (a.virtual !== b.virtual) return a.virtual ? 1 : -1;
-    if (!a.virtual && !b.virtual && a.distanceMiles !== b.distanceMiles) {
-      return a.distanceMiles - b.distanceMiles;
-    }
-    return a.eventDate - b.eventDate;
-  });
+  // Soonest first, full stop — a single merged timeline across every
+  // source reads as coherent; sorting virtual events after in-person ones
+  // (or grouping by distance first) fractures that into disconnected
+  // date-sorted clusters instead of one chronological list.
+  const ranked = filtered.sort((a, b) => a.eventDate - b.eventDate);
 
   return {
     events: ranked.slice(0, 20).map(({ eventDate, ...e }) => ({ ...e, eventDate: eventDate.toISOString() })),

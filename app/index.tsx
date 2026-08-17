@@ -12,9 +12,10 @@ import { images } from '../theme/images';
 
 // What the app actually does today, not a generic pitch — each subtitle
 // names the real, shipped part of the product behind that pillar (match
-// scoring; direct messaging, playdate proposals, and TACA-sourced local
-// events; curated products/podcasts/articles), so a new family knows what
-// they're signing up for rather than just how it feels.
+// scoring; direct messaging, playdate proposals, and local events from
+// TACA and regional family-support orgs; curated products/podcasts/
+// articles), so a new family knows what they're signing up for rather
+// than just how it feels.
 const FEATURES = [
   {
     title: 'Find your people',

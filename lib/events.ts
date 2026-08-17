@@ -3,6 +3,10 @@ import { functions } from './firebase';
 
 export type NearbyEvent = {
   id: string;
+  // Which org published this event (TACA, or one of the regional centers
+  // in functions/index.js's TRIBE_EVENT_SOURCES) — shown as attribution on
+  // the detail screen.
+  source: string;
   title: string;
   link: string;
   eventDate: string; // ISO
@@ -21,10 +25,11 @@ export type NearbyEvent = {
 };
 
 // Local support-group meetups and events from TACA (The Autism Community
-// in Action) — fetched server-side (functions/index.js getNearbyEvents),
-// which reads the caller's own zip code from Firestore, geocodes both
-// sides with the same free lookup used for zip verification (see
-// lib/zipcode.ts), and filters in-person events to driving distance.
+// in Action) and a growing list of regional centers/family-support orgs —
+// fetched server-side (functions/index.js getNearbyEvents), which reads
+// the caller's own zip code from Firestore, geocodes both sides with the
+// same free lookup used for zip verification (see lib/zipcode.ts), and
+// filters in-person events to driving distance.
 export async function fetchNearbyEvents(): Promise<NearbyEvent[]> {
   if (!functions) {
     throw new Error('not-configured');

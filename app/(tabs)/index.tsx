@@ -849,6 +849,7 @@ export default function ForYou() {
                     params: {
                       id: String(event.id),
                       title: event.title,
+                      source: event.source,
                       eventDate: event.eventDate,
                       venue: event.venue,
                       address: event.address,

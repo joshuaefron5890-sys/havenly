@@ -101,8 +101,8 @@ export default function ProposePlaydate() {
         note
       );
       router.replace(`/messages/${conversationId}`);
-    } catch {
-      Alert.alert('Couldn’t send that proposal', 'Please try again.');
+    } catch (err: any) {
+      Alert.alert('Couldn’t send that proposal', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setSubmitting(false);
     }

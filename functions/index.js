@@ -1019,7 +1019,10 @@ function haversineMiles(a, b) {
 // zero-key, no-approval pattern as PRODUCT_SOURCES — new orgs can be added
 // here once confirmed (by hitting <base>/wp-json/tribe/events/v1/events)
 // to run the same plugin.
-const TRIBE_EVENT_SOURCES = [{ name: 'Golden Gate Regional Center', base: 'https://www.ggrc.org' }];
+const TRIBE_EVENT_SOURCES = [
+  { name: 'Golden Gate Regional Center', base: 'https://www.ggrc.org' },
+  { name: 'Regional Center of the East Bay', base: 'https://rceb.org' },
+];
 
 async function fetchTribeEvents(source) {
   try {

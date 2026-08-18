@@ -35,7 +35,17 @@ function loadGsiScript(): Promise<void> {
 // which relays the result through havenly-cd19f.firebaseapp.com — a hop that
 // doesn't reliably return a result back to an app that isn't hosted on
 // Firebase Hosting itself.
-function requestCodeForScope(scope: string): Promise<string> {
+//
+// wantsOfflineAccess controls access_type/prompt — 'offline' + forced
+// 're-consent' is what actually gets a refresh token (needed by the
+// calendar Connect flow to query later without the user present), but
+// Google scrutinizes that combination heavily for unverified apps: it's a
+// request for standing, long-term account access, not just "who is this."
+// Plain sign-in only needs a one-time identity check, so it skips both —
+// dropping them is what actually got a real user through the "unverified
+// app" screen; requesting identity-only scopes alone wasn't enough on its
+// own to avoid it.
+function requestCodeForScope(scope: string, wantsOfflineAccess: boolean): Promise<string> {
   if (Platform.OS !== 'web') {
     return Promise.reject(new Error('not-supported-native'));
   }
@@ -46,11 +56,7 @@ function requestCodeForScope(scope: string): Promise<string> {
           client_id: CLIENT_ID,
           scope,
           ux_mode: 'popup',
-          access_type: 'offline',
-          // Google only issues a refresh token on a user's first consent
-          // for a given scope unless the consent screen is forced again —
-          // without this, reconnecting later would silently fail to renew it.
-          prompt: 'consent',
+          ...(wantsOfflineAccess ? { access_type: 'offline', prompt: 'consent' } : {}),
           callback: (response: any) => {
             if (response.error) {
               reject(new Error(response.error));
@@ -90,7 +96,8 @@ function requestCodeForScope(scope: string): Promise<string> {
 // is not a sensitive scope.
 export function requestGoogleCalendarAuthCode(pushEvents: boolean): Promise<string> {
   return requestCodeForScope(
-    pushEvents ? 'https://www.googleapis.com/auth/calendar.events' : 'https://www.googleapis.com/auth/calendar.freebusy'
+    pushEvents ? 'https://www.googleapis.com/auth/calendar.events' : 'https://www.googleapis.com/auth/calendar.freebusy',
+    true
   );
 }
 
@@ -111,5 +118,5 @@ export function requestGoogleCalendarAuthCode(pushEvents: boolean): Promise<stri
 // explicit Connect action in app/onboarding/calendar.tsx afterward, where a
 // warning is an informed, opted-into tradeoff instead of a surprise.
 export function requestGoogleSignInCode(): Promise<string> {
-  return requestCodeForScope('openid email profile');
+  return requestCodeForScope('openid email profile', false);
 }

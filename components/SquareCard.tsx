@@ -69,8 +69,17 @@ export function SquareCard({
         ) : !image && community ? (
           // A community contribution with no photo of its own gets a
           // shared "this is from the community" image instead of a flat
-          // icon-on-color box — warmer, and doesn't need a per-item icon.
-          <Photo source={images.communityContribution} style={styles.thumbnail} />
+          // icon-on-color box — the per-item icon (calendar, bag, mic...)
+          // still shows, as a small overlay, so the card still reads as
+          // "this is an event" (etc.) at a glance despite the generic photo.
+          <View style={styles.thumbnail}>
+            <Photo source={images.communityContribution} style={styles.thumbnail} />
+            {icon ? (
+              <View style={styles.communityTypeIcon}>
+                <Ionicons name={icon} size={16} color={colors.surface} />
+              </View>
+            ) : null}
+          </View>
         ) : !image && icon ? (
           <View style={[styles.thumbnail, styles.iconThumbnail]}>
             <Ionicons name={icon} size={22} color={colors.surface} />
@@ -148,6 +157,22 @@ const styles = StyleSheet.create({
     height: CARD_WIDTH,
     borderRadius: 12,
     backgroundColor: colors.accentMuted,
+  },
+  communityTypeIcon: {
+    // Centered over the shared community photo so the card still reads as
+    // "this is an event" (etc.) at a glance — same dark translucent chip
+    // treatment as the favorite heart, just centered instead of cornered.
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -14,
+    marginLeft: -14,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(43,36,32,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconThumbnail: {
     alignItems: 'center',

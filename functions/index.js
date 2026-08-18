@@ -1423,3 +1423,4 @@ exports.getNearbyEvents = onCall(async (request) => {
     events: ranked.slice(0, 60).map(({ eventDate, ...e }) => ({ ...e, eventDate: eventDate.toISOString() })),
   };
 });
+

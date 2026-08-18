@@ -94,19 +94,22 @@ export function requestGoogleCalendarAuthCode(pushEvents: boolean): Promise<stri
   );
 }
 
-// Same code-flow popup as requestGoogleCalendarAuthCode, but requesting
-// identity scopes together with calendar access in one consent screen — so
-// "Sign in/up with Gmail" connects the calendar in the same step instead of
-// requiring a separate one later. The resulting code is exchanged via
-// exchangeGoogleSignInCode (functions/index.js) for both an ID token (to
-// sign in with) and a calendar refresh token.
+// Same code-flow popup as requestGoogleCalendarAuthCode, but requesting only
+// identity scopes — no calendar access at all. The resulting code is
+// exchanged via exchangeGoogleSignInCode (functions/index.js) for an ID
+// token to sign in with.
 //
-// Deliberately still calendar.freebusy, not calendar.events like the
-// explicit Connect action above — this flow runs for every Google sign-up,
-// so requesting a sensitive scope here would put every new user through
-// Google's unverified-app wall, not just the ones deliberately connecting a
-// calendar. Someone who wants event creation can still get it afterward via
-// the explicit Connect/Reconnect action once they're signed in.
-export function requestGoogleSignInWithCalendarCode(): Promise<string> {
-  return requestCodeForScope('openid email profile https://www.googleapis.com/auth/calendar.freebusy');
+// This used to also request calendar.freebusy in the same popup, on the
+// theory that freebusy (read-only) was safe to bundle into every sign-up
+// since only calendar.events (read/write) was a Google "sensitive" scope.
+// That theory was wrong — freebusy throws the exact same unverified-app
+// warning as events does, confirmed by a live user hitting it on a plain
+// Gmail sign-in with no stale cache involved. Bundling *any* calendar scope
+// into sign-in means every new user hits that wall, not just the ones who
+// want calendar features — so sign-in now requests identity only, and
+// calendar connection (either scope) happens exclusively through the
+// explicit Connect action in app/onboarding/calendar.tsx afterward, where a
+// warning is an informed, opted-into tradeoff instead of a surprise.
+export function requestGoogleSignInCode(): Promise<string> {
+  return requestCodeForScope('openid email profile');
 }

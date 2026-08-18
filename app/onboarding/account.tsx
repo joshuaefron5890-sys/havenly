@@ -10,8 +10,8 @@ import { WizardHeader } from '../../components/WizardHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleIdToken } from '../../lib/firebase';
-import { exchangeGoogleSignInCode, saveGoogleCalendarRefreshToken } from '../../lib/googleCalendar';
-import { requestGoogleSignInWithCalendarCode } from '../../lib/googleIdentity';
+import { exchangeGoogleSignInCode } from '../../lib/googleCalendar';
+import { requestGoogleSignInCode } from '../../lib/googleIdentity';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { colors } from '../../theme/colors';
 
@@ -129,19 +129,9 @@ export default function Account() {
 
     setGoogleSubmitting(true);
     try {
-      const code = await requestGoogleSignInWithCalendarCode();
-      const { idToken, accessToken, refreshToken } = await exchangeGoogleSignInCode(code);
+      const code = await requestGoogleSignInCode();
+      const { idToken, accessToken } = await exchangeGoogleSignInCode(code);
       const credential = await signInWithGoogleIdToken(idToken, accessToken);
-      if (refreshToken) {
-        // Best-effort — a brand-new account should never be blocked on this;
-        // worst case they just see "Needs reconnection" later and can retry.
-        try {
-          await saveGoogleCalendarRefreshToken(refreshToken);
-          updateOnboardingProfile({ googleCalendarConnected: true });
-        } catch {
-          // ignore — calendar connection isn't required to finish sign-up
-        }
-      }
       const [first, ...rest] = (credential.user.displayName ?? '').split(' ');
       setFirstName(first ?? '');
       setLastName(rest.join(' '));

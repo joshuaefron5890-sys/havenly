@@ -219,26 +219,7 @@ exports.exchangeGoogleSignInCode = onCall({ secrets: [googleClientSecret] }, asy
   return {
     idToken: tokenJson.id_token,
     accessToken: tokenJson.access_token ?? null,
-    refreshToken: tokenJson.refresh_token ?? null,
   };
-});
-
-// Persists a refresh token the client already obtained via
-// exchangeGoogleSignInCode, once it has a real session to attach it to —
-// splitting this from exchangeGoogleSignInCode is what lets that call stay
-// auth-free while this one keeps the usual "prove who you are" check.
-exports.saveGoogleCalendarRefreshToken = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Sign in required.');
-  }
-  const refreshToken = typeof request.data?.refreshToken === 'string' ? request.data.refreshToken : '';
-  if (!refreshToken) {
-    throw new HttpsError('invalid-argument', 'Missing refresh token.');
-  }
-
-  await storeGoogleCalendarRefreshToken(request.auth.uid, refreshToken);
-
-  return { connected: true };
 });
 
 async function refreshGoogleAccessToken(refreshToken, clientSecret) {

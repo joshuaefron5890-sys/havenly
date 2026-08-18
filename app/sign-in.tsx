@@ -8,8 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../components/FieldInput';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleIdToken } from '../lib/firebase';
-import { exchangeGoogleSignInCode, saveGoogleCalendarRefreshToken } from '../lib/googleCalendar';
-import { requestGoogleSignInWithCalendarCode } from '../lib/googleIdentity';
+import { exchangeGoogleSignInCode } from '../lib/googleCalendar';
+import { requestGoogleSignInCode } from '../lib/googleIdentity';
 import { routeSignedInUser } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 
@@ -83,18 +83,9 @@ export default function SignIn() {
     }
     setGoogleSubmitting(true);
     try {
-      const code = await requestGoogleSignInWithCalendarCode();
-      const { idToken, accessToken, refreshToken } = await exchangeGoogleSignInCode(code);
+      const code = await requestGoogleSignInCode();
+      const { idToken, accessToken } = await exchangeGoogleSignInCode(code);
       const credential = await signInWithGoogleIdToken(idToken, accessToken);
-      if (refreshToken) {
-        // Best-effort — a sign-in should never be blocked on this; worst
-        // case Profile still shows "Needs reconnection" and they can retry.
-        try {
-          await saveGoogleCalendarRefreshToken(refreshToken);
-        } catch {
-          // ignore — calendar connection isn't required to sign in
-        }
-      }
       await routeSignedInUser(credential.user, updateProfile);
     } catch (err: any) {
       const message = friendlyGoogleError(err?.message ?? err?.code ?? '');

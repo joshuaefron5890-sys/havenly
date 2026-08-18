@@ -29,7 +29,7 @@ import { colors } from '../../theme/colors';
 
 const ALL = 'All';
 const SUBTYPE_ORDER: ResourceSubtype[] = ['article', 'referral', 'blog'];
-const SUBTYPE_FILTER_OPTIONS = [ALL, ...SUBTYPE_ORDER];
+const SUBTYPE_FILTER_OPTIONS: (ResourceSubtype | typeof ALL)[] = [ALL, ...SUBTYPE_ORDER];
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -53,6 +53,7 @@ export default function Articles() {
   // is chosen, which is what actually opens ContributeModal below.
   const [contributeSubtype, setContributeSubtype] = useState<ResourceSubtype | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [typeFilterVisible, setTypeFilterVisible] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -172,7 +173,15 @@ export default function Articles() {
         </Pressable>
 
         <SearchBar value={query} onChangeText={setQuery} placeholder="Search resources" />
-        <FilterChips options={SUBTYPE_FILTER_OPTIONS} selected={subtypeFilter} onSelect={(v) => setSubtypeFilter(v as ResourceSubtype | typeof ALL)} />
+        <Pressable style={styles.typeFilterButton} onPress={() => setTypeFilterVisible(true)}>
+          <Text style={styles.typeFilterLabel}>Resource Type</Text>
+          <View style={styles.typeFilterValue}>
+            <Text style={styles.typeFilterValueText}>
+              {subtypeFilter === ALL ? ALL : RESOURCE_SUBTYPE_SCHEMAS[subtypeFilter].label}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+          </View>
+        </Pressable>
         {tagOptions.length > 2 ? <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} /> : null}
 
         {error ? <EmptyState text={`Couldn’t load articles (${error}). Community picks still show below.`} /> : null}
@@ -249,6 +258,43 @@ export default function Articles() {
         </Pressable>
       </Modal>
 
+      <Modal visible={typeFilterVisible} transparent animationType="fade" onRequestClose={() => setTypeFilterVisible(false)}>
+        <Pressable style={styles.pickerBackdrop} onPress={() => setTypeFilterVisible(false)}>
+          <Pressable style={styles.pickerSheet} onPress={() => {}}>
+            <Text style={styles.pickerTitle}>Resource Type</Text>
+            {SUBTYPE_FILTER_OPTIONS.map((option) => {
+              const schema = option === ALL ? null : RESOURCE_SUBTYPE_SCHEMAS[option];
+              return (
+                <Pressable
+                  key={option}
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setSubtypeFilter(option);
+                    setTypeFilterVisible(false);
+                  }}
+                >
+                  <View style={styles.pickerIconWrap}>
+                    {!schema ? (
+                      <Ionicons name="apps-outline" size={18} color={colors.accent} />
+                    ) : schema.icon === 'referral' ? (
+                      <ReferralIcon size={18} color={colors.accent} />
+                    ) : schema.icon === 'blog' ? (
+                      <BlogIcon size={18} color={colors.accent} />
+                    ) : (
+                      <Ionicons name={schema.icon} size={18} color={colors.accent} />
+                    )}
+                  </View>
+                  <Text style={styles.pickerOptionText}>{schema ? schema.label : ALL}</Text>
+                  {option === subtypeFilter ? (
+                    <Ionicons name="checkmark" size={18} color={colors.accent} />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <ContributeModal
         visible={contributeSubtype !== null}
         title={`Contribute ${contributeSubtype === 'article' ? 'an' : 'a'} ${RESOURCE_SUBTYPE_SCHEMAS[contributeSubtype ?? 'article'].noun}`}
@@ -288,6 +334,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.accent,
+  },
+  typeFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  typeFilterLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  typeFilterValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  typeFilterValueText: {
+    fontSize: 14,
+    color: colors.textMuted,
   },
   pickerBackdrop: {
     flex: 1,

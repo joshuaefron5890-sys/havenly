@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { showAlert } from '../../lib/alert';
 import { familyDisplayName, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
+import { addPlaydateToGoogleCalendar } from '../../lib/googleCalendar';
 import { markConversationRead, Message, sendMessage, subscribeToMessages } from '../../lib/messages';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToMyProposals } from '../../lib/playdateProposals';
@@ -276,9 +277,9 @@ export default function MessageThread() {
 
       <AddToGoogleCalendarPrompt
         visible={!!syncPromptProposalId}
-        proposalId={syncPromptProposalId}
         dateLabel={syncPromptDateLabel}
         onClose={() => setSyncPromptProposalId(null)}
+        onConfirm={() => addPlaydateToGoogleCalendar(syncPromptProposalId!)}
       />
     </SafeAreaView>
   );

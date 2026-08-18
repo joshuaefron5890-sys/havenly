@@ -30,6 +30,26 @@ export async function addPlaydateToGoogleCalendar(proposalId: string): Promise<v
   await call({ proposalId });
 }
 
+// Creates a calendar event for one nearby-events-feed event (see
+// lib/events.ts) on the signed-in user's own Google Calendar — the "Add to
+// My Calendar" button on app/event/[id].tsx. Server derives a deterministic
+// event id from eventId + uid, same idempotent-retry approach as
+// addPlaydateToGoogleCalendar, and gives the event a fixed 2-hour length
+// since the feed never supplies an end time.
+export async function addExternalEventToGoogleCalendar(params: {
+  eventId: string;
+  title: string;
+  startIso: string;
+  location?: string;
+  description?: string;
+}): Promise<void> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  const call = httpsCallable(functions, 'addExternalEventToGoogleCalendar');
+  await call(params);
+}
+
 // Fetches this user's busy blocks for a time range using the stored
 // refresh token — the same call a future matching feature would make to
 // find overlapping free time between two families.

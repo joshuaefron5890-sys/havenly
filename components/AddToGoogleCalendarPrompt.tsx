@@ -3,33 +3,35 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet } from 'react-native';
 import { Text } from './AppText';
 import { useOnboarding } from '../contexts/OnboardingContext';
-import { addPlaydateToGoogleCalendar, connectGoogleCalendarBackend } from '../lib/googleCalendar';
+import { connectGoogleCalendarBackend } from '../lib/googleCalendar';
 import { requestGoogleCalendarAuthCode } from '../lib/googleIdentity';
 import { saveOnboardingStep } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 
-// Shown right after accepting a playdate proposal, when the signed-in
-// family hasn't already opted in to Google Calendar sync — offers to run
-// the Connect flow (write-access scope) and immediately create the event
-// for that one proposal, since the automatic accept-time trigger
-// (functions/index.js's createPlaydateCalendarEvents) already ran by this
-// point and found sync disabled.
+// Runs the Connect flow (write-access scope) and then hands off to
+// `onConfirm` to actually create the one calendar event this was shown
+// for — the caller supplies that last step since what's being added
+// differs (a playdate proposal vs. a nearby-events-feed event), while the
+// connect flow itself is identical either way.
 //
-// Shared between app/proposal/[id].tsx and app/messages/[id].tsx — the two
-// places a proposal can actually be accepted from. Living in only one of
-// them was the original bug here: accepting from a message thread silently
-// skipped both this prompt and the automatic trigger, with no visible
-// error either way.
+// Shared between app/proposal/[id].tsx, app/messages/[id].tsx (playdates —
+// the two places a proposal can actually be accepted from, living in only
+// one of them was the original bug here: accepting from a message thread
+// silently skipped both this prompt and the automatic trigger, with no
+// visible error either way) and app/event/[id].tsx (its own "Add to My
+// Calendar" button, unrelated to any accept-time trigger).
 export function AddToGoogleCalendarPrompt({
   visible,
-  proposalId,
   dateLabel,
   onClose,
+  onConfirm,
 }: {
   visible: boolean;
-  proposalId: string | null;
   dateLabel: string;
   onClose: () => void;
+  // Creates the actual calendar event once Connect has succeeded — throw
+  // to surface an error in this same modal.
+  onConfirm: () => Promise<void>;
 }) {
   const { updateProfile } = useOnboarding();
   const [syncing, setSyncing] = useState(false);
@@ -37,7 +39,6 @@ export function AddToGoogleCalendarPrompt({
   const [syncDone, setSyncDone] = useState(false);
 
   const addToGoogleCalendar = async () => {
-    if (!proposalId) return;
     setSyncError(null);
     setSyncing(true);
 
@@ -62,7 +63,7 @@ export function AddToGoogleCalendarPrompt({
         '/onboarding/calendar',
         { editMode: true }
       );
-      await addPlaydateToGoogleCalendar(proposalId);
+      await onConfirm();
       setSyncDone(true);
     } catch (err: any) {
       setSyncError(`Couldn’t add this to your calendar (${err?.message ?? err?.code ?? 'unknown error'}).`);

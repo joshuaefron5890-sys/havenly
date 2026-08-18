@@ -294,7 +294,11 @@ function googleEventIdFor(proposalId, uid) {
   return require('crypto').createHash('sha1').update(`havenly-playdate-${proposalId}-${uid}`).digest('hex');
 }
 
-async function createGoogleCalendarEvent(refreshToken, clientSecret, { eventId, summary, location, startIso, endIso }) {
+async function createGoogleCalendarEvent(
+  refreshToken,
+  clientSecret,
+  { eventId, summary, description, location, startIso, endIso }
+) {
   const accessToken = await refreshGoogleAccessToken(refreshToken, clientSecret);
   const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method: 'POST',
@@ -302,6 +306,7 @@ async function createGoogleCalendarEvent(refreshToken, clientSecret, { eventId, 
     body: JSON.stringify({
       id: eventId,
       summary,
+      description: description || undefined,
       location: location || undefined,
       start: { dateTime: startIso },
       end: { dateTime: endIso },
@@ -602,6 +607,61 @@ exports.addPlaydateToGoogleCalendar = onCall({ secrets: [googleClientSecret] }, 
     eventId: googleEventIdFor(proposalId, uid),
     summary,
     location: venue,
+    startIso,
+    endIso,
+  });
+
+  return { created: true };
+});
+
+// Nearby/community events (TACA and regional feeds, see getNearbyEvents,
+// plus community-contributed ones) have no server-side record to look up —
+// unlike a playdate proposal, the client already has the full event and
+// just hands it over here. A separate hash namespace from googleEventIdFor
+// keeps an event id and a proposal id from ever colliding on the same
+// deterministic-id scheme.
+function googleEventIdForExternalEvent(eventId, uid) {
+  return require('crypto').createHash('sha1').update(`havenly-event-${eventId}-${uid}`).digest('hex');
+}
+
+const EXTERNAL_EVENT_DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
+
+// Creates a calendar event for a nearby-events-feed event on the signed-in
+// user's own Google Calendar — the "Add to My Calendar" button on
+// app/event/[id].tsx. The feed only ever gives a single start time, never
+// a duration, so the event is given a fixed 2-hour length here rather than
+// trusting a client-supplied end time.
+exports.addExternalEventToGoogleCalendar = onCall({ secrets: [googleClientSecret] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const uid = request.auth.uid;
+  const data = request.data || {};
+  const eventId = typeof data.eventId === 'string' ? data.eventId.trim() : '';
+  const title = typeof data.title === 'string' ? data.title.trim() : '';
+  const startIso = typeof data.startIso === 'string' ? data.startIso : '';
+  if (!eventId || !title || !startIso) {
+    throw new HttpsError('invalid-argument', 'eventId, title, and startIso are required.');
+  }
+  const startDate = new Date(startIso);
+  if (Number.isNaN(startDate.getTime())) {
+    throw new HttpsError('invalid-argument', 'startIso is not a valid date.');
+  }
+  const endIso = new Date(startDate.getTime() + EXTERNAL_EVENT_DEFAULT_DURATION_MS).toISOString();
+  const location = typeof data.location === 'string' ? data.location.trim() : '';
+  const description = typeof data.description === 'string' ? data.description.trim() : '';
+
+  const userSnap = await admin.firestore().collection('users').doc(uid).get();
+  const refreshToken = userSnap.data()?.googleCalendar?.refreshToken;
+  if (!refreshToken) {
+    throw new HttpsError('failed-precondition', 'Connect Google Calendar first.');
+  }
+
+  await createGoogleCalendarEvent(refreshToken, googleClientSecret.value(), {
+    eventId: googleEventIdForExternalEvent(eventId, uid),
+    summary: title,
+    description,
+    location,
     startIso,
     endIso,
   });

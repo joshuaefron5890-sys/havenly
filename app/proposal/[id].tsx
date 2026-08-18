@@ -19,6 +19,7 @@ import {
   SuggestedFamily,
   SuggestedFamilyChild,
 } from '../../lib/families';
+import { addPlaydateToGoogleCalendar } from '../../lib/googleCalendar';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
@@ -337,9 +338,9 @@ export default function ProposalDetail() {
 
       <AddToGoogleCalendarPrompt
         visible={!!syncPromptProposalId}
-        proposalId={syncPromptProposalId}
         dateLabel={proposal.dateLabel}
         onClose={() => setSyncPromptProposalId(null)}
+        onConfirm={() => addPlaydateToGoogleCalendar(syncPromptProposalId!)}
       />
     </SafeAreaView>
   );

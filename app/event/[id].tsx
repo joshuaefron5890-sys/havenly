@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AddToGoogleCalendarPrompt } from '../../components/AddToGoogleCalendarPrompt';
 import { Photo } from '../../components/Photo';
+import { addExternalEventToGoogleCalendar } from '../../lib/googleCalendar';
 import { colors } from '../../theme/colors';
 
 // Event data comes from a public events feed (TACA, or one of the regional
@@ -12,7 +15,7 @@ import { colors } from '../../theme/colors';
 // handed over via route params instead of being re-fetched here — there's
 // no "look up an event by id" endpoint, and nothing here is sensitive.
 export default function EventDetail() {
-  const { title, source, eventDate, venue, address, imageUrl, link, categories, distanceMiles, virtual } =
+  const { id, title, source, eventDate, venue, address, imageUrl, link, categories, distanceMiles, virtual } =
     useLocalSearchParams<{
       id: string;
       title?: string;
@@ -26,6 +29,7 @@ export default function EventDetail() {
       distanceMiles?: string;
       virtual?: string;
     }>();
+  const [calendarPromptVisible, setCalendarPromptVisible] = useState(false);
 
   const dateLabel = eventDate
     ? new Date(eventDate).toLocaleDateString(undefined, {
@@ -86,6 +90,12 @@ export default function EventDetail() {
       </ScrollView>
 
       <View style={styles.footer}>
+        {eventDate ? (
+          <Pressable style={styles.secondaryCta} onPress={() => setCalendarPromptVisible(true)}>
+            <Ionicons name="calendar-outline" size={18} color={colors.accent} />
+            <Text style={styles.secondaryCtaText}>Add to My Calendar</Text>
+          </Pressable>
+        ) : null}
         <Pressable
           style={[styles.cta, !link && styles.ctaDisabled]}
           disabled={!link}
@@ -94,6 +104,21 @@ export default function EventDetail() {
           <Text style={styles.ctaText}>View event details</Text>
         </Pressable>
       </View>
+
+      <AddToGoogleCalendarPrompt
+        visible={calendarPromptVisible}
+        dateLabel={dateLabel}
+        onClose={() => setCalendarPromptVisible(false)}
+        onConfirm={() =>
+          addExternalEventToGoogleCalendar({
+            eventId: id,
+            title: title || 'Event',
+            startIso: eventDate!,
+            location: venue || address || undefined,
+            description: link || undefined,
+          })
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -189,6 +214,22 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 20,
+    gap: 10,
+  },
+  secondaryCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 14,
+  },
+  secondaryCtaText: {
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: '700',
   },
   cta: {
     backgroundColor: colors.accent,

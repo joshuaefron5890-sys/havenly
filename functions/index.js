@@ -451,6 +451,11 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
               startIso,
               endIso,
             });
+          } else {
+            // Not an error — just nothing to do for this family — but logged
+            // so "no event showed up" is diagnosable from Cloud Logging
+            // without guessing whether the trigger even ran.
+            console.log(`Skipping calendar event for ${uid}: no eligible Google (sync enabled) or Apple connection.`);
           }
         } catch (err) {
           console.error(`Could not create playdate calendar event for ${uid}`, err);
@@ -463,7 +468,8 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
 // Lets a family create the event on their own Google Calendar right away,
 // for one specific accepted proposal, instead of waiting on the automatic
 // trigger above — used right after someone completes the opt-in "add this
-// playdate to your calendar?" prompt (app/proposal/[id].tsx), since by the
+// playdate to your calendar?" prompt (components/AddToGoogleCalendarPrompt,
+// shared by the two screens a proposal can be accepted from), since by the
 // time they've finished connecting, the trigger already ran (at the moment
 // the proposal was accepted) and found sync disabled. The deterministic
 // event id from googleEventIdFor makes this safe to call even if the

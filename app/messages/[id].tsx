@@ -13,10 +13,13 @@ import {
 } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AddToGoogleCalendarPrompt } from '../../components/AddToGoogleCalendarPrompt';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { showAlert } from '../../lib/alert';
 import { familyDisplayName, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { markConversationRead, Message, sendMessage, subscribeToMessages } from '../../lib/messages';
+import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { PlaydateProposal, respondToProposal, subscribeToMyProposals } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
 
@@ -35,7 +38,27 @@ export default function MessageThread() {
   const [sending, setSending] = useState(false);
   const [proposals, setProposals] = useState<PlaydateProposal[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [syncPromptProposalId, setSyncPromptProposalId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Own profile isn't hydrated by default on this route — needed just to
+  // check googleCalendarSyncEnabled so the "add to calendar?" prompt
+  // doesn't nag someone who already opted in. Same pattern app/profile.tsx
+  // and app/proposal/[id].tsx use.
+  const { profile, updateProfile } = useOnboarding();
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    loadOnboardingProgress(user.uid).then((progress) => {
+      if (!cancelled && progress && Object.keys(progress.profile).length) {
+        updateProfile(progress.profile);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // The conversation id is a deterministic sorted "uidA_uidB" pair (see
   // lib/messages.ts) — the other participant can be read straight out of
@@ -84,12 +107,20 @@ export default function MessageThread() {
     setRespondingId(proposalId);
     try {
       await respondToProposal(proposalId, status);
+      // Only worth asking if they haven't already opted in — someone who
+      // has gets this automatically via the accept-time trigger, no prompt
+      // needed.
+      if (status === 'accepted' && !profile.googleCalendarSyncEnabled) {
+        setSyncPromptProposalId(proposalId);
+      }
     } catch (err: any) {
       showAlert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setRespondingId(null);
     }
   };
+
+  const syncPromptDateLabel = proposals.find((p) => p.id === syncPromptProposalId)?.dateLabel ?? '';
 
   const proposeNewTime = () => {
     if (!otherUid) return;
@@ -207,6 +238,13 @@ export default function MessageThread() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <AddToGoogleCalendarPrompt
+        visible={!!syncPromptProposalId}
+        proposalId={syncPromptProposalId}
+        dateLabel={syncPromptDateLabel}
+        onClose={() => setSyncPromptProposalId(null)}
+      />
     </SafeAreaView>
   );
 }

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ContributeModal } from '../../components/ContributeModal';
+import { BlogIcon } from '../../components/BlogIcon';
 import { EmptyState } from '../../components/EmptyState';
 import { FilterChips } from '../../components/FilterChips';
 import { ListRow } from '../../components/ListRow';
@@ -224,6 +225,8 @@ export default function Articles() {
                   <View style={styles.pickerIconWrap}>
                     {schema.icon === 'referral' ? (
                       <ReferralIcon size={18} color={colors.accent} />
+                    ) : schema.icon === 'blog' ? (
+                      <BlogIcon size={18} color={colors.accent} />
                     ) : (
                       <Ionicons name={schema.icon} size={18} color={colors.accent} />
                     )}

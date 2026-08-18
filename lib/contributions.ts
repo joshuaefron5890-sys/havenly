@@ -81,10 +81,11 @@ export type ResourceSubtype = 'article' | 'referral' | 'blog';
 
 export const RESOURCE_SUBTYPE_SCHEMAS: Record<
   ResourceSubtype,
-  // 'referral' is a sentinel, not a real Ionicons name — see
-  // components/ReferralIcon.tsx, which every renderer of this field checks
-  // for first since Ionicons has no single "refer a person" glyph.
-  { noun: string; label: string; icon: keyof typeof Ionicons.glyphMap | 'referral'; fields: ContributionField[] }
+  // 'referral' and 'blog' are sentinels, not real Ionicons names — see
+  // components/ReferralIcon.tsx and components/BlogIcon.tsx, which every
+  // renderer of this field checks for first since Ionicons has no single
+  // "refer a person" or "blog post" glyph.
+  { noun: string; label: string; icon: keyof typeof Ionicons.glyphMap | 'referral' | 'blog'; fields: ContributionField[] }
 > = {
   article: {
     noun: 'article',
@@ -95,7 +96,7 @@ export const RESOURCE_SUBTYPE_SCHEMAS: Record<
   blog: {
     noun: 'blog',
     label: 'Blog',
-    icon: 'reader-outline',
+    icon: 'blog',
     fields: [
       { key: 'title', label: 'Blog name' },
       { key: 'url', label: 'Link', placeholder: 'https://…', optional: true },

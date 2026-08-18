@@ -1025,9 +1025,28 @@ const TRIBE_EVENT_SOURCES = [
   { name: 'Support for Families of Children with Disabilities', base: 'https://www.supportforfamilies.org' },
 ];
 
+// Without an explicit date window, the API's default 2-year range plus a
+// fixed per_page meant "first N events" — for a source with hundreds of
+// recurring monthly support groups (e.g. Support for Families), that first
+// page never even reached a month out, silently hiding everything past it.
+// Bounding to a 90-day window keeps the request cheap while actually
+// covering "coming up soon," which is what this section promises.
+const TRIBE_EVENTS_WINDOW_DAYS = 90;
+
+function formatTribeDate(d) {
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 async function fetchTribeEvents(source) {
   try {
-    const res = await fetch(`${source.base}/wp-json/tribe/events/v1/events?per_page=50`);
+    const now = new Date();
+    const end = new Date(now.getTime() + TRIBE_EVENTS_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      per_page: '100',
+      start_date: formatTribeDate(now),
+      end_date: formatTribeDate(end),
+    });
+    const res = await fetch(`${source.base}/wp-json/tribe/events/v1/events?${params.toString()}`);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data?.events) ? data.events : [];
@@ -1174,7 +1193,11 @@ exports.getNearbyEvents = onCall(async (request) => {
   // date-sorted clusters instead of one chronological list.
   const ranked = filtered.sort((a, b) => a.eventDate - b.eventDate);
 
+  // With 4 merged sources, a cap this low used to mean weeks of near-term
+  // recurring support-group meetings alone could fill every slot and push
+  // anything a month or more out (e.g. October) off the list entirely,
+  // even though it was fetched. 60 leaves real headroom for that spread.
   return {
-    events: ranked.slice(0, 20).map(({ eventDate, ...e }) => ({ ...e, eventDate: eventDate.toISOString() })),
+    events: ranked.slice(0, 60).map(({ eventDate, ...e }) => ({ ...e, eventDate: eventDate.toISOString() })),
   };
 });

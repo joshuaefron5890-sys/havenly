@@ -415,13 +415,14 @@ async function createAppleCalendarEvent(appleCalendar, { uid, summary, location,
 // approach as every other multi-source feature in this app rather than
 // surfacing a hard error either family can't act on.
 //
-// In practice the Google branch always fails right now: lib/googleIdentity.ts
-// deliberately requests calendar.freebusy, not calendar.events, because
-// calendar.events is a Google "sensitive" scope that throws an
-// unverified-app warning at every signed-in user until this project's OAuth
-// consent screen completes Google's verification process. Once that's done
-// and the requested scope is widened, this starts working for anyone who
-// reconnects — no other change needed here.
+// The Google branch only works for a family whose refresh token was issued
+// under the calendar.events scope (see lib/googleIdentity.ts's
+// requestGoogleCalendarAuthCode) — until this project completes Google's
+// OAuth verification, that consent screen is only reachable by accounts
+// listed as Test users on the project, so in practice this is limited to
+// however many test accounts have deliberately reconnected. Anyone else's
+// token is still freebusy-only (from sign-up) and this call fails, which is
+// caught and skipped like any other unconnected calendar.
 exports.createPlaydateCalendarEvents = onDocumentUpdated(
   { document: 'playdateProposals/{proposalId}', secrets: [googleClientSecret] },
   async (event) => {

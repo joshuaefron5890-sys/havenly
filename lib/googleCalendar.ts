@@ -44,6 +44,22 @@ export async function saveGoogleCalendarRefreshToken(refreshToken: string): Prom
   await call({ refreshToken });
 }
 
+// Creates the calendar event for one accepted proposal on the signed-in
+// user's own Google Calendar right now, rather than waiting for the
+// automatic accept-time trigger (functions/index.js's
+// createPlaydateCalendarEvents) — used right after someone finishes the
+// opt-in "add this playdate to your calendar?" prompt, since by the time
+// they've connected, that trigger already ran and found sync disabled.
+// Safe to call even if the trigger's own attempt succeeded too — the
+// server uses a deterministic event id, so a repeat call is a no-op.
+export async function addPlaydateToGoogleCalendar(proposalId: string): Promise<void> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  const call = httpsCallable(functions, 'addPlaydateToGoogleCalendar');
+  await call({ proposalId });
+}
+
 // Fetches this user's busy blocks for a time range using the stored
 // refresh token — the same call a future matching feature would make to
 // find overlapping free time between two families.

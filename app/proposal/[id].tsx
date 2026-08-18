@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { showAlert } from '../../lib/alert';
 import {
   familyDisplayName,
@@ -17,6 +18,9 @@ import {
   SuggestedFamily,
   SuggestedFamilyChild,
 } from '../../lib/families';
+import { addPlaydateToGoogleCalendar, connectGoogleCalendarBackend } from '../../lib/googleCalendar';
+import { requestGoogleCalendarAuthCode } from '../../lib/googleIdentity';
+import { loadOnboardingProgress, saveOnboardingStep } from '../../lib/onboardingProgress';
 import { PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
 
@@ -85,6 +89,30 @@ export default function ProposalDetail() {
   const [myFamily, setMyFamily] = useState<SuggestedFamily | null>(null);
   const [responding, setResponding] = useState(false);
 
+  // Own profile isn't hydrated by default on this route (only the
+  // onboarding wizard's own layout does that) — needed here just to check
+  // googleCalendarSyncEnabled, so the "add to calendar?" prompt doesn't
+  // nag someone who already opted in. Same pattern app/profile.tsx uses.
+  const { profile, updateProfile } = useOnboarding();
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    loadOnboardingProgress(user.uid).then((progress) => {
+      if (!cancelled && progress && Object.keys(progress.profile).length) {
+        updateProfile(progress.profile);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const [showSyncPrompt, setShowSyncPrompt] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncDone, setSyncDone] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     return subscribeToProposal(id, setProposal);
@@ -119,10 +147,58 @@ export default function ProposalDetail() {
     setResponding(true);
     try {
       await respondToProposal(id, status);
+      // Only worth asking if they haven't already opted in — someone who
+      // has gets this automatically via the accept-time trigger, no prompt
+      // needed.
+      if (status === 'accepted' && !profile.googleCalendarSyncEnabled) {
+        setSyncError(null);
+        setSyncDone(false);
+        setShowSyncPrompt(true);
+      }
     } catch (err: any) {
       showAlert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setResponding(false);
+    }
+  };
+
+  // Runs the same Connect flow as the Calendar settings screen, hardcoded
+  // to the write-access scope (this prompt only appears because someone
+  // just said "yes, add it"), then immediately creates the event for this
+  // one proposal — the automatic accept-time trigger already ran and found
+  // sync disabled, so it won't pick this up on its own.
+  const addToGoogleCalendar = async () => {
+    if (!id) return;
+    setSyncError(null);
+    setSyncing(true);
+
+    let code: string;
+    try {
+      code = await requestGoogleCalendarAuthCode(true);
+    } catch (err: any) {
+      setSyncError(
+        err?.message?.includes('closed')
+          ? 'Google reported the popup closed early, which can be a false alarm — please try again.'
+          : `Couldn’t get Google’s permission (${err?.message ?? 'unknown error'}).`
+      );
+      setSyncing(false);
+      return;
+    }
+
+    try {
+      await connectGoogleCalendarBackend(code);
+      updateProfile({ googleCalendarConnected: true, googleCalendarSyncEnabled: true });
+      await saveOnboardingStep(
+        { googleCalendarConnected: true, googleCalendarSyncEnabled: true },
+        '/onboarding/calendar',
+        { editMode: true }
+      );
+      await addPlaydateToGoogleCalendar(id);
+      setSyncDone(true);
+    } catch (err: any) {
+      setSyncError(`Couldn’t add this to your calendar (${err?.message ?? err?.code ?? 'unknown error'}).`);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -270,6 +346,46 @@ export default function ProposalDetail() {
           </Pressable>
         </View>
       )}
+
+      <Modal
+        visible={showSyncPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !syncing && setShowSyncPrompt(false)}
+      >
+        <Pressable style={styles.overlay} onPress={() => !syncing && setShowSyncPrompt(false)}>
+          <Pressable style={styles.syncCard} onPress={() => {}}>
+            {syncDone ? (
+              <>
+                <Ionicons name="checkmark-circle" size={32} color={colors.positive} />
+                <Text style={styles.syncTitle}>Added to your Google Calendar</Text>
+                <Pressable style={styles.syncCta} onPress={() => setShowSyncPrompt(false)}>
+                  <Text style={styles.syncCtaText}>Done</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.syncTitle}>Add this playdate to your Google Calendar?</Text>
+                <Text style={styles.syncBody}>
+                  We’ll create an event for {proposal.dateLabel}. Google may show an “unverified app” warning first —
+                  choose Advanced, then “Go to Haven.ly (unsafe)”, to continue.
+                </Text>
+                {syncError ? <Text style={styles.syncError}>{syncError}</Text> : null}
+                <Pressable
+                  style={[styles.syncCta, syncing && styles.buttonDisabled]}
+                  onPress={addToGoogleCalendar}
+                  disabled={syncing}
+                >
+                  {syncing ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.syncCtaText}>Yes, add it</Text>}
+                </Pressable>
+                <Pressable onPress={() => !syncing && setShowSyncPrompt(false)}>
+                  <Text style={styles.syncSkip}>Not now</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -533,5 +649,58 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 16,
     fontWeight: '700',
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  syncCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  syncTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  syncBody: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  syncError: {
+    fontSize: 12,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  syncCta: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  syncCtaText: {
+    color: colors.surface,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  syncSkip: {
+    fontSize: 14,
+    color: colors.textMuted,
   },
 });

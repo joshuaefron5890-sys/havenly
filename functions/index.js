@@ -326,22 +326,47 @@ function buildPlaydateIcs({ uid, summary, location, startIso, endIso }) {
     .join('\r\n');
 }
 
-async function createGoogleCalendarEvent(refreshToken, clientSecret, { summary, location, startIso, endIso }) {
+// A deterministic id (Google allows a client-supplied one on insert, must
+// match base32hex — lowercase a-v and digits, 5-1024 chars; a sha1 hex
+// digest is entirely [0-9a-f], a subset of that) rather than letting Google
+// generate a random one, so calling this twice for the same
+// proposal+family — once from the automatic accept-time trigger, once from
+// someone completing the opt-in prompt afterward — creates the event at
+// most once instead of duplicating it.
+function googleEventIdFor(proposalId, uid) {
+  return require('crypto').createHash('sha1').update(`havenly-playdate-${proposalId}-${uid}`).digest('hex');
+}
+
+async function createGoogleCalendarEvent(refreshToken, clientSecret, { eventId, summary, location, startIso, endIso }) {
   const accessToken = await refreshGoogleAccessToken(refreshToken, clientSecret);
   const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      id: eventId,
       summary,
       location: location || undefined,
       start: { dateTime: startIso },
       end: { dateTime: endIso },
     }),
   });
-  if (!res.ok) {
+  // A 409 means this exact event id already exists on the calendar — that's
+  // success, not a failure, for our purposes (idempotent retry).
+  if (!res.ok && res.status !== 409) {
     const errJson = await res.json().catch(() => ({}));
     throw new Error(errJson.error?.message || `Google Calendar insert failed (${res.status})`);
   }
+}
+
+// Shared by the automatic accept-time trigger and the explicit
+// addPlaydateToGoogleCalendar callable below, so both derive the exact same
+// event content from a proposal doc.
+function derivePlaydateEventFields(proposal) {
+  const startIso = typeof proposal.date === 'string' ? proposal.date : '';
+  const endIso = typeof proposal.endDate === 'string' ? proposal.endDate : '';
+  const venue = typeof proposal.venue === 'string' ? proposal.venue : '';
+  const summary = venue ? `Haven.ly playdate at ${venue}` : 'Haven.ly playdate';
+  return { startIso, endIso, venue, summary };
 }
 
 // A calendar-home-set collection (see connectAppleCalendar above) can hold
@@ -434,12 +459,9 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
       return;
     }
 
-    const startIso = typeof after.date === 'string' ? after.date : '';
-    const endIso = typeof after.endDate === 'string' ? after.endDate : '';
+    const { startIso, endIso, venue, summary } = derivePlaydateEventFields(after);
     if (!startIso || !endIso) return;
 
-    const venue = typeof after.venue === 'string' ? after.venue : '';
-    const summary = venue ? `Haven.ly playdate at ${venue}` : 'Haven.ly playdate';
     const uids = [after.fromUid, after.toUid].filter((uid) => typeof uid === 'string' && uid);
 
     await Promise.all(
@@ -458,6 +480,7 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
           // freebusy connection.
           if (userData.googleCalendarSyncEnabled && userData.googleCalendar?.refreshToken) {
             await createGoogleCalendarEvent(userData.googleCalendar.refreshToken, googleClientSecret.value(), {
+              eventId: googleEventIdFor(event.params.proposalId, uid),
               summary,
               location: venue,
               startIso,
@@ -479,6 +502,58 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
     );
   }
 );
+
+// Lets a family create the event on their own Google Calendar right away,
+// for one specific accepted proposal, instead of waiting on the automatic
+// trigger above — used right after someone completes the opt-in "add this
+// playdate to your calendar?" prompt (app/proposal/[id].tsx), since by the
+// time they've finished connecting, the trigger already ran (at the moment
+// the proposal was accepted) and found sync disabled. The deterministic
+// event id from googleEventIdFor makes this safe to call even if the
+// trigger's own attempt did go through — it's a no-op on the duplicate.
+exports.addPlaydateToGoogleCalendar = onCall({ secrets: [googleClientSecret] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const proposalId = typeof request.data?.proposalId === 'string' ? request.data.proposalId : '';
+  if (!proposalId) {
+    throw new HttpsError('invalid-argument', 'proposalId is required.');
+  }
+
+  const proposalSnap = await admin.firestore().collection('playdateProposals').doc(proposalId).get();
+  const proposal = proposalSnap.data();
+  if (!proposal) {
+    throw new HttpsError('not-found', 'Could not find that playdate.');
+  }
+  const uid = request.auth.uid;
+  if (proposal.fromUid !== uid && proposal.toUid !== uid) {
+    throw new HttpsError('permission-denied', 'This playdate is not yours.');
+  }
+  if (proposal.status !== 'accepted') {
+    throw new HttpsError('failed-precondition', 'This playdate has not been accepted yet.');
+  }
+
+  const { startIso, endIso, venue, summary } = derivePlaydateEventFields(proposal);
+  if (!startIso || !endIso) {
+    throw new HttpsError('failed-precondition', 'This playdate is missing timing details.');
+  }
+
+  const userSnap = await admin.firestore().collection('users').doc(uid).get();
+  const refreshToken = userSnap.data()?.googleCalendar?.refreshToken;
+  if (!refreshToken) {
+    throw new HttpsError('failed-precondition', 'Connect Google Calendar first.');
+  }
+
+  await createGoogleCalendarEvent(refreshToken, googleClientSecret.value(), {
+    eventId: googleEventIdFor(proposalId, uid),
+    summary,
+    location: venue,
+    startIso,
+    endIso,
+  });
+
+  return { created: true };
+});
 
 // Smallest age gap between any of one family's kids and any of the
 // other's — used as a rough "will these two actually enjoy playing

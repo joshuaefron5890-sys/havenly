@@ -55,6 +55,11 @@ const PAGE_SIZE = 6;
 // own, smaller cap.
 const ARTICLE_PAGE_SIZE = 3;
 const GRID_GAP = 10;
+// Every non-Highlights card grid is inset this much further than the base
+// content padding, so its cards' left edge lines up with the Highlights
+// cards above (which sit inside the white band's own extra left padding)
+// instead of the band's outer edge.
+const GRID_LEFT_INSET = 16;
 
 // Every square-card grid collapses to exactly one row by default — how
 // many cards that is depends on the actual measured width of the grid
@@ -62,7 +67,8 @@ const GRID_GAP = 10;
 // measurement rather than a fixed guess.
 function cardsPerRow(gridWidth: number | null): number {
   if (!gridWidth) return 4;
-  return Math.max(1, Math.floor((gridWidth + GRID_GAP) / (CARD_WIDTH + GRID_GAP)));
+  const availableWidth = gridWidth - GRID_LEFT_INSET;
+  return Math.max(1, Math.floor((availableWidth + GRID_GAP) / (CARD_WIDTH + GRID_GAP)));
 }
 
 // Only offers the toggle once there's actually more than pageSize to show
@@ -1086,6 +1092,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    paddingLeft: GRID_LEFT_INSET,
   },
   highlightsBand: {
     // A white, bordered card floating on the page's grey background —

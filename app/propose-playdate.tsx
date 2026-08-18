@@ -95,6 +95,7 @@ export default function ProposePlaydate() {
         familyId,
         {
           date: selectedSlot.start.toISOString(),
+          endDate: selectedSlot.end.toISOString(),
           dateLabel: formatSlotLabel(selectedSlot),
           windowLabel: selectedSlot.label,
           venue: venue.trim(),

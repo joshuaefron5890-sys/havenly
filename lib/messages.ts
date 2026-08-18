@@ -25,6 +25,9 @@ export type Conversation = {
 
 export type PlaydateProposalDetails = {
   date: string; // ISO
+  endDate: string; // ISO — the real end of the proposed slot, used to create a
+  // correctly-sized calendar event once the proposal is accepted, rather than
+  // guessing a duration back out of dateLabel's display text.
   dateLabel: string; // "Sat, Aug 22 · 10:00–11:30 AM"
   windowLabel: string; // which shared-availability window this slot came from
   venue: string;
@@ -142,6 +145,7 @@ export function subscribeToMessages(id: string, callback: (messages: Message[]) 
             proposal && typeof proposal === 'object'
               ? {
                   date: typeof proposal.date === 'string' ? proposal.date : '',
+                  endDate: typeof proposal.endDate === 'string' ? proposal.endDate : '',
                   dateLabel: typeof proposal.dateLabel === 'string' ? proposal.dateLabel : '',
                   windowLabel: typeof proposal.windowLabel === 'string' ? proposal.windowLabel : '',
                   venue: typeof proposal.venue === 'string' ? proposal.venue : '',

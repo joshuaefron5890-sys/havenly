@@ -75,8 +75,15 @@ function requestCodeForScope(scope: string): Promise<string> {
 // for a refresh token, which is what actually lets the backend query the
 // calendar later without the user being present. Used by the explicit
 // Connect/Reconnect action for someone already signed in.
+//
+// Requests the full calendar.events scope rather than just calendar.freebusy
+// — it's a superset (still covers freebusy.query) and is what lets the
+// backend actually create an event once a playdate proposal is accepted, not
+// just check availability. Anyone who connected before this scope widened is
+// unaffected until they reconnect; their stored refresh token stays limited
+// to whatever they originally granted.
 export function requestGoogleCalendarAuthCode(): Promise<string> {
-  return requestCodeForScope('https://www.googleapis.com/auth/calendar.freebusy');
+  return requestCodeForScope('https://www.googleapis.com/auth/calendar.events');
 }
 
 // Same code-flow popup as requestGoogleCalendarAuthCode, but requesting
@@ -86,5 +93,5 @@ export function requestGoogleCalendarAuthCode(): Promise<string> {
 // exchangeGoogleSignInCode (functions/index.js) for both an ID token (to
 // sign in with) and a calendar refresh token.
 export function requestGoogleSignInWithCalendarCode(): Promise<string> {
-  return requestCodeForScope('openid email profile https://www.googleapis.com/auth/calendar.freebusy');
+  return requestCodeForScope('openid email profile https://www.googleapis.com/auth/calendar.events');
 }

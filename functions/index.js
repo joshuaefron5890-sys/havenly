@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -290,6 +291,178 @@ exports.getGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (req
 
   return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });
+
+// RFC 5545 requires literal backslash, semicolon, comma, and newline to be
+// escaped in TEXT values (SUMMARY, LOCATION) — otherwise a venue name with a
+// comma in it would truncate the field when a calendar client parses it.
+function escapeIcsText(text) {
+  return String(text)
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
+}
+
+function toIcsUtc(iso) {
+  return new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
+
+function buildPlaydateIcs({ uid, summary, location, startIso, endIso }) {
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Haven.ly//Playdate//EN',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${toIcsUtc(new Date().toISOString())}`,
+    `DTSTART:${toIcsUtc(startIso)}`,
+    `DTEND:${toIcsUtc(endIso)}`,
+    `SUMMARY:${escapeIcsText(summary)}`,
+    location ? `LOCATION:${escapeIcsText(location)}` : null,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ]
+    .filter(Boolean)
+    .join('\r\n');
+}
+
+async function createGoogleCalendarEvent(refreshToken, clientSecret, { summary, location, startIso, endIso }) {
+  const accessToken = await refreshGoogleAccessToken(refreshToken, clientSecret);
+  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      summary,
+      location: location || undefined,
+      start: { dateTime: startIso },
+      end: { dateTime: endIso },
+    }),
+  });
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    throw new Error(errJson.error?.message || `Google Calendar insert failed (${res.status})`);
+  }
+}
+
+// A calendar-home-set collection (see connectAppleCalendar above) can hold
+// several calendars — the account's default one plus, for some users, a
+// shared or scheduling-only one. PROPFIND at Depth:1 lists all of them; this
+// picks the first genuine VEVENT calendar, skipping the home set entry
+// itself and iCloud's built-in schedule-inbox/schedule-outbox collections.
+async function caldavFindWritableCalendar(baseOrigin, homeSetPath, basicAuth) {
+  const body = `<?xml version="1.0" encoding="utf-8" ?>
+<propfind xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <prop>
+    <resourcetype/>
+  </prop>
+</propfind>`;
+  const res = await caldavPropfind(`${baseOrigin}${homeSetPath}`, basicAuth, body, '1');
+  if (res.status >= 400) {
+    throw new Error(`iCloud CalDAV returned ${res.status} listing calendars`);
+  }
+  const parsed = xmlParser.parse(res.text);
+  let responses = parsed?.multistatus?.response;
+  if (!responses) return null;
+  if (!Array.isArray(responses)) responses = [responses];
+  for (const entry of responses) {
+    const href = entry?.href;
+    if (!href || href === homeSetPath) continue;
+    let propstats = entry?.propstat;
+    if (!propstats) continue;
+    if (!Array.isArray(propstats)) propstats = [propstats];
+    for (const propstat of propstats) {
+      const resourcetype = propstat?.prop?.resourcetype;
+      if (
+        resourcetype &&
+        typeof resourcetype === 'object' &&
+        'calendar' in resourcetype &&
+        !('schedule-inbox' in resourcetype) &&
+        !('schedule-outbox' in resourcetype)
+      ) {
+        return href;
+      }
+    }
+  }
+  return null;
+}
+
+async function createAppleCalendarEvent(appleCalendar, { uid, summary, location, startIso, endIso }) {
+  const basicAuth = `${appleCalendar.appleId}:${appleCalendar.appPassword}`;
+  const calendarHref = await caldavFindWritableCalendar(appleCalendar.baseOrigin, appleCalendar.calendarHomeSet, basicAuth);
+  if (!calendarHref) {
+    throw new Error('No writable iCloud calendar found');
+  }
+
+  const ics = buildPlaydateIcs({ uid, summary, location, startIso, endIso });
+  const res = await fetch(`${appleCalendar.baseOrigin}${calendarHref}${uid}.ics`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Basic ${Buffer.from(basicAuth).toString('base64')}`,
+      'Content-Type': 'text/calendar; charset=utf-8',
+    },
+    body: ics,
+  });
+  if (!res.ok) {
+    throw new Error(`iCloud CalDAV event PUT failed (${res.status})`);
+  }
+}
+
+// Fires when a playdate proposal flips to 'accepted' (see
+// lib/playdateProposals.ts's respondToProposal) and puts the confirmed
+// playdate on each family's own calendar — whichever they have connected,
+// Google or Apple. A family with neither connected is silently skipped, and
+// one family's failure (e.g. a Google refresh token still scoped to the old
+// freebusy-only permission, pending reconnect) doesn't block the other's —
+// same graceful-degradation approach as every other multi-source feature in
+// this app rather than surfacing a hard error either family can't act on.
+exports.createPlaydateCalendarEvents = onDocumentUpdated(
+  { document: 'playdateProposals/{proposalId}', secrets: [googleClientSecret] },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!after || after.status !== 'accepted' || before?.status === 'accepted') {
+      return;
+    }
+
+    const startIso = typeof after.date === 'string' ? after.date : '';
+    const endIso = typeof after.endDate === 'string' ? after.endDate : '';
+    if (!startIso || !endIso) return;
+
+    const venue = typeof after.venue === 'string' ? after.venue : '';
+    const summary = venue ? `Haven.ly playdate at ${venue}` : 'Haven.ly playdate';
+    const uids = [after.fromUid, after.toUid].filter((uid) => typeof uid === 'string' && uid);
+
+    await Promise.all(
+      uids.map(async (uid) => {
+        try {
+          const userSnap = await admin.firestore().collection('users').doc(uid).get();
+          const userData = userSnap.data();
+          if (!userData) return;
+
+          const icsUid = `havenly-playdate-${event.params.proposalId}-${uid}@haven-ly.com`;
+          if (userData.googleCalendar?.refreshToken) {
+            await createGoogleCalendarEvent(userData.googleCalendar.refreshToken, googleClientSecret.value(), {
+              summary,
+              location: venue,
+              startIso,
+              endIso,
+            });
+          } else if (userData.appleCalendar?.appleId && userData.appleCalendar?.appPassword) {
+            await createAppleCalendarEvent(userData.appleCalendar, {
+              uid: icsUid,
+              summary,
+              location: venue,
+              startIso,
+              endIso,
+            });
+          }
+        } catch (err) {
+          console.error(`Could not create playdate calendar event for ${uid}`, err);
+        }
+      })
+    );
+  }
+);
 
 // Smallest age gap between any of one family's kids and any of the
 // other's — used as a rough "will these two actually enjoy playing

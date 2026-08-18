@@ -93,6 +93,7 @@ function parseProposal(id: string, data: Record<string, unknown>): PlaydatePropo
     note: typeof data.note === 'string' ? data.note : '',
     createdAt: toDate(data.createdAt),
     date: typeof data.date === 'string' ? data.date : '',
+    endDate: typeof data.endDate === 'string' ? data.endDate : '',
     dateLabel: typeof data.dateLabel === 'string' ? data.dateLabel : '',
     windowLabel: typeof data.windowLabel === 'string' ? data.windowLabel : '',
     venue: typeof data.venue === 'string' ? data.venue : '',

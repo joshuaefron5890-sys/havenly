@@ -76,20 +76,22 @@ function requestCodeForScope(scope: string): Promise<string> {
 // calendar later without the user being present. Used by the explicit
 // Connect/Reconnect action for someone already signed in.
 //
-// calendar.events (read/write, needed for event creation) rather than
-// calendar.freebusy (read-only) — deliberately kept to just this explicit
-// Connect/Reconnect action (app/onboarding/calendar.tsx), not the combined
-// sign-in flow below, because calendar.events is one of Google's
-// "sensitive" scopes: it throws an unverified-app warning
+// pushEvents chooses which scope actually gets requested — the calendar
+// screen's toggle (app/onboarding/calendar.tsx) is what decides this per
+// family, since calendar.events (read/write, needed for event creation) is
+// one of Google's "sensitive" scopes: it throws an unverified-app warning
 // (https://support.google.com/cloud/answer/9110914) that only accounts
 // listed as Test users on this project's OAuth consent screen can click
 // through, via "Advanced > Go to Haven.ly (unsafe)" — everyone else is
 // blocked outright until the project completes Google's verification
 // process (a separate, manual submission this app can't do on its own).
-// Scoping the sensitive request to just this one deliberate action, instead
-// of every sign-up, keeps that wall from blocking new users entirely.
-export function requestGoogleCalendarAuthCode(): Promise<string> {
-  return requestCodeForScope('https://www.googleapis.com/auth/calendar.events');
+// A family that just wants free/busy matching, not event creation, can
+// leave the toggle off and never hits that wall at all — calendar.freebusy
+// is not a sensitive scope.
+export function requestGoogleCalendarAuthCode(pushEvents: boolean): Promise<string> {
+  return requestCodeForScope(
+    pushEvents ? 'https://www.googleapis.com/auth/calendar.events' : 'https://www.googleapis.com/auth/calendar.freebusy'
+  );
 }
 
 // Same code-flow popup as requestGoogleCalendarAuthCode, but requesting

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../../components/FieldInput';
@@ -26,6 +26,11 @@ export default function Calendar() {
   const [googleConnected, setGoogleConnected] = useState(profile.googleCalendarConnected);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  // Whether the *next* Connect/Reconnect requests write access — flipping
+  // this after already connecting doesn't retroactively change anything
+  // until Reconnect is pressed, since the actually-granted scope lives in
+  // the refresh token from whenever consent was last given.
+  const [pushEvents, setPushEvents] = useState(profile.googleCalendarSyncEnabled);
 
   const [appleConnected, setAppleConnected] = useState(profile.appleCalendarConnected);
   const [appleModalVisible, setAppleModalVisible] = useState(false);
@@ -46,7 +51,7 @@ export default function Calendar() {
 
     let code: string;
     try {
-      code = await requestGoogleCalendarAuthCode();
+      code = await requestGoogleCalendarAuthCode(pushEvents);
     } catch (err: any) {
       // Chrome's Cross-Origin-Opener-Policy blocks Google's own internal
       // "is the popup still open" check, which can make it wrongly report
@@ -68,8 +73,12 @@ export default function Calendar() {
     try {
       await connectGoogleCalendarBackend(code);
       setGoogleConnected(true);
-      updateProfile({ googleCalendarConnected: true });
-      saveOnboardingStep({ googleCalendarConnected: true }, '/onboarding/calendar', { editMode });
+      updateProfile({ googleCalendarConnected: true, googleCalendarSyncEnabled: pushEvents });
+      saveOnboardingStep(
+        { googleCalendarConnected: true, googleCalendarSyncEnabled: pushEvents },
+        '/onboarding/calendar',
+        { editMode }
+      );
     } catch (err: any) {
       if (err?.code === 'functions/unauthenticated') {
         setGoogleError('Your sign-in session has expired — log out and back in, then try Reconnect again.');
@@ -160,24 +169,37 @@ export default function Calendar() {
           </Text>
         </View>
 
-        <View style={styles.calendarRow}>
-          <Text style={styles.calendarName}>Google Calendar</Text>
-          {connectingGoogle ? (
-            <ActivityIndicator color={colors.accent} />
-          ) : (
-            <View style={styles.calendarActions}>
-              {googleConnected && (
-                <View style={styles.connectedBadge}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
-                  <Text style={styles.connectedText}>Connected</Text>
-                </View>
-              )}
-              <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
-                <Image source={images.googleLogo} style={styles.brandIcon} />
-                <Text style={styles.connect}>{googleConnected ? 'Reconnect' : 'Connect'}</Text>
-              </Pressable>
+        <View style={styles.calendarCard}>
+          <View style={styles.cardTopRow}>
+            <Text style={styles.calendarName}>Google Calendar</Text>
+            {connectingGoogle ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : (
+              <View style={styles.calendarActions}>
+                {googleConnected && (
+                  <View style={styles.connectedBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
+                    <Text style={styles.connectedText}>Connected</Text>
+                  </View>
+                )}
+                <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
+                  <Image source={images.googleLogo} style={styles.brandIcon} />
+                  <Text style={styles.connect}>{googleConnected ? 'Reconnect' : 'Connect'}</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+          <View style={styles.syncRow}>
+            <View style={styles.syncTextWrap}>
+              <Text style={styles.syncLabel}>Add accepted playdates to this calendar</Text>
+              <Text style={styles.syncHint}>
+                {pushEvents
+                  ? 'Needs an extra Google permission — you may see an "unverified app" warning on connect; choose Advanced → Go to Haven.ly (unsafe) to continue.'
+                  : "Off — we'll only check when you're free, never add anything to your calendar."}
+              </Text>
             </View>
-          )}
+            <Switch value={pushEvents} onValueChange={setPushEvents} />
+          </View>
         </View>
         {googleError ? <Text style={styles.rowError}>{googleError}</Text> : null}
 
@@ -305,6 +327,46 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
+  },
+  // Same box look as calendarRow (below, still used bare by the Apple row),
+  // but stacked in a column so the sync toggle can sit under the
+  // name/connect line instead of needing its own separate bordered card.
+  calendarCard: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  syncTextWrap: {
+    flex: 1,
+  },
+  syncLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  syncHint: {
+    fontSize: 11,
+    color: colors.textMuted,
+    lineHeight: 15,
   },
   connect: {
     fontSize: 14,

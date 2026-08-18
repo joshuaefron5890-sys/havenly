@@ -415,14 +415,16 @@ async function createAppleCalendarEvent(appleCalendar, { uid, summary, location,
 // approach as every other multi-source feature in this app rather than
 // surfacing a hard error either family can't act on.
 //
-// The Google branch only works for a family whose refresh token was issued
-// under the calendar.events scope (see lib/googleIdentity.ts's
-// requestGoogleCalendarAuthCode) — until this project completes Google's
-// OAuth verification, that consent screen is only reachable by accounts
-// listed as Test users on the project, so in practice this is limited to
-// however many test accounts have deliberately reconnected. Anyone else's
-// token is still freebusy-only (from sign-up) and this call fails, which is
-// caught and skipped like any other unconnected calendar.
+// The Google branch only does anything for a family that both opted in to
+// the sync toggle (app/onboarding/calendar.tsx) and completed a real
+// connect/reconnect under it — that's what actually gets a calendar.events-
+// scoped refresh token, checked just below via googleCalendarSyncEnabled.
+// Until this project completes Google's OAuth verification, that consent
+// screen throws Google's "unverified app" warning at everyone; the "Advanced
+// > Go to Haven.ly (unsafe)" bypass lets a person through it, capped at 100
+// lifetime users project-wide (Google Cloud Console > OAuth consent screen
+// > Audience > OAuth user cap). Anyone who left the toggle off keeps the
+// safe, unaffected freebusy-only connection from sign-up.
 exports.createPlaydateCalendarEvents = onDocumentUpdated(
   { document: 'playdateProposals/{proposalId}', secrets: [googleClientSecret] },
   async (event) => {
@@ -448,7 +450,13 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
           if (!userData) return;
 
           const icsUid = `havenly-playdate-${event.params.proposalId}-${uid}@haven-ly.com`;
-          if (userData.googleCalendar?.refreshToken) {
+          // googleCalendarSyncEnabled reflects whether the family opted in to
+          // the calendar.events (write) scope on connect — see the toggle in
+          // app/onboarding/calendar.tsx. Skipping outright when it's false
+          // avoids a call doomed to fail with "insufficient authentication
+          // scopes" for a family that deliberately kept the read-only
+          // freebusy connection.
+          if (userData.googleCalendarSyncEnabled && userData.googleCalendar?.refreshToken) {
             await createGoogleCalendarEvent(userData.googleCalendar.refreshToken, googleClientSecret.value(), {
               summary,
               location: venue,

@@ -114,7 +114,12 @@ export default function ContributionDetail() {
           onPress={() => !isOwner && contributedByUid && router.push(`/family/${contributedByUid}`)}
           disabled={isOwner || !contributedByUid}
         >
-          <Photo source={photoUrl ? { uri: photoUrl } : undefined} style={styles.contributorPhoto} />
+          <Photo
+            source={photoUrl ? { uri: photoUrl } : undefined}
+            style={styles.contributorPhoto}
+            variant="person"
+            iconSize={20}
+          />
           <View style={styles.contributorInfo}>
             <Text style={styles.contributorName} numberOfLines={1}>
               {isOwner ? 'You' : family ? familyDisplayName(family) : liveContributedByName}

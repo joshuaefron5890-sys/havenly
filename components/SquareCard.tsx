@@ -26,6 +26,7 @@ export function SquareCard({
   contributedBy,
   matchScore,
   softFallback,
+  personFallback,
 }: {
   title: string;
   subtitle?: string;
@@ -65,6 +66,12 @@ export function SquareCard({
   // Same light-gray-plus-muted-icon treatment Photo's `variant="person"`
   // uses, for visual consistency across every "nothing to show here" case.
   softFallback?: boolean;
+  // For a specific family's own photo (not a generic content thumbnail) —
+  // renders Photo's gender-neutral avatar silhouette instead of a bare
+  // color block when `image` is missing. Only applies to the plain-image
+  // case (no icon/community/pairImages set), since those already have
+  // their own fallback treatments.
+  personFallback?: boolean;
 }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -93,7 +100,7 @@ export function SquareCard({
             <Ionicons name={icon} size={22} color={softFallback ? colors.textMuted : colors.surface} />
           </View>
         ) : (
-          <Photo source={image} style={styles.thumbnail} />
+          <Photo source={image} style={styles.thumbnail} variant={personFallback ? 'person' : undefined} iconSize={28} />
         )}
         {community ? (
           <View style={styles.communityBadge}>

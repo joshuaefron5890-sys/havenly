@@ -102,7 +102,7 @@ export const RESOURCE_SUBTYPE_SCHEMAS: Record<
   referral: {
     noun: 'referral',
     label: 'Referral',
-    icon: 'briefcase-outline',
+    icon: 'medkit-outline',
     fields: [
       { key: 'title', label: 'Professional or practice name' },
       { key: 'specialty', label: 'Specialty' },

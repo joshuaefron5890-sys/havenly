@@ -128,8 +128,8 @@ export default function Events() {
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHero
           imageUrl="https://plus.unsplash.com/premium_photo-1663108204317-c76d8c7748d9?q=80&w=1768&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-          title="Meetups near you"
-          description="In-person events within driving distance, plus virtual ones, from TACA and regional family-support organizations."
+          title="Events for you"
+          description="Scheduled playdates, In-person meetups, virtual events and more. View the details and sync to your calendar."
         />
         <Pressable style={styles.contributeButton} onPress={() => setContributeVisible(true)}>
           <Ionicons name="add-circle-outline" size={18} color={colors.accent} />

@@ -505,6 +505,10 @@ export default function ForYou() {
     badge: string;
     badgeVariant?: 'accent' | 'positive' | 'warning';
     matchScore?: number;
+    // A specific family's own photo (favorited/top-match cards) rather than
+    // generic content — shows a person silhouette instead of a bare color
+    // block when that family has no photo on file.
+    personFallback?: boolean;
     onPress: () => void;
   };
 
@@ -551,6 +555,7 @@ export default function ForYou() {
           image: photoUrl ? { uri: photoUrl } : undefined,
           badge: 'Favorited',
           matchScore: f.matchScore,
+          personFallback: true,
           onPress: () => router.push(`/family/${f.uid}`),
         };
       });
@@ -638,6 +643,7 @@ export default function ForYou() {
           badge: 'Suggested',
           badgeVariant: 'warning',
           matchScore: f.matchScore,
+          personFallback: true,
           onPress: () => router.push(`/family/${f.uid}`),
         };
       });
@@ -770,6 +776,7 @@ export default function ForYou() {
                   badge={h.badge}
                   badgeVariant={h.badgeVariant}
                   matchScore={h.matchScore}
+                  personFallback={h.personFallback}
                   onPress={h.onPress}
                 />
               ))}
@@ -800,6 +807,7 @@ export default function ForYou() {
                   favorited={favoriteFamilyUids.has(family.uid)}
                   onToggleFavorite={() => toggleFamilyFavorite(family)}
                   matchScore={family.matchScore}
+                  personFallback
                   onPress={() => router.push(`/family/${family.uid}`)}
                 />
               );

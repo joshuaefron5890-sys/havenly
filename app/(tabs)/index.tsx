@@ -11,7 +11,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SectionHero } from '../../components/SectionHero';
 import { CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
-import { Contribution, fetchContributions } from '../../lib/contributions';
+import { Contribution, fetchContributions, resourceSubtypeOf, RESOURCE_SUBTYPE_SCHEMAS } from '../../lib/contributions';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import {
   fetchAcceptedProposals,
@@ -104,6 +104,7 @@ function mergeFamilies(favorited: SuggestedFamily[], suggested: SuggestedFamily[
 
 export default function ForYou() {
   const { user } = useAuth();
+  const firstName = user?.displayName?.trim().split(' ')[0] || '';
 
   // Measured once from a zero-height spacer at the top of the scroll
   // content — its width equals the grids' own width (both sit inside the
@@ -710,8 +711,8 @@ export default function ForYou() {
 
         <SectionHero
           imageUrl="https://picsum.photos/seed/havenly-for-you/800/450"
-          title="For You"
-          description="Curates your confirmed and proposed playdates, anything you've favorited, and families that are an especially strong match — all in one place."
+          title={firstName ? `For You, ${firstName}` : 'For You'}
+          description="Meet families nearby, set playdates, listen to your favorite podcast, and more. We've curated our top recommendations that fit you and your family best."
         />
         {upcomingPlaydate ? (
           <Pressable
@@ -855,6 +856,7 @@ export default function ForYou() {
                 subtitle={eventSubtitle(event)}
                 image={event.imageUrl ? { uri: event.imageUrl } : undefined}
                 icon={event.imageUrl ? undefined : 'calendar-outline'}
+                softFallback={!event.imageUrl}
                 onPress={() =>
                   router.push({
                     pathname: '/event/[id]',
@@ -997,7 +999,7 @@ export default function ForYou() {
         ) : null}
 
         <SectionHeader
-          title="Articles"
+          title="Resources"
           {...viewAllAction(
             (sortedArticles?.length ?? 0) + articleContributions.length,
             ARTICLE_PAGE_SIZE,
@@ -1012,7 +1014,7 @@ export default function ForYou() {
               <ListRow
                 key={c.id}
                 title={c.fields.title ?? 'Community pick'}
-                icon="document-text-outline"
+                icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
                 contributedBy={c.contributedByName}
                 onPress={() =>

@@ -21,6 +21,7 @@ export function ContributeModal({
   defaultName,
   initialValues,
   submitLabel = 'Submit',
+  validate,
   onClose,
   onSubmit,
 }: {
@@ -34,6 +35,11 @@ export function ContributeModal({
   // one contribution rather than a shared/reused one.
   initialValues?: Record<string, string>;
   submitLabel?: string;
+  // Extra validation beyond the built-in per-field optional/required check —
+  // e.g. "at least one of these two fields" can't be expressed as a single
+  // field's `optional` flag. Returning a message blocks submit and shows it
+  // the same way a submit failure does; returning null/undefined allows it.
+  validate?: (values: Record<string, string>) => string | null | undefined;
   onClose: () => void;
   onSubmit: (contributorName: string, values: Record<string, string>) => Promise<void>;
 }) {
@@ -87,6 +93,11 @@ export function ContributeModal({
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
+    const validationError = validate?.(values);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {

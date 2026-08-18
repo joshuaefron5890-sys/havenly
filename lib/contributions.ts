@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, Timestamp, where } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
@@ -44,6 +45,10 @@ export const CONTRIBUTION_SCHEMAS: Record<
       { key: 'description', label: "What's it about?", multiline: true, optional: true },
     ],
   },
+  // The "Resources" tab's default sub-type — see RESOURCE_SUBTYPE_SCHEMAS
+  // below for the other two (referral, blog). This entry stays the plain
+  // article schema so a bare `CONTRIBUTION_SCHEMAS.article` lookup (still
+  // used as the fallback default) keeps working exactly as before.
   article: {
     noun: 'article',
     fields: [
@@ -63,6 +68,70 @@ export const CONTRIBUTION_SCHEMAS: Record<
     ],
   },
 };
+
+// The "Resources" tab (app/(tabs)/articles.tsx) covers three different
+// kinds of contribution under the same 'article' ContributionType/Firestore
+// collection — keeping them one type rather than three keeps
+// firestore.rules, fetchContributions, etc. untouched. Which sub-type a
+// given contribution is lives in fields.resourceType (see
+// resourceSubtypeOf), not as its own top-level column, so an older
+// contribution predating this feature (no resourceType at all) still reads
+// back correctly as a plain article.
+export type ResourceSubtype = 'article' | 'referral' | 'blog';
+
+export const RESOURCE_SUBTYPE_SCHEMAS: Record<
+  ResourceSubtype,
+  { noun: string; label: string; icon: keyof typeof Ionicons.glyphMap; fields: ContributionField[] }
+> = {
+  article: {
+    noun: 'article',
+    label: 'Article',
+    icon: 'document-text-outline',
+    fields: CONTRIBUTION_SCHEMAS.article.fields,
+  },
+  blog: {
+    noun: 'blog',
+    label: 'Blog',
+    icon: 'reader-outline',
+    fields: [
+      { key: 'title', label: 'Blog name' },
+      { key: 'url', label: 'Link', placeholder: 'https://…', optional: true },
+      { key: 'description', label: 'What do they write about?', multiline: true, optional: true },
+    ],
+  },
+  referral: {
+    noun: 'referral',
+    label: 'Referral',
+    icon: 'briefcase-outline',
+    fields: [
+      { key: 'title', label: 'Professional or practice name' },
+      { key: 'specialty', label: 'Specialty' },
+      { key: 'email', label: 'Email', optional: true },
+      { key: 'phone', label: 'Phone number', optional: true },
+      { key: 'url', label: 'Link', placeholder: 'https://…', optional: true },
+      { key: 'description', label: 'Why do you recommend them?', multiline: true, optional: true },
+    ],
+  },
+};
+
+// Referrals need at least one way to reach the professional — email OR
+// phone, not necessarily both — a rule ContributeModal's plain per-field
+// optional/required flags can't express on their own, so it's checked
+// explicitly via ContributeModal's `validate` prop wherever a referral form
+// is shown.
+export function validateReferralContact(values: Record<string, string>): string | null {
+  return (values.email ?? '').trim() || (values.phone ?? '').trim()
+    ? null
+    : 'Add an email or phone number so families can reach out.';
+}
+
+// Reads back which of the three Resources sub-types a contribution is —
+// defaults to 'article' both for contributions from before this feature
+// existed (no resourceType field at all) and for any unrecognized value.
+export function resourceSubtypeOf(contribution: Pick<Contribution, 'fields'>): ResourceSubtype {
+  const value = contribution.fields.resourceType;
+  return value === 'referral' || value === 'blog' ? value : 'article';
+}
 
 // Free-form key/value fields rather than one typed shape per content type —
 // each tab defines its own form schema (see ContributeModal usages) and

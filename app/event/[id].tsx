@@ -47,7 +47,7 @@ export default function EventDetail() {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
-          <Photo source={imageUrl ? { uri: imageUrl } : undefined} style={styles.heroImage} />
+          <Photo source={imageUrl ? { uri: imageUrl } : undefined} style={styles.heroImage} variant="image" iconSize={40} />
           <Pressable style={styles.back} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>

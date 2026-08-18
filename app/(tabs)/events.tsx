@@ -184,6 +184,7 @@ export default function Events() {
                 subtitle={eventSubtitle(event)}
                 image={event.imageUrl ? { uri: event.imageUrl } : undefined}
                 icon={event.imageUrl ? undefined : 'calendar-outline'}
+                softFallback={!event.imageUrl}
                 onPress={() =>
                   router.push({
                     pathname: '/event/[id]',

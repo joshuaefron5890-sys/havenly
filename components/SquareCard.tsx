@@ -25,6 +25,7 @@ export function SquareCard({
   community,
   contributedBy,
   matchScore,
+  softFallback,
 }: {
   title: string;
   subtitle?: string;
@@ -57,6 +58,13 @@ export function SquareCard({
   // from `badge` (top, spans the width) so a card can carry both a status
   // label like "Suggested" and its match percentage at once.
   matchScore?: number;
+  // Softens the icon fallback (light gray instead of near-black, muted
+  // instead of white) for content that's simply missing a photo — as
+  // opposed to the same fallback's default dark look, kept for cases where
+  // the icon itself is the point (e.g. a generic product/podcast type).
+  // Same light-gray-plus-muted-icon treatment Photo's `variant="person"`
+  // uses, for visual consistency across every "nothing to show here" case.
+  softFallback?: boolean;
 }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -81,8 +89,8 @@ export function SquareCard({
             ) : null}
           </View>
         ) : !image && icon ? (
-          <View style={[styles.thumbnail, styles.iconThumbnail]}>
-            <Ionicons name={icon} size={22} color={colors.surface} />
+          <View style={[styles.thumbnail, softFallback ? styles.softIconThumbnail : styles.iconThumbnail]}>
+            <Ionicons name={icon} size={22} color={softFallback ? colors.textMuted : colors.surface} />
           </View>
         ) : (
           <Photo source={image} style={styles.thumbnail} />
@@ -180,6 +188,11 @@ const styles = StyleSheet.create({
     // White-on-black rather than the tinted thumbnail's accent color —
     // matches ListRow's fallback icon treatment.
     backgroundColor: colors.text,
+  },
+  softIconThumbnail: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.border,
   },
   pairThumbnail: {
     overflow: 'visible',

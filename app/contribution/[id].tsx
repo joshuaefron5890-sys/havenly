@@ -7,7 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ContributeModal } from '../../components/ContributeModal';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
-import { CONTRIBUTION_SCHEMAS, ContributionType, updateContribution } from '../../lib/contributions';
+import {
+  CONTRIBUTION_SCHEMAS,
+  ContributionType,
+  resourceSubtypeOf,
+  RESOURCE_SUBTYPE_SCHEMAS,
+  updateContribution,
+} from '../../lib/contributions';
 import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { colors } from '../../theme/colors';
 
@@ -25,8 +31,6 @@ export default function ContributionDetail() {
   }>();
   const { user } = useAuth();
 
-  const schema = CONTRIBUTION_SCHEMAS[type as ContributionType];
-
   // Local, editable copies of what the route params passed in — updated in
   // place after a successful edit so the screen reflects the change right
   // away, without needing a refetch or a trip back to the list.
@@ -35,6 +39,13 @@ export default function ContributionDetail() {
   );
   const [liveContributedByName, setLiveContributedByName] = useState(contributedByName || 'A Haven.ly family');
   const [editVisible, setEditVisible] = useState(false);
+
+  // The Resources tab's three sub-types (article/referral/blog) all share
+  // Firestore type 'article' — which one this contribution actually is
+  // lives in fields.resourceType, so the schema lookup has to branch on
+  // that instead of just the bare type for 'article' specifically.
+  const schema =
+    type === 'article' ? RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf({ fields: liveFields })] : CONTRIBUTION_SCHEMAS[type as ContributionType];
 
   const [family, setFamily] = useState<SuggestedFamily | null>(null);
 
@@ -63,7 +74,15 @@ export default function ContributionDetail() {
 
   const handleEditSubmit = async (name: string, values: Record<string, string>) => {
     if (!id) return;
-    await updateContribution(id, values, name);
+    // resourceType isn't one of the edit form's own fields (it's fixed at
+    // creation, not user-editable) — carry the existing value forward
+    // explicitly, since updateContribution's Firestore write replaces the
+    // whole fields map rather than merging into it, and dropping this
+    // would silently revert an edited referral/blog back to a plain
+    // article on the next load. Only set it when there's an actual value —
+    // Firestore rejects `undefined` field values outright, and a plain
+    // article predating this feature has no resourceType to preserve.
+    await updateContribution(id, liveFields.resourceType ? { ...values, resourceType: liveFields.resourceType } : values, name);
     setLiveFields(values);
     setLiveContributedByName(name);
   };

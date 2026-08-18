@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,13 +12,21 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { useAuth } from '../../contexts/AuthContext';
-import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
+import {
+  Contribution,
+  createContribution,
+  fetchContributions,
+  resourceSubtypeOf,
+  RESOURCE_SUBTYPE_SCHEMAS,
+  ResourceSubtype,
+  validateReferralContact,
+} from '../../lib/contributions';
 import { addFavoriteResource, getFavoriteResourceUrls, removeFavoriteResource } from '../../lib/favorites';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
-const SCHEMA = CONTRIBUTION_SCHEMAS.article;
+const SUBTYPE_ORDER: ResourceSubtype[] = ['article', 'referral', 'blog'];
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -37,7 +45,10 @@ export default function Articles() {
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL);
   const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [contributeVisible, setContributeVisible] = useState(false);
+  // null while the picker is up (or nothing is open); set once a sub-type
+  // is chosen, which is what actually opens ContributeModal below.
+  const [contributeSubtype, setContributeSubtype] = useState<ResourceSubtype | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -114,9 +125,18 @@ export default function Articles() {
   };
 
   const submitContribution = async (name: string, values: Record<string, string>) => {
-    await createContribution('article', values, name);
+    // Every Resources contribution is stored as Firestore type 'article' —
+    // resourceType (in fields, not its own column) is what actually
+    // distinguishes article/referral/blog; see lib/contributions.ts's
+    // resourceSubtypeOf.
+    await createContribution('article', { ...values, resourceType: contributeSubtype ?? 'article' }, name);
     const result = await fetchContributions('article');
     setContributions(result);
+  };
+
+  const chooseSubtype = (subtype: ResourceSubtype) => {
+    setPickerVisible(false);
+    setContributeSubtype(subtype);
   };
 
   // Community contributions must render regardless of the health-resources
@@ -133,15 +153,15 @@ export default function Articles() {
       <ScrollView contentContainerStyle={styles.content}>
         <SectionHero
           imageUrl="https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-          title="Vetted guides & articles"
-          description="Health and parenting information from MedlinePlus, matched to your child's neurodivergence tags."
+          title="Vetted guides & resources"
+          description="Health and parenting information from MedlinePlus, matched to your child's neurodivergence tags — plus articles, professional referrals, and blogs shared by other families."
         />
-        <Pressable style={styles.contributeButton} onPress={() => setContributeVisible(true)}>
+        <Pressable style={styles.contributeButton} onPress={() => setPickerVisible(true)}>
           <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
-          <Text style={styles.contributeButtonText}>Contribute an article</Text>
+          <Text style={styles.contributeButtonText}>Contribute a resource</Text>
         </Pressable>
 
-        <SearchBar value={query} onChangeText={setQuery} placeholder="Search articles" />
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Search resources" />
         {tagOptions.length > 2 ? <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} /> : null}
 
         {error ? <EmptyState text={`Couldn’t load articles (${error}). Community picks still show below.`} /> : null}
@@ -153,7 +173,7 @@ export default function Articles() {
               <ListRow
                 key={c.id}
                 title={c.fields.title ?? 'Community pick'}
-                icon="document-text-outline"
+                icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
                 contributedBy={c.contributedByName}
                 onPress={() =>
@@ -188,16 +208,37 @@ export default function Articles() {
             ))}
           </>
         ) : doneLoadingArticles ? (
-          <EmptyState text="No articles match that search." />
+          <EmptyState text="No resources match that search." />
         ) : null}
       </ScrollView>
 
+      <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={() => setPickerVisible(false)}>
+        <Pressable style={styles.pickerBackdrop} onPress={() => setPickerVisible(false)}>
+          <Pressable style={styles.pickerSheet} onPress={() => {}}>
+            <Text style={styles.pickerTitle}>What kind of resource?</Text>
+            {SUBTYPE_ORDER.map((subtype) => {
+              const schema = RESOURCE_SUBTYPE_SCHEMAS[subtype];
+              return (
+                <Pressable key={subtype} style={styles.pickerOption} onPress={() => chooseSubtype(subtype)}>
+                  <View style={styles.pickerIconWrap}>
+                    <Ionicons name={schema.icon} size={18} color={colors.accent} />
+                  </View>
+                  <Text style={styles.pickerOptionText}>{schema.label}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <ContributeModal
-        visible={contributeVisible}
-        title={`Contribute an ${SCHEMA.noun}`}
-        fields={SCHEMA.fields}
+        visible={contributeSubtype !== null}
+        title={`Contribute ${contributeSubtype === 'article' ? 'an' : 'a'} ${RESOURCE_SUBTYPE_SCHEMAS[contributeSubtype ?? 'article'].noun}`}
+        fields={RESOURCE_SUBTYPE_SCHEMAS[contributeSubtype ?? 'article'].fields}
         defaultName={user?.displayName ?? ''}
-        onClose={() => setContributeVisible(false)}
+        validate={contributeSubtype === 'referral' ? validateReferralContact : undefined}
+        onClose={() => setContributeSubtype(null)}
         onSubmit={submitContribution}
       />
     </SafeAreaView>
@@ -230,5 +271,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.accent,
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(24,24,27,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 32,
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  pickerIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.accentMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerOptionText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
   },
 });

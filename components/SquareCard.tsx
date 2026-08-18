@@ -76,7 +76,7 @@ export function SquareCard({
             <Photo source={images.communityContribution} style={styles.thumbnail} />
             {icon ? (
               <View style={styles.communityTypeIcon}>
-                <Ionicons name={icon} size={16} color={colors.surface} />
+                <Ionicons name={icon} size={32} color={colors.surface} />
               </View>
             ) : null}
           </View>
@@ -165,11 +165,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    marginTop: -14,
-    marginLeft: -14,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    marginTop: -28,
+    marginLeft: -28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'rgba(43,36,32,0.45)',
     alignItems: 'center',
     justifyContent: 'center',

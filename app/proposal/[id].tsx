@@ -20,13 +20,14 @@ import {
   SuggestedFamilyChild,
 } from '../../lib/families';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
-import { PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
+import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
   proposed: 'Waiting for a response',
   accepted: 'Accepted',
   declined: 'Declined',
+  canceled: 'Canceled',
 };
 
 // A compact "who's coming" card — used for both sides of the playdate, side
@@ -87,6 +88,7 @@ export default function ProposalDetail() {
   const [otherFamily, setOtherFamily] = useState<FamilyProfile | null>(null);
   const [myFamily, setMyFamily] = useState<SuggestedFamily | null>(null);
   const [responding, setResponding] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   // Own profile isn't hydrated by default on this route (only the
   // onboarding wizard's own layout does that) — needed here just to check
@@ -161,6 +163,23 @@ export default function ProposalDetail() {
     router.push(`/propose-playdate?familyId=${otherUid}`);
   };
 
+  // Only the family who created the proposal can cancel it, and only
+  // before it's been declined or already cancelled — enforced again
+  // server-side in firestore.rules. Cancelling an accepted playdate also
+  // removes it from either connected calendar (functions/index.js's
+  // cancelPlaydateCalendarEvents).
+  const handleCancel = async () => {
+    if (!id || canceling) return;
+    setCanceling(true);
+    try {
+      await cancelProposal(id);
+    } catch (err: any) {
+      showAlert('Couldn’t cancel this playdate', err?.message ?? err?.code ?? 'Please try again.');
+    } finally {
+      setCanceling(false);
+    }
+  };
+
   if (proposal === undefined) {
     return (
       <SafeAreaView style={[styles.screen, styles.centered]} edges={['top', 'bottom']}>
@@ -184,6 +203,8 @@ export default function ProposalDetail() {
 
   const isRecipient = user?.uid === proposal.toUid;
   const canRespond = isRecipient && proposal.status === 'proposed';
+  const isCreator = user?.uid === proposal.fromUid;
+  const canCancel = isCreator && (proposal.status === 'proposed' || proposal.status === 'accepted');
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -289,6 +310,19 @@ export default function ProposalDetail() {
               <Text style={styles.acceptButtonText}>Accept</Text>
             </Pressable>
           </View>
+          <Pressable style={styles.secondaryButton} onPress={proposeNewTime}>
+            <Text style={styles.secondaryButtonText}>Propose Update</Text>
+          </Pressable>
+        </View>
+      ) : canCancel ? (
+        <View style={styles.footerStack}>
+          <Pressable
+            style={[styles.cancelButton, canceling && styles.buttonDisabled]}
+            onPress={handleCancel}
+            disabled={canceling}
+          >
+            <Text style={styles.cancelButtonText}>{canceling ? 'Cancelling…' : 'Cancel playdate'}</Text>
+          </Pressable>
           <Pressable style={styles.secondaryButton} onPress={proposeNewTime}>
             <Text style={styles.secondaryButtonText}>Propose Update</Text>
           </Pressable>
@@ -512,6 +546,9 @@ const styles = StyleSheet.create({
   statusPill_declined: {
     backgroundColor: '#F5DCDC',
   },
+  statusPill_canceled: {
+    backgroundColor: colors.border,
+  },
   statusPillText: {
     fontSize: 12,
     fontWeight: '700',
@@ -554,6 +591,19 @@ const styles = StyleSheet.create({
   },
   declineButtonText: {
     color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  cancelButtonText: {
+    color: colors.error,
     fontSize: 16,
     fontWeight: '700',
   },

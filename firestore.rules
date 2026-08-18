@@ -80,20 +80,28 @@ service cloud.firestore {
         && request.auth.uid in request.resource.data.participantUids
         && request.resource.data.participantUids.size() == 2
         && request.resource.data.status == 'proposed';
-      // Only the recipient can respond, only while still pending, and only
-      // the status field may change. diff().affectedKeys().hasOnly(...)
-      // rather than comparing every other field to its existing value one
-      // by one — a direct `request.resource.data.someField ==
-      // resource.data.someField` check throws (denying the whole write,
-      // not just failing that one comparison) if someField happens to be
-      // absent from the map on either side, which a field-by-field pin list
-      // is one stale/partial document away from hitting.
+      // Two people can update status, in different ways: the recipient can
+      // respond (proposed -> accepted/declined) while it's still pending,
+      // or the creator can cancel (proposed/accepted -> canceled) any time
+      // before it's been declined. Either way only the status field may
+      // change. diff().affectedKeys().hasOnly(...) rather than comparing
+      // every other field to its existing value one by one — a direct
+      // `request.resource.data.someField == resource.data.someField` check
+      // throws (denying the whole write, not just failing that one
+      // comparison) if someField happens to be absent from the map on
+      // either side, which a field-by-field pin list is one stale/partial
+      // document away from hitting.
       allow update: if request.auth != null
         && resource != null
-        && request.auth.uid == resource.data.toUid
-        && resource.data.status == 'proposed'
-        && request.resource.data.status in ['accepted', 'declined']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && (
+          (request.auth.uid == resource.data.toUid
+            && resource.data.status == 'proposed'
+            && request.resource.data.status in ['accepted', 'declined'])
+          || (request.auth.uid == resource.data.fromUid
+            && resource.data.status in ['proposed', 'accepted']
+            && request.resource.data.status == 'canceled')
+        );
       allow delete: if false;
     }
 

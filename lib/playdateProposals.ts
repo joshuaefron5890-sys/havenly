@@ -14,7 +14,7 @@ import {
 import { auth, db } from './firebase';
 import { getOrCreateConversation, PlaydateProposalDetails, sendProposalMessage } from './messages';
 
-export type ProposalStatus = 'proposed' | 'accepted' | 'declined';
+export type ProposalStatus = 'proposed' | 'accepted' | 'declined' | 'canceled';
 
 export type PlaydateProposal = {
   id: string;
@@ -78,6 +78,16 @@ export async function respondToProposal(proposalId: string, status: 'accepted' |
   await setDoc(doc(db, 'playdateProposals', proposalId), { status }, { merge: true });
 }
 
+// Only the family who created the proposal can cancel it, and only while
+// it's still pending or accepted (not already declined/canceled) — both
+// enforced again server-side in firestore.rules. Cancelling an accepted
+// playdate also removes it from either family's calendar, if either had
+// sync on (functions/index.js's cancelPlaydateCalendarEvents).
+export async function cancelProposal(proposalId: string): Promise<void> {
+  if (!db) throw new Error('not-signed-in');
+  await setDoc(doc(db, 'playdateProposals', proposalId), { status: 'canceled' }, { merge: true });
+}
+
 function toDate(value: unknown): Date | null {
   return value instanceof Timestamp ? value.toDate() : null;
 }
@@ -89,7 +99,7 @@ function parseProposal(id: string, data: Record<string, unknown>): PlaydatePropo
     conversationId: typeof data.conversationId === 'string' ? data.conversationId : '',
     fromUid: typeof data.fromUid === 'string' ? data.fromUid : '',
     toUid: typeof data.toUid === 'string' ? data.toUid : '',
-    status: status === 'accepted' || status === 'declined' ? status : 'proposed',
+    status: status === 'accepted' || status === 'declined' || status === 'canceled' ? status : 'proposed',
     note: typeof data.note === 'string' ? data.note : '',
     createdAt: toDate(data.createdAt),
     date: typeof data.date === 'string' ? data.date : '',

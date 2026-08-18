@@ -20,13 +20,14 @@ import { showAlert } from '../../lib/alert';
 import { familyDisplayName, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { markConversationRead, Message, sendMessage, subscribeToMessages } from '../../lib/messages';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
-import { PlaydateProposal, respondToProposal, subscribeToMyProposals } from '../../lib/playdateProposals';
+import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToMyProposals } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
   proposed: 'Waiting for a response',
   accepted: 'Accepted',
   declined: 'Declined',
+  canceled: 'Canceled',
 };
 
 export default function MessageThread() {
@@ -38,6 +39,7 @@ export default function MessageThread() {
   const [sending, setSending] = useState(false);
   const [proposals, setProposals] = useState<PlaydateProposal[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [syncPromptProposalId, setSyncPromptProposalId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -122,6 +124,21 @@ export default function MessageThread() {
 
   const syncPromptDateLabel = proposals.find((p) => p.id === syncPromptProposalId)?.dateLabel ?? '';
 
+  // Only the family who created the proposal can cancel it, and only
+  // before it's been declined or already cancelled — enforced again
+  // server-side in firestore.rules.
+  const handleCancel = async (proposalId: string) => {
+    if (cancelingId) return;
+    setCancelingId(proposalId);
+    try {
+      await cancelProposal(proposalId);
+    } catch (err: any) {
+      showAlert('Couldn’t cancel this playdate', err?.message ?? err?.code ?? 'Please try again.');
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
   const proposeNewTime = () => {
     if (!otherUid) return;
     router.push(`/propose-playdate?familyId=${otherUid}`);
@@ -170,6 +187,9 @@ export default function MessageThread() {
                 // in a normal 1:1 thread, but pinning to toUid directly is
                 // unambiguous and matches app/proposal/[id].tsx's own check.
                 const canRespond = user?.uid === liveProposal?.toUid && liveProposal?.status === 'proposed';
+                const canCancel =
+                  user?.uid === liveProposal?.fromUid &&
+                  (liveProposal?.status === 'proposed' || liveProposal?.status === 'accepted');
                 return (
                   <View key={message.id} style={styles.proposalCard}>
                     <View style={styles.proposalHeader}>
@@ -197,6 +217,21 @@ export default function MessageThread() {
                             disabled={respondingId === liveProposal.id}
                           >
                             <Text style={styles.proposalAcceptText}>Accept</Text>
+                          </Pressable>
+                          <Pressable style={styles.proposalNewTimeButton} onPress={proposeNewTime}>
+                            <Text style={styles.proposalNewTimeText}>Propose Update</Text>
+                          </Pressable>
+                        </View>
+                      ) : canCancel ? (
+                        <View style={styles.proposalActions}>
+                          <Pressable
+                            style={[styles.proposalCancelButton, cancelingId === liveProposal.id && styles.proposalActionDisabled]}
+                            onPress={() => handleCancel(liveProposal.id)}
+                            disabled={cancelingId === liveProposal.id}
+                          >
+                            <Text style={styles.proposalCancelText}>
+                              {cancelingId === liveProposal.id ? 'Cancelling…' : 'Cancel'}
+                            </Text>
                           </Pressable>
                           <Pressable style={styles.proposalNewTimeButton} onPress={proposeNewTime}>
                             <Text style={styles.proposalNewTimeText}>Propose Update</Text>
@@ -385,6 +420,19 @@ const styles = StyleSheet.create({
   },
   proposalDeclineText: {
     color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  proposalCancelButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: 999,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  proposalCancelText: {
+    color: colors.error,
     fontSize: 13,
     fontWeight: '700',
   },

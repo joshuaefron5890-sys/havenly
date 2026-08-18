@@ -389,6 +389,33 @@ async function createAppleCalendarEvent(appleCalendar, { uid, summary, location,
   }
 }
 
+async function deleteGoogleCalendarEvent(refreshToken, clientSecret, eventId) {
+  const accessToken = await refreshGoogleAccessToken(refreshToken, clientSecret);
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  // 404/410 mean it's already gone (never created, or already cancelled) —
+  // that's the outcome we want, not a failure.
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    const errJson = await res.json().catch(() => ({}));
+    throw new Error(errJson.error?.message || `Google Calendar delete failed (${res.status})`);
+  }
+}
+
+async function deleteAppleCalendarEvent(appleCalendar, uid) {
+  const basicAuth = `${appleCalendar.appleId}:${appleCalendar.appPassword}`;
+  const calendarHref = await caldavFindWritableCalendar(appleCalendar.baseOrigin, appleCalendar.calendarHomeSet, basicAuth);
+  if (!calendarHref) return;
+  const res = await fetch(`${appleCalendar.baseOrigin}${calendarHref}${uid}.ics`, {
+    method: 'DELETE',
+    headers: { Authorization: `Basic ${Buffer.from(basicAuth).toString('base64')}` },
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`iCloud CalDAV event DELETE failed (${res.status})`);
+  }
+}
+
 // Fires when a playdate proposal flips to 'accepted' (see
 // lib/playdateProposals.ts's respondToProposal) and puts the confirmed
 // playdate on each family's own calendar — whichever they have connected,
@@ -459,6 +486,50 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
           }
         } catch (err) {
           console.error(`Could not create playdate calendar event for ${uid}`, err);
+        }
+      })
+    );
+  }
+);
+
+// Mirror of createPlaydateCalendarEvents above, firing when a proposal
+// flips to 'canceled' (lib/playdateProposals.ts's cancelProposal, only the
+// original creator can do this) — removes the event from either family's
+// calendar if one was ever created. Deletion by the same deterministic id
+// createGoogleCalendarEvent/buildPlaydateIcs used to create it, so this is
+// safe to run even for a family that never actually got an event (a
+// proposal cancelled while still 'proposed', or one whose calendar wasn't
+// connected/synced) — the delete just 404s and that's treated as success.
+exports.cancelPlaydateCalendarEvents = onDocumentUpdated(
+  { document: 'playdateProposals/{proposalId}', secrets: [googleClientSecret] },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!after || after.status !== 'canceled' || before?.status === 'canceled') {
+      return;
+    }
+
+    const uids = [after.fromUid, after.toUid].filter((uid) => typeof uid === 'string' && uid);
+
+    await Promise.all(
+      uids.map(async (uid) => {
+        try {
+          const userSnap = await admin.firestore().collection('users').doc(uid).get();
+          const userData = userSnap.data();
+          if (!userData) return;
+
+          const icsUid = `havenly-playdate-${event.params.proposalId}-${uid}@haven-ly.com`;
+          if (userData.googleCalendarSyncEnabled && userData.googleCalendar?.refreshToken) {
+            await deleteGoogleCalendarEvent(
+              userData.googleCalendar.refreshToken,
+              googleClientSecret.value(),
+              googleEventIdFor(event.params.proposalId, uid)
+            );
+          } else if (userData.appleCalendar?.appleId && userData.appleCalendar?.appPassword) {
+            await deleteAppleCalendarEvent(userData.appleCalendar, icsUid);
+          }
+        } catch (err) {
+          console.error(`Could not remove playdate calendar event for ${uid}`, err);
         }
       })
     );

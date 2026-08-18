@@ -29,6 +29,7 @@ import { colors } from '../../theme/colors';
 
 const ALL = 'All';
 const SUBTYPE_ORDER: ResourceSubtype[] = ['article', 'referral', 'blog'];
+const SUBTYPE_FILTER_OPTIONS = [ALL, ...SUBTYPE_ORDER];
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -46,6 +47,7 @@ export default function Articles() {
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL);
+  const [subtypeFilter, setSubtypeFilter] = useState<ResourceSubtype | typeof ALL>(ALL);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   // null while the picker is up (or nothing is open); set once a sub-type
   // is chosen, which is what actually opens ContributeModal below.
@@ -94,19 +96,25 @@ export default function Articles() {
 
   const filtered = useMemo(() => {
     if (!sorted) return null;
+    // MedlinePlus results are always plain articles — any other sub-type
+    // filter should hide them entirely rather than match nothing per-item.
+    if (subtypeFilter !== ALL && subtypeFilter !== 'article') return [];
     const q = query.trim().toLowerCase();
     return sorted.filter((a) => {
       if (tagFilter !== ALL && !a.matchedTags.includes(tagFilter)) return false;
       if (q && !a.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [sorted, query, tagFilter]);
+  }, [sorted, query, tagFilter, subtypeFilter]);
 
   const filteredContributions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return contributions;
-    return contributions.filter((c) => (c.fields.title ?? '').toLowerCase().includes(q));
-  }, [contributions, query]);
+    return contributions.filter((c) => {
+      if (subtypeFilter !== ALL && resourceSubtypeOf(c) !== subtypeFilter) return false;
+      if (q && !(c.fields.title ?? '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [contributions, query, subtypeFilter]);
 
   const toggleFavorite = async (article: HealthResource) => {
     const wasFavorited = favoriteUrls.has(article.url);
@@ -164,6 +172,7 @@ export default function Articles() {
         </Pressable>
 
         <SearchBar value={query} onChangeText={setQuery} placeholder="Search resources" />
+        <FilterChips options={SUBTYPE_FILTER_OPTIONS} selected={subtypeFilter} onSelect={(v) => setSubtypeFilter(v as ResourceSubtype | typeof ALL)} />
         {tagOptions.length > 2 ? <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} /> : null}
 
         {error ? <EmptyState text={`Couldn’t load articles (${error}). Community picks still show below.`} /> : null}

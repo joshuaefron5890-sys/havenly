@@ -435,7 +435,6 @@ export default function ForYou() {
   const [pendingProposalPhotos, setPendingProposalPhotos] = useState<
     Record<string, [string | null, string | null]>
   >({});
-  const [forYouExpanded, setForYouExpanded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -740,13 +739,26 @@ export default function ForYou() {
         ) : highlights.length === 0 ? (
           <EmptyState text="Nothing to highlight yet — favorite a family or pick, or confirm a playdate, and it'll show up here." />
         ) : (
-          <>
-            <SectionHeader
-              title="Highlights"
-              {...expandAction(highlights.length, forYouExpanded, setForYouExpanded, perRow)}
-            />
-            <View style={styles.grid}>
-              {(forYouExpanded ? highlights : highlights.slice(0, perRow)).map((h) => (
+          // Distinct from every other section on this screen on purpose —
+          // a tinted band with its own header, and a horizontal-scrolling
+          // row instead of the wrap-grid everyone else uses, so this reads
+          // as "your curated top picks" at a glance rather than just
+          // another list. Shows every highlight (there are only ever a
+          // handful — confirmed/pending playdates plus top matches), so no
+          // expand/collapse toggle is needed here the way the grids below need one.
+          <View style={styles.highlightsBand}>
+            <View style={styles.highlightsHeader}>
+              <View style={styles.highlightsIconWrap}>
+                <Ionicons name="sparkles" size={13} color={colors.accent} />
+              </View>
+              <Text style={styles.highlightsTitle}>Highlights</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.highlightsScroll}
+            >
+              {highlights.map((h) => (
                 <SquareCard
                   key={h.key}
                   title={h.title}
@@ -760,8 +772,8 @@ export default function ForYou() {
                   onPress={h.onPress}
                 />
               ))}
-            </View>
-          </>
+            </ScrollView>
+          </View>
         )}
 
         <SectionHeader
@@ -1054,6 +1066,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  highlightsBand: {
+    backgroundColor: colors.accentMuted,
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingLeft: 16,
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  highlightsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingRight: 16,
+  },
+  highlightsIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  highlightsTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  highlightsScroll: {
+    gap: 10,
+    paddingRight: 16,
   },
   playdateBanner: {
     flexDirection: 'row',

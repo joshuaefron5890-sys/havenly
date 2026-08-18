@@ -1424,3 +1424,4 @@ exports.getNearbyEvents = onCall(async (request) => {
   };
 });
 
+

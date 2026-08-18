@@ -127,7 +127,7 @@ export function SquareCard({
             <Ionicons
               name={favorited ? 'heart' : 'heart-outline'}
               size={14}
-              color={favorited ? colors.accent : colors.surface}
+              color={favorited ? colors.accent : colors.textMuted}
             />
           </Pressable>
         ) : null}
@@ -221,15 +221,23 @@ const styles = StyleSheet.create({
     right: 4,
   },
   heart: {
+    // A solid white circle with a soft shadow (same treatment as the
+    // community badge) reads cleanly over any photo — the previous dark
+    // translucent circle looked muddy against busy or light thumbnails.
     position: 'absolute',
     top: 4,
     right: 4,
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: 'rgba(43,36,32,0.45)',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   badge: {
     position: 'absolute',

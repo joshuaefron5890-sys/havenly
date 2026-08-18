@@ -525,6 +525,39 @@ exports.getFamilyProfile = onCall(async (request) => {
   };
 });
 
+// Apple's public, unauthenticated "top charts" endpoint (the same one that
+// powers marketing badges/widgets) — 1305 is the Kids & Family genre id.
+// Supplements the per-tag term search below with genuinely well-produced
+// family content a keyword search might not surface, confirmed working via
+// a one-off diagnostic (the domain isn't reachable from the dev sandbox
+// this was written against). Chart entries have no feedUrl (that field
+// only exists on Search API results), so their detail screen falls back to
+// "No description available" same as any podcast whose RSS feed lookup
+// fails — an accepted, minor gap rather than a second follow-up request
+// per chart entry just to resolve one.
+async function fetchFamilyPodcastChart(limit) {
+  try {
+    const res = await fetch(`https://rss.marketingtools.apple.com/api/v2/us/podcasts/top/${limit}/1305/podcasts.json`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const results = Array.isArray(json?.feed?.results) ? json.feed.results : [];
+    // Normalized into the exact shape Search API results have, tagged with
+    // a matchedTag like any other search, so it flows through the same
+    // dedupe/ranking loop below unchanged.
+    return results.map((r) => ({
+      collectionId: r.id,
+      collectionName: r.name,
+      artistName: r.artistName,
+      artworkUrl100: r.artworkUrl100,
+      collectionViewUrl: r.url,
+      genres: Array.isArray(r.genres) ? r.genres.map((g) => g?.name).filter((n) => typeof n === 'string') : [],
+      matchedTag: 'Kids & Family',
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // Powers "Suggested podcasts" on the For You screen's Discover tab. Uses
 // Apple's iTunes Search API — free, unauthenticated, no API key — rather
 // than PodcastIndex, which requires a developer account PodcastIndex isn't
@@ -546,27 +579,35 @@ exports.getPodcastSuggestions = onCall(async (request) => {
       )
     ),
   ];
-  // A family with no neurodivergence tags on file yet (skipped that
-  // onboarding step, or only picked "Still figuring it out"/"Prefer not to
-  // say") would otherwise see a permanently empty section — fall back to a
-  // broadly-relevant search instead of nothing.
-  const searchTags = neurodivergence.length ? neurodivergence : ['neurodivergent kids'];
+  // Always searched in addition to whatever the family specifically
+  // selected — a family with only "Autism" checked still sees ADHD/
+  // dyslexia/anxiety-relevant shows too, and a family with no tags on file
+  // yet (skipped that onboarding step, or picked "Still figuring it out"/
+  // "Prefer not to say") still gets real coverage instead of one thin
+  // fallback search.
+  const BROAD_NEURODIVERGENCE_TERMS = ['autism', 'ADHD', 'dyslexia', 'special needs', 'anxiety'];
+  const searchTags = [...new Set([...neurodivergence, ...BROAD_NEURODIVERGENCE_TERMS])];
 
   // One search per tag, "parenting" appended to bias toward family-relevant
-  // results instead of purely clinical/adult content.
-  const resultsPerTag = await Promise.all(
-    searchTags.map(async (tag) => {
-      const term = encodeURIComponent(`${tag} parenting`);
-      try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=podcast&limit=10`);
-        if (!res.ok) return [];
-        const json = await res.json();
-        return Array.isArray(json.results) ? json.results.map((r) => ({ ...r, matchedTag: tag })) : [];
-      } catch {
-        return [];
-      }
-    })
-  );
+  // results instead of purely clinical/adult content — plus the Kids &
+  // Family chart, fetched once (not per tag, since it isn't a search).
+  const [resultsPerTag, familyChart] = await Promise.all([
+    Promise.all(
+      searchTags.map(async (tag) => {
+        const term = encodeURIComponent(`${tag} parenting`);
+        try {
+          const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=podcast&limit=10`);
+          if (!res.ok) return [];
+          const json = await res.json();
+          return Array.isArray(json.results) ? json.results.map((r) => ({ ...r, matchedTag: tag })) : [];
+        } catch {
+          return [];
+        }
+      })
+    ),
+    fetchFamilyPodcastChart(10),
+  ]);
+  resultsPerTag.push(familyChart);
 
   // A podcast can turn up under more than one tag's search — dedupe by
   // feed and rank higher the more of the child's tags it matched, so a

@@ -8,6 +8,7 @@ import { ContributeModal } from '../../components/ContributeModal';
 import { EmptyState } from '../../components/EmptyState';
 import { FilterChips } from '../../components/FilterChips';
 import { ListRow } from '../../components/ListRow';
+import { ReferralIcon } from '../../components/ReferralIcon';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
@@ -221,7 +222,11 @@ export default function Articles() {
               return (
                 <Pressable key={subtype} style={styles.pickerOption} onPress={() => chooseSubtype(subtype)}>
                   <View style={styles.pickerIconWrap}>
-                    <Ionicons name={schema.icon} size={18} color={colors.accent} />
+                    {schema.icon === 'referral' ? (
+                      <ReferralIcon size={18} color={colors.accent} />
+                    ) : (
+                      <Ionicons name={schema.icon} size={18} color={colors.accent} />
+                    )}
                   </View>
                   <Text style={styles.pickerOptionText}>{schema.label}</Text>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />

@@ -3,6 +3,7 @@ import { Image, ImageSourcePropType, Pressable, StyleSheet, View } from 'react-n
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
 import { Photo } from './Photo';
+import { ReferralIcon } from './ReferralIcon';
 
 export function ListRow({
   title,
@@ -29,7 +30,7 @@ export function ListRow({
   image?: ImageSourcePropType;
   // Shown instead of a blank placeholder box when there's no real image to
   // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap | 'referral';
   // A missing `image` gets a gender-neutral avatar silhouette instead of a
   // bare color block — for rows that show a specific family's photo (the
   // Messages inbox), where "no photo yet" should still read as "a person".
@@ -49,7 +50,11 @@ export function ListRow({
       <View style={styles.thumbnailWrap}>
         {!image && icon ? (
           <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
-            <Ionicons name={icon} size={20} color={colors.surface} />
+            {icon === 'referral' ? (
+              <ReferralIcon size={20} color={colors.surface} />
+            ) : (
+              <Ionicons name={icon} size={20} color={colors.surface} />
+            )}
           </View>
         ) : (
           <Photo

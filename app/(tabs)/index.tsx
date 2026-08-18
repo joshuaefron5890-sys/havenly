@@ -805,7 +805,10 @@ export default function ForYou() {
                   subtitle={familySubtitle(family)}
                   image={photoUrl ? { uri: photoUrl } : undefined}
                   favorited={favoriteFamilyUids.has(family.uid)}
-                  onToggleFavorite={() => toggleFamilyFavorite(family)}
+                  // The heart only shows once a family is already favorited
+                  // (so it can be un-favorited from here) — favoriting for
+                  // the first time happens on the family's own profile.
+                  onToggleFavorite={favoriteFamilyUids.has(family.uid) ? () => toggleFamilyFavorite(family) : undefined}
                   matchScore={family.matchScore}
                   personFallback
                   onPress={() => router.push(`/family/${family.uid}`)}
@@ -925,7 +928,9 @@ export default function ForYou() {
                 subtitle={productSubtitle(product)}
                 image={product.imageUrl ? { uri: product.imageUrl } : undefined}
                 favorited={favoriteProductUrls.has(product.url)}
-                onToggleFavorite={() => toggleProductFavorite(product)}
+                // Heart only shows once already favorited — see the
+                // matching comment on the family card above.
+                onToggleFavorite={favoriteProductUrls.has(product.url) ? () => toggleProductFavorite(product) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',
@@ -982,7 +987,9 @@ export default function ForYou() {
                 subtitle={podcastSubtitle(podcast)}
                 image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
                 favorited={favoritePodcastIds.has(podcast.id)}
-                onToggleFavorite={() => togglePodcastFavorite(podcast)}
+                // Heart only shows once already favorited — see the
+                // matching comment on the family card above.
+                onToggleFavorite={favoritePodcastIds.has(podcast.id) ? () => togglePodcastFavorite(podcast) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',
@@ -1040,7 +1047,9 @@ export default function ForYou() {
                 subtitle={resourceSubtitle(article)}
                 icon="document-text-outline"
                 favorited={favoriteResourceUrls.has(article.url)}
-                onToggleFavorite={() => toggleArticleFavorite(article)}
+                // Heart only shows once already favorited — see the
+                // matching comment on the family card above.
+                onToggleFavorite={favoriteResourceUrls.has(article.url) ? () => toggleArticleFavorite(article) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/article/[id]',

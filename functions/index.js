@@ -317,13 +317,23 @@ async function createGoogleCalendarEvent(refreshToken, clientSecret, { eventId, 
 
 // Shared by the automatic accept-time trigger and the explicit
 // addPlaydateToGoogleCalendar callable below, so both derive the exact same
-// event content from a proposal doc.
+// event content from a proposal doc. Doesn't include the title — that's
+// personalized per participant (see buildPlaydateSummary), since each side
+// sees the *other* family's name, not their own.
 function derivePlaydateEventFields(proposal) {
   const startIso = typeof proposal.date === 'string' ? proposal.date : '';
   const endIso = typeof proposal.endDate === 'string' ? proposal.endDate : '';
   const venue = typeof proposal.venue === 'string' ? proposal.venue : '';
-  const summary = venue ? `Haven.ly playdate at ${venue}` : 'Haven.ly playdate';
-  return { startIso, endIso, venue, summary };
+  return { startIso, endIso, venue };
+}
+
+// "Playdate with {Surname} Family" — {Surname} is the *other* participant's
+// last name, not the calendar owner's own, since the useful thing to see on
+// your own calendar is who you're meeting. Falls back to a generic title
+// if that family never set a last name.
+function buildPlaydateSummary(otherFamilyLastName) {
+  const trimmed = typeof otherFamilyLastName === 'string' ? otherFamilyLastName.trim() : '';
+  return trimmed ? `Playdate with ${trimmed} Family` : 'Haven.ly playdate';
 }
 
 // A calendar-home-set collection (see connectAppleCalendar above) can hold
@@ -443,7 +453,7 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
       return;
     }
 
-    const { startIso, endIso, venue, summary } = derivePlaydateEventFields(after);
+    const { startIso, endIso, venue } = derivePlaydateEventFields(after);
     if (!startIso || !endIso) return;
 
     const uids = [after.fromUid, after.toUid].filter((uid) => typeof uid === 'string' && uid);
@@ -451,9 +461,14 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
     await Promise.all(
       uids.map(async (uid) => {
         try {
-          const userSnap = await admin.firestore().collection('users').doc(uid).get();
+          const otherUid = uid === after.fromUid ? after.toUid : after.fromUid;
+          const [userSnap, otherSnap] = await Promise.all([
+            admin.firestore().collection('users').doc(uid).get(),
+            admin.firestore().collection('users').doc(otherUid).get(),
+          ]);
           const userData = userSnap.data();
           if (!userData) return;
+          const summary = buildPlaydateSummary(otherSnap.data()?.lastName);
 
           const icsUid = `havenly-playdate-${event.params.proposalId}-${uid}@haven-ly.com`;
           // googleCalendarSyncEnabled reflects whether the family opted in to
@@ -567,16 +582,21 @@ exports.addPlaydateToGoogleCalendar = onCall({ secrets: [googleClientSecret] }, 
     throw new HttpsError('failed-precondition', 'This playdate has not been accepted yet.');
   }
 
-  const { startIso, endIso, venue, summary } = derivePlaydateEventFields(proposal);
+  const { startIso, endIso, venue } = derivePlaydateEventFields(proposal);
   if (!startIso || !endIso) {
     throw new HttpsError('failed-precondition', 'This playdate is missing timing details.');
   }
 
-  const userSnap = await admin.firestore().collection('users').doc(uid).get();
+  const otherUid = uid === proposal.fromUid ? proposal.toUid : proposal.fromUid;
+  const [userSnap, otherSnap] = await Promise.all([
+    admin.firestore().collection('users').doc(uid).get(),
+    admin.firestore().collection('users').doc(otherUid).get(),
+  ]);
   const refreshToken = userSnap.data()?.googleCalendar?.refreshToken;
   if (!refreshToken) {
     throw new HttpsError('failed-precondition', 'Connect Google Calendar first.');
   }
+  const summary = buildPlaydateSummary(otherSnap.data()?.lastName);
 
   await createGoogleCalendarEvent(refreshToken, googleClientSecret.value(), {
     eventId: googleEventIdFor(proposalId, uid),

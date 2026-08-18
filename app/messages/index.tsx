@@ -73,6 +73,7 @@ export default function MessagesInbox() {
                 title={family ? familyDisplayName(family) : 'Family'}
                 subtitle={conversation.lastMessage || 'Say hello'}
                 image={photoUrl ? { uri: photoUrl } : undefined}
+                personPlaceholder
                 onPress={() => router.push(`/messages/${conversation.id}`)}
               />
             );

@@ -111,6 +111,8 @@ export default function FamilyDetail() {
           <Photo
             source={profile.familyPhotoUrl ? { uri: profile.familyPhotoUrl } : undefined}
             style={styles.heroImage}
+            variant="person"
+            iconSize={64}
           />
           <View style={styles.heroScrim} />
           <View style={styles.heroTopRow}>

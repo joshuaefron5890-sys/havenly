@@ -12,6 +12,7 @@ export function ListRow({
   contributedBy,
   image,
   icon,
+  personPlaceholder,
   onPress,
   favorited,
   onToggleFavorite,
@@ -29,6 +30,11 @@ export function ListRow({
   // Shown instead of a blank placeholder box when there's no real image to
   // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
   icon?: keyof typeof Ionicons.glyphMap;
+  // A missing `image` gets a gender-neutral avatar silhouette instead of a
+  // bare color block — for rows that show a specific family's photo (the
+  // Messages inbox), where "no photo yet" should still read as "a person".
+  // Ignored when `icon` is set, since that fallback already has its own look.
+  personPlaceholder?: boolean;
   onPress?: () => void;
   // Renders a heart button when provided. Its own onPress (rather than
   // relying on event bubbling) is what keeps a tap on the heart from also
@@ -46,7 +52,12 @@ export function ListRow({
             <Ionicons name={icon} size={20} color={colors.surface} />
           </View>
         ) : (
-          <Photo source={image} style={styles.thumbnail} />
+          <Photo
+            source={image}
+            style={styles.thumbnail}
+            variant={personPlaceholder ? 'person' : undefined}
+            iconSize={20}
+          />
         )}
         {community ? (
           <View style={styles.communityBadge}>

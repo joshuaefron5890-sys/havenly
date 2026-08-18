@@ -411,10 +411,17 @@ async function createAppleCalendarEvent(appleCalendar, { uid, summary, location,
 // lib/playdateProposals.ts's respondToProposal) and puts the confirmed
 // playdate on each family's own calendar — whichever they have connected,
 // Google or Apple. A family with neither connected is silently skipped, and
-// one family's failure (e.g. a Google refresh token still scoped to the old
-// freebusy-only permission, pending reconnect) doesn't block the other's —
-// same graceful-degradation approach as every other multi-source feature in
-// this app rather than surfacing a hard error either family can't act on.
+// one family's failure doesn't block the other's — same graceful-degradation
+// approach as every other multi-source feature in this app rather than
+// surfacing a hard error either family can't act on.
+//
+// In practice the Google branch always fails right now: lib/googleIdentity.ts
+// deliberately requests calendar.freebusy, not calendar.events, because
+// calendar.events is a Google "sensitive" scope that throws an
+// unverified-app warning at every signed-in user until this project's OAuth
+// consent screen completes Google's verification process. Once that's done
+// and the requested scope is widened, this starts working for anyone who
+// reconnects — no other change needed here.
 exports.createPlaydateCalendarEvents = onDocumentUpdated(
   { document: 'playdateProposals/{proposalId}', secrets: [googleClientSecret] },
   async (event) => {

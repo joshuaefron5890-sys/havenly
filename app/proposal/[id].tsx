@@ -46,6 +46,8 @@ function FamilyMini({
       <Photo
         source={family && familyPhoto(family) ? { uri: familyPhoto(family)! } : undefined}
         style={styles.familyPhoto}
+        variant="person"
+        iconSize={26}
       />
       <Text style={styles.familyName} numberOfLines={1}>
         {family ? familyDisplayName(family) : fallbackLabel}
@@ -59,7 +61,7 @@ function FamilyMini({
         <View style={styles.kidsList}>
           {kids.map((kid, i) => (
             <View key={`${kid.name}-${i}`} style={styles.kidChip}>
-              <Photo source={kid.photoUrl ? { uri: kid.photoUrl } : undefined} style={styles.kidPhoto} />
+              <Photo source={kid.photoUrl ? { uri: kid.photoUrl } : undefined} style={styles.kidPhoto} variant="person" iconSize={11} />
               <Text style={styles.kidChipText} numberOfLines={1}>
                 {kid.age ? `${kid.name}, ${kid.age}` : kid.name}
               </Text>

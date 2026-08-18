@@ -264,7 +264,12 @@ export default function Profile() {
           >
             {profile.children.map((child, i) => (
               <View key={i} style={styles.personRow}>
-                <Photo source={child.photoUrl ? { uri: child.photoUrl } : undefined} style={styles.personPhoto} />
+                <Photo
+                  source={child.photoUrl ? { uri: child.photoUrl } : undefined}
+                  style={styles.personPhoto}
+                  variant="person"
+                  iconSize={22}
+                />
                 <View style={styles.personInfo}>
                   <Text style={styles.personName}>{child.name || `Child ${i + 1}`}</Text>
                   <Text style={styles.personMeta}>
@@ -284,7 +289,12 @@ export default function Profile() {
           >
             {profile.siblingProfiles.map((sibling, i) => (
               <View key={i} style={styles.personRow}>
-                <Photo source={sibling.photoUrl ? { uri: sibling.photoUrl } : undefined} style={styles.personPhoto} />
+                <Photo
+                  source={sibling.photoUrl ? { uri: sibling.photoUrl } : undefined}
+                  style={styles.personPhoto}
+                  variant="person"
+                  iconSize={22}
+                />
                 <View style={styles.personInfo}>
                   <Text style={styles.personName}>{sibling.name || `Sibling ${i + 1}`}</Text>
                   <Text style={styles.personMeta}>

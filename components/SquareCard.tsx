@@ -63,8 +63,8 @@ export function SquareCard({
       <View style={styles.thumbnailWrap}>
         {pairImages ? (
           <View style={[styles.thumbnail, styles.pairThumbnail]}>
-            <Photo source={pairImages[0]} style={[styles.pairAvatar, styles.pairAvatarBack]} />
-            <Photo source={pairImages[1]} style={[styles.pairAvatar, styles.pairAvatarFront]} />
+            <Photo source={pairImages[0]} style={[styles.pairAvatar, styles.pairAvatarBack]} variant="person" iconSize={20} />
+            <Photo source={pairImages[1]} style={[styles.pairAvatar, styles.pairAvatarFront]} variant="person" iconSize={20} />
           </View>
         ) : !image && community ? (
           // A community contribution with no photo of its own gets a

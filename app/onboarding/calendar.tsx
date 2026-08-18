@@ -26,10 +26,6 @@ export default function Calendar() {
   const [googleConnected, setGoogleConnected] = useState(profile.googleCalendarConnected);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
-  // Whether the *next* Connect/Reconnect requests write access — flipping
-  // this after already connecting doesn't retroactively change anything
-  // until Reconnect is pressed, since the actually-granted scope lives in
-  // the refresh token from whenever consent was last given.
   const [pushEvents, setPushEvents] = useState(profile.googleCalendarSyncEnabled);
 
   const [appleConnected, setAppleConnected] = useState(profile.appleCalendarConnected);
@@ -39,7 +35,12 @@ export default function Calendar() {
   const [connectingApple, setConnectingApple] = useState(false);
   const [appleError, setAppleError] = useState<string | null>(null);
 
-  const handleConnectGoogle = async () => {
+  // wantsSync is passed explicitly rather than read from the pushEvents
+  // state — the sync toggle's onValueChange calls this directly with the
+  // value it's about to become, before that state update has actually
+  // committed, so relying on the closure's current pushEvents would use the
+  // stale, pre-toggle value.
+  const handleConnectGoogle = async (wantsSync: boolean) => {
     setGoogleError(null);
 
     if (!auth?.currentUser) {
@@ -51,7 +52,7 @@ export default function Calendar() {
 
     let code: string;
     try {
-      code = await requestGoogleCalendarAuthCode(pushEvents);
+      code = await requestGoogleCalendarAuthCode(wantsSync);
     } catch (err: any) {
       // Chrome's Cross-Origin-Opener-Policy blocks Google's own internal
       // "is the popup still open" check, which can make it wrongly report
@@ -73,9 +74,10 @@ export default function Calendar() {
     try {
       await connectGoogleCalendarBackend(code);
       setGoogleConnected(true);
-      updateProfile({ googleCalendarConnected: true, googleCalendarSyncEnabled: pushEvents });
+      setPushEvents(wantsSync);
+      updateProfile({ googleCalendarConnected: true, googleCalendarSyncEnabled: wantsSync });
       saveOnboardingStep(
-        { googleCalendarConnected: true, googleCalendarSyncEnabled: pushEvents },
+        { googleCalendarConnected: true, googleCalendarSyncEnabled: wantsSync },
         '/onboarding/calendar',
         { editMode }
       );
@@ -88,6 +90,25 @@ export default function Calendar() {
     } finally {
       setConnectingGoogle(false);
     }
+  };
+
+  // Turning the toggle on needs the broader write-access scope, which only
+  // a real Google consent grant can provide — so it runs the same Connect
+  // flow the Reconnect button does, forced to write access, and only
+  // actually flips (persisted, by handleConnectGoogle above) once that
+  // succeeds. Turning it off needs no new permission — the family's
+  // existing connection (whatever scope it has) is untouched, this just
+  // stops the backend from attempting writes for them — so it saves
+  // immediately instead of demanding another Google popup for something
+  // that doesn't need one.
+  const handleToggleSync = (value: boolean) => {
+    if (!value) {
+      setPushEvents(false);
+      updateProfile({ googleCalendarSyncEnabled: false });
+      saveOnboardingStep({ googleCalendarSyncEnabled: false }, '/onboarding/calendar', { editMode });
+      return;
+    }
+    handleConnectGoogle(true);
   };
 
   const openAppleModal = () => {
@@ -182,7 +203,7 @@ export default function Calendar() {
                     <Text style={styles.connectedText}>Connected</Text>
                   </View>
                 )}
-                <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
+                <Pressable style={styles.connectBadge} onPress={() => handleConnectGoogle(pushEvents)}>
                   <Image source={images.googleLogo} style={styles.brandIcon} />
                   <Text style={styles.connect}>{googleConnected ? 'Reconnect' : 'Connect'}</Text>
                 </Pressable>
@@ -198,7 +219,7 @@ export default function Calendar() {
                   : "Off — we'll only check when you're free, never add anything to your calendar."}
               </Text>
             </View>
-            <Switch value={pushEvents} onValueChange={setPushEvents} />
+            <Switch value={pushEvents} onValueChange={handleToggleSync} disabled={connectingGoogle} />
           </View>
         </View>
         {googleError ? <Text style={styles.rowError}>{googleError}</Text> : null}

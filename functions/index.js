@@ -198,30 +198,6 @@ exports.connectGoogleCalendar = onCall({ secrets: [googleClientSecret] }, async 
   return { connected: true };
 });
 
-// Used by "Sign up / Sign in with Gmail": a single initCodeClient popup
-// requests identity scopes (openid email profile) together with calendar
-// free/busy access in one consent screen, so connecting a Google account
-// also connects its calendar — no separate step. Runs before the caller has
-// a Firebase session, so (unlike connectGoogleCalendar) this can't require
-// request.auth; it just hands back the tokens for the client to sign in
-// with and then pass the refresh token to saveGoogleCalendarRefreshToken.
-exports.exchangeGoogleSignInCode = onCall({ secrets: [googleClientSecret] }, async (request) => {
-  const code = typeof request.data?.code === 'string' ? request.data.code : '';
-  if (!code) {
-    throw new HttpsError('invalid-argument', 'Missing authorization code.');
-  }
-
-  const tokenJson = await exchangeGoogleCode(code, googleClientSecret.value());
-  if (!tokenJson.id_token) {
-    throw new HttpsError('unknown', 'Google did not return sign-in details.');
-  }
-
-  return {
-    idToken: tokenJson.id_token,
-    accessToken: tokenJson.access_token ?? null,
-  };
-});
-
 async function refreshGoogleAccessToken(refreshToken, clientSecret) {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',

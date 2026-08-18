@@ -6,10 +6,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../components/FieldInput';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { useOnboarding } from '../contexts/OnboardingContext';
-import { auth, firebaseConfigured, googleSignInSupported, signInWithGoogleIdToken } from '../lib/firebase';
-import { exchangeGoogleSignInCode } from '../lib/googleCalendar';
-import { requestGoogleSignInCode } from '../lib/googleIdentity';
+import { auth, firebaseConfigured, signInWithGoogleIdToken } from '../lib/firebase';
 import { routeSignedInUser } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 
@@ -71,21 +70,15 @@ export default function SignIn() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleCredential = async (idToken: string) => {
     setError(null);
     if (!firebaseConfigured || !auth) {
       setError('Sign-in isn’t configured yet.');
       return;
     }
-    if (!googleSignInSupported()) {
-      setError('Sign in with Gmail isn’t available on this platform yet — use email for now.');
-      return;
-    }
     setGoogleSubmitting(true);
     try {
-      const code = await requestGoogleSignInCode();
-      const { idToken, accessToken } = await exchangeGoogleSignInCode(code);
-      const credential = await signInWithGoogleIdToken(idToken, accessToken);
+      const credential = await signInWithGoogleIdToken(idToken);
       await routeSignedInUser(credential.user, updateProfile);
     } catch (err: any) {
       const message = friendlyGoogleError(err?.message ?? err?.code ?? '');
@@ -93,6 +86,11 @@ export default function SignIn() {
     } finally {
       setGoogleSubmitting(false);
     }
+  };
+
+  const handleGoogleError = (err: Error) => {
+    const message = friendlyGoogleError(err?.message ?? '');
+    if (message) setError(message);
   };
 
   return (
@@ -130,14 +128,8 @@ export default function SignIn() {
           <Text style={styles.ctaText}>{submitting ? 'Signing in…' : 'Sign in'}</Text>
         </Pressable>
 
-        <Pressable
-          style={[styles.googleButton, googleSubmitting && styles.ctaDisabled]}
-          onPress={handleGoogleSignIn}
-          disabled={googleSubmitting}
-        >
-          <Ionicons name="logo-google" size={18} color={colors.text} style={styles.googleIcon} />
-          <Text style={styles.googleText}>{googleSubmitting ? 'Signing in…' : 'Sign in with Gmail'}</Text>
-        </Pressable>
+        <GoogleSignInButton onCredential={handleGoogleCredential} onError={handleGoogleError} />
+        {googleSubmitting ? <Text style={styles.googleStatus}>Signing in…</Text> : null}
 
         <Pressable onPress={() => router.replace('/onboarding/account')}>
           <Text style={styles.switch}>
@@ -211,23 +203,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  googleButton: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  googleStatus: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: 13,
+    marginTop: -8,
     marginBottom: 16,
-  },
-  googleIcon: {
-    marginRight: 8,
-  },
-  googleText: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
   },
   switch: {
     textAlign: 'center',

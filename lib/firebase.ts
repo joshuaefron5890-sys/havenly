@@ -39,9 +39,9 @@ export function googleSignInSupported(): boolean {
   return Platform.OS === 'web';
 }
 
-// Exchanges a Google ID token (from lib/googleCalendar.ts's
-// exchangeGoogleSignInCode, which trades a Google Identity Services
-// authorization code for one server-side) for a signed-in Firebase user.
+// Exchanges a Google ID token (from GoogleSignInButton's callback, or from
+// the explicit calendar Connect flow's server-side code exchange) for a
+// signed-in Firebase user.
 export async function signInWithGoogleIdToken(idToken: string, accessToken?: string | null): Promise<UserCredential> {
   if (!auth) {
     throw new Error('not-configured');

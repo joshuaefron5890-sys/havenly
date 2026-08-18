@@ -101,22 +101,54 @@ export function requestGoogleCalendarAuthCode(pushEvents: boolean): Promise<stri
   );
 }
 
-// Same code-flow popup as requestGoogleCalendarAuthCode, but requesting only
-// identity scopes — no calendar access at all. The resulting code is
-// exchanged via exchangeGoogleSignInCode (functions/index.js) for an ID
-// token to sign in with.
+// Renders Google's own "Sign in with Google" button (a controlled iframe
+// Google owns and styles) into `container`, and reports the resulting ID
+// token via onCredential once someone clicks it and completes the flow.
 //
-// This used to also request calendar.freebusy in the same popup, on the
-// theory that freebusy (read-only) was safe to bundle into every sign-up
-// since only calendar.events (read/write) was a Google "sensitive" scope.
-// That theory was wrong — freebusy throws the exact same unverified-app
-// warning as events does, confirmed by a live user hitting it on a plain
-// Gmail sign-in with no stale cache involved. Bundling *any* calendar scope
-// into sign-in means every new user hits that wall, not just the ones who
-// want calendar features — so sign-in now requests identity only, and
-// calendar connection (either scope) happens exclusively through the
-// explicit Connect action in app/onboarding/calendar.tsx afterward, where a
-// warning is an informed, opted-into tradeoff instead of a surprise.
-export function requestGoogleSignInCode(): Promise<string> {
-  return requestCodeForScope('openid email profile', false);
+// This is a genuinely different Google Identity Services API from
+// requestCodeForScope's OAuth authorization-code flow above (google.accounts.id
+// vs. google.accounts.oauth2) — Google's purpose-built mechanism for
+// identity-only sign-in, and (per Google's docs) exempt from the
+// "unverified app" warning that the authorization-code flow throws for any
+// unverified External app regardless of requested scope. That flow's
+// warning persisted even down to a zero-scope request in live testing, so
+// switching APIs — not tuning scope/parameters further — is what's needed
+// here. The tradeoff: Google renders and styles this button itself, so it
+// can't be pixel-matched to the rest of Haven.ly's button design the way a
+// plain Pressable could.
+export function renderGoogleSignInButton(
+  container: HTMLElement,
+  width: number,
+  onCredential: (idToken: string) => void,
+  onError: (err: Error) => void
+): Promise<void> {
+  if (Platform.OS !== 'web') {
+    return Promise.reject(new Error('not-supported-native'));
+  }
+  return loadGsiScript().then(() => {
+    if (!window.google?.accounts?.id) {
+      onError(new Error('gsi-id-unavailable'));
+      return;
+    }
+    window.google.accounts.id.initialize({
+      client_id: CLIENT_ID,
+      callback: (response: any) => {
+        if (!response?.credential) {
+          onError(new Error('no-credential'));
+          return;
+        }
+        onCredential(response.credential);
+      },
+    });
+    // Google caps the usable range around 200-400px.
+    window.google.accounts.id.renderButton(container, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      shape: 'pill',
+      text: 'continue_with',
+      logo_alignment: 'left',
+      width: Math.min(400, Math.max(200, Math.round(width))),
+    });
+  });
 }

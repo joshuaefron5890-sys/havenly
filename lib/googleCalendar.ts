@@ -14,25 +14,6 @@ export async function connectGoogleCalendarBackend(code: string): Promise<void> 
   await call({ code });
 }
 
-export type GoogleSignInExchange = {
-  idToken: string;
-  accessToken: string | null;
-};
-
-// Exchanges the code from requestGoogleSignInCode() for an ID token to sign
-// in to Firebase with. Identity-only — sign-in no longer requests any
-// calendar scope (see requestGoogleSignInCode's comment for why), so there's
-// no calendar refresh token to come back with here; that only ever happens
-// through the explicit Connect action (connectGoogleCalendarBackend).
-export async function exchangeGoogleSignInCode(code: string): Promise<GoogleSignInExchange> {
-  if (!functions) {
-    throw new Error('not-configured');
-  }
-  const call = httpsCallable<{ code: string }, GoogleSignInExchange>(functions, 'exchangeGoogleSignInCode');
-  const result = await call({ code });
-  return result.data;
-}
-
 // Creates the calendar event for one accepted proposal on the signed-in
 // user's own Google Calendar right now, rather than waiting for the
 // automatic accept-time trigger (functions/index.js's

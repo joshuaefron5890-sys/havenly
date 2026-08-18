@@ -1029,6 +1029,7 @@ export default function ForYou() {
               <ListRow
                 key={c.id}
                 title={c.fields.title ?? 'Community pick'}
+                subtitle={resourceSubtypeOf(c) === 'referral' ? c.fields.specialty : undefined}
                 icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
                 contributedBy={c.contributedByName}

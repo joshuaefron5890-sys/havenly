@@ -75,17 +75,21 @@ export function ListRow({
       </View>
       <View style={styles.body}>
         <Text style={styles.title}>{title}</Text>
-        {community && contributedBy ? (
+        {subtitle ? (
+          // A specific detail about the item itself (e.g. a referral's
+          // specialty) is more useful at a glance than who contributed it —
+          // takes priority over the community contributor row when both
+          // are available.
+          <Text style={styles.subtitle} numberOfLines={3}>
+            {subtitle}
+          </Text>
+        ) : community && contributedBy ? (
           <View style={styles.contributorRow}>
             <Ionicons name="person-circle-outline" size={12} color={colors.textMuted} />
             <Text style={styles.contributorText} numberOfLines={1}>
               {contributedBy}
             </Text>
           </View>
-        ) : subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={3}>
-            {subtitle}
-          </Text>
         ) : null}
       </View>
       {onToggleFavorite ? (

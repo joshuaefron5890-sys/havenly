@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
+import { Image, ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
 import { Photo } from './Photo';
@@ -45,11 +45,11 @@ export function SquareCard({
   // 'accent' (orange, the default) for everything else, e.g. "Proposed"
   // still waiting on a response.
   badgeVariant?: 'accent' | 'positive' | 'warning';
-  // The standardized "this was added by a family, not curated" marker —
-  // same dark icon+label pill everywhere it appears (here, ListRow, and the
-  // contribution detail screen) so it always reads the same regardless of
-  // section. Kept visually distinct from `badge` (which uses the accent
-  // color for playdate-status pills like "Proposed") on purpose.
+  // The standardized "this was added by a family, not curated" marker — the
+  // haven logo mark in a small white chip, same everywhere it appears (here
+  // and ListRow) so it always reads the same regardless of section. Kept
+  // visually distinct from `badge` (which uses the accent color for
+  // playdate-status pills like "Proposed") on purpose.
   community?: boolean;
   contributedBy?: string;
   // A small circle in the thumbnail's bottom-right corner — kept separate
@@ -74,10 +74,7 @@ export function SquareCard({
         )}
         {community ? (
           <View style={styles.communityBadge}>
-            <Ionicons name="people" size={8} color={colors.community} />
-            <Text style={styles.communityBadgeText} numberOfLines={1}>
-              Contributed
-            </Text>
+            <Image source={require('../assets/logo-mark.png')} style={styles.communityBadgeMark} resizeMode="contain" />
           </View>
         ) : badge ? (
           <View
@@ -225,34 +222,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5C518',
   },
   communityBadge: {
+    // The haven mark itself, small and white-backed, standing in for the
+    // old "Contributed" text pill — reads as an official app-level stamp
+    // rather than a generic label, and (unlike a contributor-photo avatar)
+    // never needs a fallback state for families without a photo on file.
     position: 'absolute',
     top: 4,
     left: 4,
-    right: 4,
-    flexDirection: 'row',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    // White pill with blue text/icon — the thumbnail itself is blue for a
-    // community item (see communityIconThumbnail, and any blue-toned real
-    // photo), so a blue-on-blue badge would wash out. White stays legible
-    // against both that and an arbitrary product/podcast photo. A matching
-    // blue border keeps the pill defined even against a light/white patch
-    // of an arbitrary photo, where a plain white pill can disappear.
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.community,
-    borderRadius: 6,
-    paddingHorizontal: 3,
-    paddingVertical: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
-  communityBadgeText: {
-    // No uppercase transform here (unlike the accent `badge` below) — all
-    // caps would push "Contributed" past this pill's width; sized to fit
-    // this specific label at this specific pill width.
-    fontSize: 7,
-    fontWeight: '700',
-    color: colors.community,
+  communityBadgeMark: {
+    width: 10,
+    height: 10,
   },
   contributorRow: {
     flexDirection: 'row',

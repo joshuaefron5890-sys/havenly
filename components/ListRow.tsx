@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
+import { Image, ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
 import { Photo } from './Photo';
@@ -40,20 +40,27 @@ export function ListRow({
   const Container = onPress ? Pressable : View;
   return (
     <Container style={styles.row} onPress={onPress}>
-      {!image && icon ? (
-        <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
-          <Ionicons name={icon} size={20} color={colors.surface} />
-        </View>
-      ) : (
-        <Photo source={image} style={styles.thumbnail} />
-      )}
-      <View style={styles.body}>
-        <Text style={styles.title}>{title}</Text>
+      <View style={styles.thumbnailWrap}>
+        {!image && icon ? (
+          <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
+            <Ionicons name={icon} size={20} color={colors.surface} />
+          </View>
+        ) : (
+          <Photo source={image} style={styles.thumbnail} />
+        )}
         {community ? (
           <View style={styles.communityBadge}>
-            <Ionicons name="people" size={10} color={colors.community} />
-            <Text style={styles.communityBadgeText} numberOfLines={1}>
-              Contributed{contributedBy ? ` · ${contributedBy}` : ''}
+            <Image source={require('../assets/logo-mark.png')} style={styles.communityBadgeMark} resizeMode="contain" />
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.body}>
+        <Text style={styles.title}>{title}</Text>
+        {community && contributedBy ? (
+          <View style={styles.contributorRow}>
+            <Ionicons name="person-circle-outline" size={12} color={colors.textMuted} />
+            <Text style={styles.contributorText} numberOfLines={1}>
+              {contributedBy}
             </Text>
           </View>
         ) : subtitle ? (
@@ -92,6 +99,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     gap: 12,
   },
+  thumbnailWrap: {
+    position: 'relative',
+  },
   thumbnail: {
     width: 44,
     height: 44,
@@ -117,23 +127,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   communityBadge: {
+    // The haven mark itself, small and white-backed, overlapping the
+    // thumbnail's corner — same treatment as SquareCard, standing in for
+    // the old "Contributed" pill so both components read identically.
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  communityBadgeMark: {
+    width: 11,
+    height: 11,
+  },
+  contributorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    // Soft muted blue rather than a solid dark pill — same treatment as
-    // the "Accepted" badge above, since this sits on a plain card surface
-    // rather than over a photo.
-    backgroundColor: colors.communityMuted,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 4,
+    gap: 3,
+    marginTop: 2,
   },
-  communityBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.community,
+  contributorText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textMuted,
   },
   title: {
     fontSize: 15,

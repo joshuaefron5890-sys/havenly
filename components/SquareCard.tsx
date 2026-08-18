@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image, ImageSourcePropType, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
+import { images } from '../theme/images';
 import { Photo } from './Photo';
 
 // A square, image-forward card for dashboard grids — deliberately shows
@@ -45,11 +46,11 @@ export function SquareCard({
   // 'accent' (orange, the default) for everything else, e.g. "Proposed"
   // still waiting on a response.
   badgeVariant?: 'accent' | 'positive' | 'warning';
-  // The standardized "this was added by a family, not curated" marker — the
-  // haven logo mark in a small white chip, same everywhere it appears (here
-  // and ListRow) so it always reads the same regardless of section. Kept
-  // visually distinct from `badge` (which uses the accent color for
-  // playdate-status pills like "Proposed") on purpose.
+  // The standardized "this was added by a family, not curated" marker —
+  // the haven logo mark plus a "Community Added" label in a white pill,
+  // over a shared fallback photo when the contribution has none of its
+  // own. Kept visually distinct from `badge` (which uses the accent color
+  // for playdate-status pills like "Proposed") on purpose.
   community?: boolean;
   contributedBy?: string;
   // A small circle in the thumbnail's bottom-right corner — kept separate
@@ -65,8 +66,13 @@ export function SquareCard({
             <Photo source={pairImages[0]} style={[styles.pairAvatar, styles.pairAvatarBack]} />
             <Photo source={pairImages[1]} style={[styles.pairAvatar, styles.pairAvatarFront]} />
           </View>
+        ) : !image && community ? (
+          // A community contribution with no photo of its own gets a
+          // shared "this is from the community" image instead of a flat
+          // icon-on-color box — warmer, and doesn't need a per-item icon.
+          <Photo source={images.communityContribution} style={styles.thumbnail} />
         ) : !image && icon ? (
-          <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
+          <View style={[styles.thumbnail, styles.iconThumbnail]}>
             <Ionicons name={icon} size={22} color={colors.surface} />
           </View>
         ) : (
@@ -75,6 +81,9 @@ export function SquareCard({
         {community ? (
           <View style={styles.communityBadge}>
             <Image source={require('../assets/logo-mark.png')} style={styles.communityBadgeMark} resizeMode="contain" />
+            <Text style={styles.communityBadgeText} numberOfLines={1}>
+              Community Added
+            </Text>
           </View>
         ) : badge ? (
           <View
@@ -147,12 +156,6 @@ const styles = StyleSheet.create({
     // matches ListRow's fallback icon treatment.
     backgroundColor: colors.text,
   },
-  communityIconThumbnail: {
-    // Community-contributed items get a blue thumbnail instead of black,
-    // so the card itself signals "community" at a glance, not just the
-    // small corner badge.
-    backgroundColor: colors.community,
-  },
   pairThumbnail: {
     overflow: 'visible',
   },
@@ -222,19 +225,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5C518',
   },
   communityBadge: {
-    // The haven mark itself, small and white-backed, standing in for the
-    // old "Contributed" text pill — reads as an official app-level stamp
-    // rather than a generic label, and (unlike a contributor-photo avatar)
-    // never needs a fallback state for families without a photo on file.
+    // The haven mark plus a short label, in a white pill sized to its own
+    // content (not stretched to the card width) — reads as an official
+    // app-level stamp rather than a generic label, and (unlike a
+    // contributor-photo avatar) never needs a fallback state for families
+    // without a photo on file.
     position: 'absolute',
     top: 4,
     left: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 2,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -242,8 +247,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   communityBadgeMark: {
-    width: 10,
-    height: 10,
+    width: 9,
+    height: 9,
+  },
+  communityBadgeText: {
+    fontSize: 6,
+    fontWeight: '700',
+    color: colors.text,
   },
   contributorRow: {
     flexDirection: 'row',

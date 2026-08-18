@@ -1068,10 +1068,23 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   highlightsBand: {
-    // No card chrome at all — distinct purely through the icon-accented
-    // header and horizontal scroll, not a background/border/shadow.
+    // A white, bordered card floating on the page's grey background —
+    // reads as "its own module" through shape and elevation rather than a
+    // filled color, so the only orange in this section is the small icon
+    // chip below, not the whole band.
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 16,
+    paddingLeft: 16,
     marginTop: 20,
     marginBottom: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   highlightsHeader: {
     flexDirection: 'row',

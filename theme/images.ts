@@ -49,4 +49,9 @@ export const images: Record<string, ImageSourcePropType | undefined> = {
   interestSwimming: unsplashPlus('premium_photo-1661382079454-c71b72df64e8', 200, 200),
   interestBuildingThings: unsplash('photo-1758687126192-98f54f4b747f', 200, 200),
   interestSoccer: unsplashPlus('premium_photo-1661524208761-0ce228cf015c', 200, 200),
+  // The shared fallback thumbnail for a community-contributed item with no
+  // photo of its own (see SquareCard's `community` prop) — friends with
+  // arms around each other, standing in for "a family like yours shared
+  // this" wherever there's nothing more specific to show.
+  communityContribution: unsplash('photo-1511632765486-a01980e01a18', 300, 300),
 };

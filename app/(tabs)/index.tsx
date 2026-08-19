@@ -567,6 +567,7 @@ export default function ForYou() {
         // flow (see app/event/[id].tsx) — "Added" reads more true to what
         // actually happened than the generic "Favorited" other card types use.
         badge: 'Added',
+        badgeVariant: 'positive',
         onPress: () =>
           router.push({
             pathname: '/event/[id]',

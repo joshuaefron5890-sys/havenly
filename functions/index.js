@@ -672,14 +672,17 @@ exports.addExternalEventToGoogleCalendar = onCall({ secrets: [googleClientSecret
 // --- Email notifications ---------------------------------------------
 //
 // Purely informational — no action can be taken by replying to the email,
-// just a link back into the app. Writes into the `mail` collection, which
-// the "Trigger Email from Firestore" Firebase Extension (install it from
-// the Firebase console > Extensions, config'd with whatever SMTP provider
-// you choose) watches and does the actual sending — this file only ever
-// queues the message, never talks to an email provider directly. Install
-// it with `mail` as the collection name (the extension's own default) to
-// match what's written here.
+// just a link back into the app. Sent directly via Resend's HTTP API
+// (api.resend.com) rather than Firebase's "Trigger Email from Firestore"
+// extension, which Google is sunsetting (no new installs after March 31,
+// 2027) — not worth building on for new work. The API key is set via
+// `firebase functions:secrets:set RESEND_API_KEY`, same pattern as
+// googleClientSecret above; RESEND_FROM_EMAIL must be an address on a
+// domain verified in the Resend dashboard (Domains > Add Domain), not
+// just any address — Resend rejects sends from an unverified one.
 const APP_BASE_URL = 'https://haven-ly.com';
+const resendApiKey = defineSecret('RESEND_API_KEY');
+const RESEND_FROM_EMAIL = 'Haven.ly <notifications@haven-ly.com>';
 
 // "The Efron Family", or a generic fallback if that family never set a
 // last name — same wording buildPlaydateSummary already uses for calendar
@@ -692,10 +695,12 @@ function familyLabelFor(lastName) {
 
 // Resolves the recipient's email via Firebase Auth (not Firestore — see
 // the comment on `users/{uid}` elsewhere in this file; the user doc itself
-// never reliably carries an email field) and queues the send. Silently
-// skips a user with no email on file rather than throwing, since this is
-// a best-effort notification, not a required step in either flow.
-async function queueEmail(toUid, subject, text) {
+// never reliably carries an email field) and sends it through Resend.
+// Silently skips a user with no email on file, and logs (rather than
+// throws) on a failed send, since this is a best-effort notification, not
+// a required step in either flow — a Resend outage shouldn't show up as
+// an error on the proposal/message write that triggered it.
+async function sendNotificationEmail(toUid, subject, text) {
   const userRecord = await admin
     .auth()
     .getUser(toUid)
@@ -705,7 +710,15 @@ async function queueEmail(toUid, subject, text) {
     console.log(`Skipping notification email to ${toUid}: no email on file.`);
     return;
   }
-  await admin.firestore().collection('mail').add({ to: [to], message: { subject, text } });
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${resendApiKey.value()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: RESEND_FROM_EMAIL, to: [to], subject, text }),
+  });
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    console.error(`Resend send to ${toUid} failed (${res.status}): ${errJson.message || 'unknown error'}`);
+  }
 }
 
 // Fires when a playdate is proposed — the recipient might not have the
@@ -714,26 +727,29 @@ async function queueEmail(toUid, subject, text) {
 // message-created trigger below skips that one (type ===
 // 'playdate_proposal') so a new proposal only ever sends this one email,
 // not two.
-exports.emailOnPlaydateProposed = onDocumentCreated('playdateProposals/{proposalId}', async (event) => {
-  const proposal = event.data?.data();
-  if (!proposal || typeof proposal.fromUid !== 'string' || typeof proposal.toUid !== 'string') return;
+exports.emailOnPlaydateProposed = onDocumentCreated(
+  { document: 'playdateProposals/{proposalId}', secrets: [resendApiKey] },
+  async (event) => {
+    const proposal = event.data?.data();
+    if (!proposal || typeof proposal.fromUid !== 'string' || typeof proposal.toUid !== 'string') return;
 
-  const fromSnap = await admin.firestore().collection('users').doc(proposal.fromUid).get();
-  const family = familyLabelFor(fromSnap.data()?.lastName);
-  const dateLabel = typeof proposal.dateLabel === 'string' ? proposal.dateLabel : '';
-  const venue = typeof proposal.venue === 'string' ? proposal.venue : '';
-  const note = typeof proposal.note === 'string' ? proposal.note.trim() : '';
-  const details = [dateLabel, venue].filter(Boolean).join(' at ');
+    const fromSnap = await admin.firestore().collection('users').doc(proposal.fromUid).get();
+    const family = familyLabelFor(fromSnap.data()?.lastName);
+    const dateLabel = typeof proposal.dateLabel === 'string' ? proposal.dateLabel : '';
+    const venue = typeof proposal.venue === 'string' ? proposal.venue : '';
+    const note = typeof proposal.note === 'string' ? proposal.note.trim() : '';
+    const details = [dateLabel, venue].filter(Boolean).join(' at ');
 
-  const lines = [
-    `${family} sent you a playdate invite on Haven.ly${details ? `: ${details}` : '.'}`,
-    note ? `Their note: "${note}"` : null,
-    '',
-    `View and respond: ${APP_BASE_URL}/proposal/${event.params.proposalId}`,
-  ].filter((line) => line !== null);
+    const lines = [
+      `${family} sent you a playdate invite on Haven.ly${details ? `: ${details}` : '.'}`,
+      note ? `Their note: "${note}"` : null,
+      '',
+      `View and respond: ${APP_BASE_URL}/proposal/${event.params.proposalId}`,
+    ].filter((line) => line !== null);
 
-  await queueEmail(proposal.toUid, `${family} sent you a playdate invite`, lines.join('\n'));
-});
+    await sendNotificationEmail(proposal.toUid, `${family} sent you a playdate invite`, lines.join('\n'));
+  }
+);
 
 // Fires on every new message — skips a playdate-proposal message (the
 // trigger above already emails that one) and an empty/system message.
@@ -741,7 +757,7 @@ exports.emailOnPlaydateProposed = onDocumentCreated('playdateProposals/{proposal
 // since a message doc itself never names its own recipient (see
 // lib/messages.ts's sendMessage).
 exports.emailOnMessageSent = onDocumentCreated(
-  'conversations/{conversationId}/messages/{messageId}',
+  { document: 'conversations/{conversationId}/messages/{messageId}', secrets: [resendApiKey] },
   async (event) => {
     const message = event.data?.data();
     if (!message || message.type === 'playdate_proposal' || typeof message.senderUid !== 'string') return;
@@ -764,7 +780,7 @@ exports.emailOnMessageSent = onDocumentCreated(
       `Reply: ${APP_BASE_URL}/messages/${event.params.conversationId}`,
     ];
 
-    await queueEmail(toUid, `New message from ${family}`, lines.join('\n'));
+    await sendNotificationEmail(toUid, `New message from ${family}`, lines.join('\n'));
   }
 );
 

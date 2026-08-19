@@ -563,7 +563,10 @@ export default function ForYou() {
         subtitle: eventSubtitle(e),
         image: e.imageUrl ? { uri: e.imageUrl } : undefined,
         icon: 'calendar',
-        badge: 'Favorited',
+        // These only ever land in favorites via the "Add to My Calendar"
+        // flow (see app/event/[id].tsx) — "Added" reads more true to what
+        // actually happened than the generic "Favorited" other card types use.
+        badge: 'Added',
         onPress: () =>
           router.push({
             pathname: '/event/[id]',

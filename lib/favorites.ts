@@ -6,7 +6,12 @@ import { auth, db } from './firebase';
 // reading another family's info (which goes through a Cloud Function; see
 // functions/index.js's toPublicFamily comment). Podcasts/products/resources
 // aren't another user's private data, so favoriting them never needs one.
-type FavoriteField = 'favoriteFamilyUids' | 'favoritePodcastIds' | 'favoriteProductUrls' | 'favoriteResourceUrls';
+type FavoriteField =
+  | 'favoriteFamilyUids'
+  | 'favoritePodcastIds'
+  | 'favoriteProductUrls'
+  | 'favoriteResourceUrls'
+  | 'favoriteEventIds';
 
 async function getFavoriteIds(uid: string, field: FavoriteField): Promise<string[]> {
   if (!db) return [];
@@ -42,3 +47,7 @@ export const removeFavoriteProduct = (productUrl: string) => removeFavorite('fav
 export const getFavoriteResourceUrls = (uid: string) => getFavoriteIds(uid, 'favoriteResourceUrls');
 export const addFavoriteResource = (resourceUrl: string) => addFavorite('favoriteResourceUrls', resourceUrl);
 export const removeFavoriteResource = (resourceUrl: string) => removeFavorite('favoriteResourceUrls', resourceUrl);
+
+export const getFavoriteEventIds = (uid: string) => getFavoriteIds(uid, 'favoriteEventIds');
+export const addFavoriteEvent = (eventId: string) => addFavorite('favoriteEventIds', eventId);
+export const removeFavoriteEvent = (eventId: string) => removeFavorite('favoriteEventIds', eventId);

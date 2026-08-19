@@ -25,6 +25,7 @@ import {
   addFavoritePodcast,
   addFavoriteProduct,
   addFavoriteResource,
+  getFavoriteEventIds,
   getFavoriteFamilyUids,
   getFavoritePodcastIds,
   getFavoriteProductUrls,
@@ -374,6 +375,7 @@ export default function ForYou() {
   const [proposal, setProposal] = useState<PlaydateProposal | null>(null);
   const [proposalFamilyPhotos, setProposalFamilyPhotos] = useState<[string | null, string | null] | null>(null);
   const [eventContributions, setEventContributions] = useState<Contribution[]>([]);
+  const [favoriteEventIds, setFavoriteEventIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -401,6 +403,9 @@ export default function ForYou() {
       });
       fetchContributions('event').then((result) => {
         if (!cancelled) setEventContributions(result);
+      });
+      getFavoriteEventIds(user.uid).then((ids) => {
+        if (!cancelled) setFavoriteEventIds(new Set(ids));
       });
       return () => {
         cancelled = true;
@@ -550,6 +555,34 @@ export default function ForYou() {
       };
     });
 
+    const favoritedEvents: Highlight[] = (events ?? [])
+      .filter((e) => favoriteEventIds.has(e.id))
+      .map((e) => ({
+        key: `event-${e.id}`,
+        title: e.title,
+        subtitle: eventSubtitle(e),
+        image: e.imageUrl ? { uri: e.imageUrl } : undefined,
+        icon: 'calendar',
+        badge: 'Favorited',
+        onPress: () =>
+          router.push({
+            pathname: '/event/[id]',
+            params: {
+              id: String(e.id),
+              title: e.title,
+              source: e.source,
+              eventDate: e.eventDate,
+              venue: e.venue,
+              address: e.address,
+              imageUrl: e.imageUrl ?? '',
+              link: e.link,
+              categories: e.categories.join(','),
+              distanceMiles: e.distanceMiles != null ? String(e.distanceMiles) : '',
+              virtual: String(e.virtual),
+            },
+          }),
+      }));
+
     const favoritedFamilies: Highlight[] = mergedFamilies
       .filter((f) => favoriteFamilyUids.has(f.uid))
       .map((f) => {
@@ -657,6 +690,7 @@ export default function ForYou() {
     return [
       ...confirmed,
       ...proposed,
+      ...favoritedEvents,
       ...favoritedFamilies,
       ...favoritedProducts,
       ...favoritedPodcasts,
@@ -668,6 +702,8 @@ export default function ForYou() {
     confirmedProposalPhotos,
     pendingProposals,
     pendingProposalPhotos,
+    events,
+    favoriteEventIds,
     mergedFamilies,
     favoriteFamilyUids,
     products,

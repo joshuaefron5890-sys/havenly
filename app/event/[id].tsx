@@ -6,6 +6,7 @@ import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddToGoogleCalendarPrompt } from '../../components/AddToGoogleCalendarPrompt';
 import { Photo } from '../../components/Photo';
+import { addFavoriteEvent } from '../../lib/favorites';
 import { addExternalEventToGoogleCalendar } from '../../lib/googleCalendar';
 import { colors } from '../../theme/colors';
 
@@ -109,15 +110,20 @@ export default function EventDetail() {
         visible={calendarPromptVisible}
         dateLabel={dateLabel}
         onClose={() => setCalendarPromptVisible(false)}
-        onConfirm={() =>
-          addExternalEventToGoogleCalendar({
+        onConfirm={async () => {
+          await addExternalEventToGoogleCalendar({
             eventId: id,
             title: title || 'Event',
             startIso: eventDate!,
             location: venue || address || undefined,
             description: link || undefined,
-          })
-        }
+          });
+          // Adding it to your calendar is a strong enough signal of intent
+          // to also favorite it, so it shows up in Home's Highlights —
+          // without that, it'd otherwise be easy to lose track of among
+          // every other nearby event.
+          await addFavoriteEvent(id).catch(() => {});
+        }}
       />
     </SafeAreaView>
   );

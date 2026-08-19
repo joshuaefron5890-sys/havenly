@@ -513,9 +513,15 @@ export default function ForYou() {
     image?: ImageSourcePropType;
     pairImages?: [ImageSourcePropType | undefined, ImageSourcePropType | undefined];
     icon?: 'calendar' | 'document-text-outline';
-    badge: string;
+    badge?: string;
     badgeVariant?: 'accent' | 'positive' | 'warning';
     matchScore?: number;
+    // Plain favorites (families/products/podcasts/articles) show the same
+    // corner heart used everywhere else instead of a separate "Favorited"
+    // text badge — badge is reserved for a real status (Confirmed,
+    // Proposed, Suggested, or a calendar-added event's Added).
+    favorited?: boolean;
+    onToggleFavorite?: () => void;
     // A specific family's own photo (favorited/top-match cards) rather than
     // generic content — shows a person silhouette instead of a bare color
     // block when that family has no photo on file.
@@ -596,7 +602,8 @@ export default function ForYou() {
           title: familyDisplayName(f),
           subtitle: familySubtitle(f),
           image: photoUrl ? { uri: photoUrl } : undefined,
-          badge: 'Favorited',
+          favorited: true,
+          onToggleFavorite: () => toggleFamilyFavorite(f),
           matchScore: f.matchScore,
           personFallback: true,
           onPress: () => router.push(`/family/${f.uid}`),
@@ -609,7 +616,8 @@ export default function ForYou() {
         title: p.title,
         subtitle: productSubtitle(p),
         image: p.imageUrl ? { uri: p.imageUrl } : undefined,
-        badge: 'Favorited',
+        favorited: true,
+        onToggleFavorite: () => toggleProductFavorite(p),
         onPress: () =>
           router.push({
             pathname: '/product/[id]',
@@ -632,7 +640,8 @@ export default function ForYou() {
         title: p.title || 'Untitled podcast',
         subtitle: podcastSubtitle(p),
         image: p.artworkUrl ? { uri: p.artworkUrl } : undefined,
-        badge: 'Favorited',
+        favorited: true,
+        onToggleFavorite: () => togglePodcastFavorite(p),
         onPress: () =>
           router.push({
             pathname: '/podcast/[id]',
@@ -656,7 +665,8 @@ export default function ForYou() {
         title: a.title,
         subtitle: resourceSubtitle(a),
         icon: 'document-text-outline',
-        badge: 'Favorited',
+        favorited: true,
+        onToggleFavorite: () => toggleArticleFavorite(a),
         onPress: () =>
           router.push({
             pathname: '/article/[id]',
@@ -823,6 +833,8 @@ export default function ForYou() {
                   badgeVariant={h.badgeVariant}
                   matchScore={h.matchScore}
                   personFallback={h.personFallback}
+                  favorited={h.favorited}
+                  onToggleFavorite={h.onToggleFavorite}
                   onPress={h.onPress}
                 />
               ))}

@@ -1,5 +1,5 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -668,6 +668,105 @@ exports.addExternalEventToGoogleCalendar = onCall({ secrets: [googleClientSecret
 
   return { created: true };
 });
+
+// --- Email notifications ---------------------------------------------
+//
+// Purely informational — no action can be taken by replying to the email,
+// just a link back into the app. Writes into the `mail` collection, which
+// the "Trigger Email from Firestore" Firebase Extension (install it from
+// the Firebase console > Extensions, config'd with whatever SMTP provider
+// you choose) watches and does the actual sending — this file only ever
+// queues the message, never talks to an email provider directly. Install
+// it with `mail` as the collection name (the extension's own default) to
+// match what's written here.
+const APP_BASE_URL = 'https://haven-ly.com';
+
+// "The Efron Family", or a generic fallback if that family never set a
+// last name — same wording buildPlaydateSummary already uses for calendar
+// event titles, reused here so a family's name reads the same everywhere
+// it's generated automatically rather than typed by a person.
+function familyLabelFor(lastName) {
+  const trimmed = typeof lastName === 'string' ? lastName.trim() : '';
+  return trimmed ? `The ${trimmed} Family` : 'A Haven.ly family';
+}
+
+// Resolves the recipient's email via Firebase Auth (not Firestore — see
+// the comment on `users/{uid}` elsewhere in this file; the user doc itself
+// never reliably carries an email field) and queues the send. Silently
+// skips a user with no email on file rather than throwing, since this is
+// a best-effort notification, not a required step in either flow.
+async function queueEmail(toUid, subject, text) {
+  const userRecord = await admin
+    .auth()
+    .getUser(toUid)
+    .catch(() => null);
+  const to = userRecord?.email;
+  if (!to) {
+    console.log(`Skipping notification email to ${toUid}: no email on file.`);
+    return;
+  }
+  await admin.firestore().collection('mail').add({ to: [to], message: { subject, text } });
+}
+
+// Fires when a playdate is proposed — the recipient might not have the
+// app open to see it otherwise. Proposing also writes a message into the
+// conversation (see sendProposalMessage in lib/messages.ts) — the
+// message-created trigger below skips that one (type ===
+// 'playdate_proposal') so a new proposal only ever sends this one email,
+// not two.
+exports.emailOnPlaydateProposed = onDocumentCreated('playdateProposals/{proposalId}', async (event) => {
+  const proposal = event.data?.data();
+  if (!proposal || typeof proposal.fromUid !== 'string' || typeof proposal.toUid !== 'string') return;
+
+  const fromSnap = await admin.firestore().collection('users').doc(proposal.fromUid).get();
+  const family = familyLabelFor(fromSnap.data()?.lastName);
+  const dateLabel = typeof proposal.dateLabel === 'string' ? proposal.dateLabel : '';
+  const venue = typeof proposal.venue === 'string' ? proposal.venue : '';
+  const note = typeof proposal.note === 'string' ? proposal.note.trim() : '';
+  const details = [dateLabel, venue].filter(Boolean).join(' at ');
+
+  const lines = [
+    `${family} sent you a playdate invite on Haven.ly${details ? `: ${details}` : '.'}`,
+    note ? `Their note: "${note}"` : null,
+    '',
+    `View and respond: ${APP_BASE_URL}/proposal/${event.params.proposalId}`,
+  ].filter((line) => line !== null);
+
+  await queueEmail(proposal.toUid, `${family} sent you a playdate invite`, lines.join('\n'));
+});
+
+// Fires on every new message — skips a playdate-proposal message (the
+// trigger above already emails that one) and an empty/system message.
+// Recipient is derived from the parent conversation's participantUids,
+// since a message doc itself never names its own recipient (see
+// lib/messages.ts's sendMessage).
+exports.emailOnMessageSent = onDocumentCreated(
+  'conversations/{conversationId}/messages/{messageId}',
+  async (event) => {
+    const message = event.data?.data();
+    if (!message || message.type === 'playdate_proposal' || typeof message.senderUid !== 'string') return;
+    const text = typeof message.text === 'string' ? message.text.trim() : '';
+    if (!text) return;
+
+    const conversationSnap = await admin.firestore().collection('conversations').doc(event.params.conversationId).get();
+    const participantUids = conversationSnap.data()?.participantUids;
+    const toUid = Array.isArray(participantUids) ? participantUids.find((uid) => uid !== message.senderUid) : null;
+    if (!toUid) return;
+
+    const fromSnap = await admin.firestore().collection('users').doc(message.senderUid).get();
+    const family = familyLabelFor(fromSnap.data()?.lastName);
+
+    const lines = [
+      `${family} sent you a message on Haven.ly:`,
+      '',
+      `"${text}"`,
+      '',
+      `Reply: ${APP_BASE_URL}/messages/${event.params.conversationId}`,
+    ];
+
+    await queueEmail(toUid, `New message from ${family}`, lines.join('\n'));
+  }
+);
 
 // Smallest age gap between any of one family's kids and any of the
 // other's — used as a rough "will these two actually enjoy playing

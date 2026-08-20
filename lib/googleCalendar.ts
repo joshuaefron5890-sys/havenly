@@ -1,4 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
+import { Platform } from 'react-native';
 import { functions } from './firebase';
 
 // Exchanges the authorization code from requestGoogleCalendarAuthCode() for
@@ -6,12 +7,17 @@ import { functions } from './firebase';
 // secret this requires — a browser can never safely do this exchange
 // itself). Success means the backend can now query this user's calendar
 // free/busy on its own, at any later time, without them being present.
+//
+// `native` tells the server which redirect_uri convention the code was
+// issued under (see functions/index.js's exchangeGoogleCode) — a web JS
+// popup code and a native serverAuthCode aren't interchangeable, Google
+// rejects the exchange if this doesn't match how the code was requested.
 export async function connectGoogleCalendarBackend(code: string): Promise<void> {
   if (!functions) {
     throw new Error('not-configured');
   }
   const call = httpsCallable(functions, 'connectGoogleCalendar');
-  await call({ code });
+  await call({ code, native: Platform.OS !== 'web' });
 }
 
 // Creates the calendar event for one accepted proposal on the signed-in

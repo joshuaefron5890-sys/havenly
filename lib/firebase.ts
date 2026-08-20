@@ -2,7 +2,6 @@ import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth, GoogleAuthProvider, signInWithCredential, signOut, UserCredential } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 import { Functions, getFunctions } from 'firebase/functions';
-import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -32,12 +31,6 @@ if (firebaseConfigured) {
 }
 
 export { app, auth, db, functions };
-
-// Web-only for now — native Google auth needs expo-auth-session + platform
-// OAuth client IDs, a separate piece of work not done yet.
-export function googleSignInSupported(): boolean {
-  return Platform.OS === 'web';
-}
 
 // Exchanges a Google ID token (from GoogleSignInButton's callback, or from
 // the explicit calendar Connect flow's server-side code exchange) for a

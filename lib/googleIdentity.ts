@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { nativeRequestGoogleCalendarAuthCode } from './googleNativeAuth';
 
 // Same client ID Firebase auto-created for the Google provider — reused here
 // so no new OAuth client is needed, just its authorized JavaScript origins.
@@ -94,7 +95,14 @@ function requestCodeForScope(scope: string, wantsOfflineAccess: boolean): Promis
 // A family that just wants free/busy matching, not event creation, can
 // leave the toggle off and never hits that wall at all — calendar.freebusy
 // is not a sensitive scope.
+// Native has its own mechanism entirely (lib/googleNativeAuth.ts, the
+// actual Google Sign-In SDK rather than a web popup) — delegated to here
+// so every caller of this function keeps working unchanged on both
+// platforms.
 export function requestGoogleCalendarAuthCode(pushEvents: boolean): Promise<string> {
+  if (Platform.OS !== 'web') {
+    return nativeRequestGoogleCalendarAuthCode(pushEvents);
+  }
   return requestCodeForScope(
     pushEvents ? 'https://www.googleapis.com/auth/calendar.events' : 'https://www.googleapis.com/auth/calendar.freebusy',
     true

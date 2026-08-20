@@ -7,7 +7,15 @@
     "icon": "./assets/icon.png",
     "scheme": "havenly",
     "userInterfaceStyle": "light",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.315662747088-68bt1tt941lf7jcecb7t6n87huqd1t7l"
+        }
+      ]
+    ],
     "runtimeVersion": {
       "policy": "fingerprint"
     },

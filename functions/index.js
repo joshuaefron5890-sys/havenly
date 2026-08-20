@@ -15,11 +15,13 @@ setGlobalOptions({ maxInstances: 10 });
 const GOOGLE_CLIENT_ID = '315662747088-dr7k9f6sbk4gs431v4j2c06hoob92mkm.apps.googleusercontent.com';
 const googleClientSecret = defineSecret('GOOGLE_OAUTH_CLIENT_SECRET');
 
-// Shared by connectGoogleCalendar (calendar-only scope, requires an existing
-// session) and exchangeGoogleSignInCode (combined identity+calendar scope,
-// used before a session exists) — both hand a code from a client-side
-// initCodeClient popup here to trade it for real tokens.
-async function exchangeGoogleCode(code, clientSecret) {
+// Used by connectGoogleCalendar to trade a code for real tokens.
+// redirect_uri must match how the code was originally requested:
+// 'postmessage' for the web JS popup flow (initCodeClient), or an empty
+// string for a serverAuthCode from the native Google Sign-In SDK
+// (lib/googleNativeAuth.ts) — Google rejects the exchange outright if
+// these don't match.
+async function exchangeGoogleCode(code, clientSecret, redirectUri) {
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -27,9 +29,7 @@ async function exchangeGoogleCode(code, clientSecret) {
       code,
       client_id: GOOGLE_CLIENT_ID,
       client_secret: clientSecret,
-      // Google's fixed placeholder redirect_uri for JS popup-mode code
-      // clients — there's no real redirect endpoint to register for these.
-      redirect_uri: 'postmessage',
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     }),
   });
@@ -73,8 +73,12 @@ exports.connectGoogleCalendar = onCall({ secrets: [googleClientSecret] }, async 
   if (!code) {
     throw new HttpsError('invalid-argument', 'Missing authorization code.');
   }
+  // native (true) → a serverAuthCode from lib/googleNativeAuth.ts, which
+  // Google requires an empty redirect_uri to exchange; web (default,
+  // false) → the JS popup flow's fixed 'postmessage' placeholder.
+  const native = request.data?.native === true;
 
-  const tokenJson = await exchangeGoogleCode(code, googleClientSecret.value());
+  const tokenJson = await exchangeGoogleCode(code, googleClientSecret.value(), native ? '' : 'postmessage');
   if (!tokenJson.refresh_token) {
     throw new HttpsError('unknown', 'Google did not return a refresh token.');
   }

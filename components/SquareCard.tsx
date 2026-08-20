@@ -146,7 +146,7 @@ export function SquareCard({
         <View style={styles.contributorRow}>
           <Ionicons name="person-circle-outline" size={11} color={colors.textMuted} />
           <Text style={styles.contributorText} numberOfLines={1}>
-            {contributedBy}
+            {contributedBy.split(' ')[0]}
           </Text>
         </View>
       ) : subtitle ? (

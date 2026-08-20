@@ -4,16 +4,29 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAt5csdRUAmTg-H7tZZAzlz3LPa1YnSUV0",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "havenly-cd19f.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "havenly-cd19f",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "havenly-cd19f.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "315662747088",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:315662747088:web:17c7c58b7fcfc4a08265d5"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development"
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "channel": "preview"
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true,
       "channel": "production"
     }

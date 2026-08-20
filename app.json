@@ -14,6 +14,14 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.315662747088-68bt1tt941lf7jcecb7t6n87huqd1t7l"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Haven.ly uses your photos to let you add a picture to your family profile or a community contribution.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "runtimeVersion": {

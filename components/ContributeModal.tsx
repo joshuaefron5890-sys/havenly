@@ -1,12 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './AppText';
 import { DatePickerModal } from './DatePickerModal';
 import { FieldInput } from './FieldInput';
 import { PhotoCropperModal } from './PhotoCropperModal';
 import { ContributionField } from '../lib/contributions';
-import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
+import { pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
 import { colors } from '../theme/colors';
 
 // One generic bottom-sheet form reused by every "Contribute" CTA (Events,
@@ -52,6 +64,7 @@ export function ContributeModal({
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const missingRequired = fields.some((f) => !f.optional && !(values[f.key] ?? '').trim());
   const canSubmit = Boolean(name.trim()) && !missingRequired && !submitting;
@@ -64,14 +77,26 @@ export function ContributeModal({
 
   const handlePickImage = async (key: string) => {
     setImageError(null);
-    if (!photoUploadSupported()) {
-      setImageError('Photo upload isn’t available on this platform yet — paste a link instead.');
+    if (Platform.OS === 'web') {
+      const file = await pickImageFile();
+      if (file) {
+        setActiveImageKey(key);
+        setPickedPhoto(file);
+      }
       return;
     }
-    const file = await pickImageFile();
-    if (file) {
-      setActiveImageKey(key);
-      setPickedPhoto(file);
+    // Native has no DOM File/canvas to hand off to PhotoCropperModal — the
+    // OS's own picker (with its own built-in crop step) does the whole
+    // pick-crop-upload job in one call instead.
+    setActiveImageKey(key);
+    setUploadingImage(true);
+    try {
+      const url = await pickAndUploadNativePhoto(`contribution-${Date.now()}.jpg`);
+      if (url) setValues((prev) => ({ ...prev, [key]: url }));
+    } catch {
+      setImageError('Couldn’t upload that photo — check your photo library permission and try again.');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -113,7 +138,7 @@ export function ContributeModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         <View style={styles.sheet}>
           <View style={styles.header}>
@@ -162,24 +187,22 @@ export function ContributeModal({
                         </Pressable>
                       </View>
                     ) : null}
-                    {photoUploadSupported() ? (
-                      <Pressable
-                        style={styles.imageUploadButton}
-                        onPress={() => handlePickImage(f.key)}
-                        disabled={busy}
-                      >
-                        {busy ? (
-                          <ActivityIndicator color={colors.accent} />
-                        ) : (
-                          <>
-                            <Ionicons name="camera-outline" size={16} color={colors.accent} />
-                            <Text style={styles.imageUploadText}>
-                              {value ? 'Change photo' : 'Take or upload a photo'}
-                            </Text>
-                          </>
-                        )}
-                      </Pressable>
-                    ) : null}
+                    <Pressable
+                      style={styles.imageUploadButton}
+                      onPress={() => handlePickImage(f.key)}
+                      disabled={busy}
+                    >
+                      {busy ? (
+                        <ActivityIndicator color={colors.accent} />
+                      ) : (
+                        <>
+                          <Ionicons name="camera-outline" size={16} color={colors.accent} />
+                          <Text style={styles.imageUploadText}>
+                            {value ? 'Change photo' : 'Take or upload a photo'}
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
                     <FieldInput
                       label="Or paste an image link"
                       placeholder="https://…"
@@ -219,7 +242,7 @@ export function ContributeModal({
             })}
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </ScrollView>
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: Math.max(20, insets.bottom) }]}>
             <Pressable
               style={[styles.submit, !canSubmit && styles.submitDisabled]}
               onPress={handleSubmit}
@@ -233,7 +256,7 @@ export function ContributeModal({
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
       <DatePickerModal
         visible={datePickerKey !== null}
         onClose={() => setDatePickerKey(null)}

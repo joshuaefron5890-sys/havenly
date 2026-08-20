@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../../components/AddPhotoCircle';
@@ -10,7 +10,7 @@ import { WizardHeader } from '../../components/WizardHeader';
 import { emptySiblingProfile, SiblingProfile, useOnboarding } from '../../contexts/OnboardingContext';
 import { numSiblings, stepBeforeSiblings } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
-import { photoUploadSupported, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
+import { pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
 import { colors } from '../../theme/colors';
 
 export default function Siblings() {
@@ -38,12 +38,20 @@ export default function Siblings() {
 
   const handlePickPhoto = async () => {
     setPhotoError(null);
-    if (!photoUploadSupported()) {
-      setPhotoError('Photo upload isn’t available on this platform yet.');
+    if (Platform.OS === 'web') {
+      const file = await pickImageFile();
+      if (file) setPickedPhoto(file);
       return;
     }
-    const file = await pickImageFile();
-    if (file) setPickedPhoto(file);
+    setUploadingPhoto(true);
+    try {
+      const url = await pickAndUploadNativePhoto(`sibling-photo-${siblingIndex}.jpg`);
+      if (url) updateCurrent({ photoUrl: url });
+    } catch {
+      setPhotoError('Couldn’t upload that photo — check your photo library permission and try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleCropConfirm = async (blob: Blob) => {

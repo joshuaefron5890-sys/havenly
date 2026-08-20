@@ -8,6 +8,7 @@
     "@react-native-google-signin/google-signin": "^16.1.4",
     "expo": "~57.0.11",
     "expo-constants": "^57.0.9",
+    "expo-image-picker": "~57.0.11",
     "expo-linking": "^57.0.5",
     "expo-router": "^57.0.11",
     "expo-status-bar": "~57.0.1",

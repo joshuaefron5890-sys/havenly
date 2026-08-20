@@ -8,6 +8,17 @@
     "scheme": "havenly",
     "userInterfaceStyle": "light",
     "plugins": ["expo-router"],
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8c78da10-6b71-4419-a28b-7943ea5ae865"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8c78da10-6b71-4419-a28b-7943ea5ae865"
+      }
+    },
     "ios": {
       "supportsTablet": true
     },

@@ -2,13 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FieldInput } from '../../components/FieldInput';
+import { ConnectAppleCalendarModal } from '../../components/ConnectAppleCalendarModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
-import { connectAppleCalendar } from '../../lib/appleCalendar';
 import { auth, db } from '../../lib/firebase';
 import { connectGoogleCalendarBackend } from '../../lib/googleCalendar';
 import { requestGoogleCalendarAuthCode } from '../../lib/googleIdentity';
@@ -30,10 +29,6 @@ export default function Calendar() {
 
   const [appleConnected, setAppleConnected] = useState(profile.appleCalendarConnected);
   const [appleModalVisible, setAppleModalVisible] = useState(false);
-  const [appleId, setAppleId] = useState('');
-  const [appPassword, setAppPassword] = useState('');
-  const [connectingApple, setConnectingApple] = useState(false);
-  const [appleError, setAppleError] = useState<string | null>(null);
 
   // wantsSync is passed explicitly rather than read from the pushEvents
   // state — the sync toggle's onValueChange calls this directly with the
@@ -109,33 +104,6 @@ export default function Calendar() {
       return;
     }
     handleConnectGoogle(true);
-  };
-
-  const openAppleModal = () => {
-    setAppleError(null);
-    setAppleModalVisible(true);
-  };
-
-  const handleConnectApple = async () => {
-    setAppleError(null);
-    if (!appleId.trim() || !appPassword.trim()) {
-      setAppleError('Enter your Apple ID and an app-specific password.');
-      return;
-    }
-    setConnectingApple(true);
-    try {
-      await connectAppleCalendar(appleId.trim(), appPassword.trim());
-      setAppleConnected(true);
-      updateProfile({ appleCalendarConnected: true });
-      saveOnboardingStep({ appleCalendarConnected: true }, '/onboarding/calendar', { editMode });
-      setAppleModalVisible(false);
-      setAppleId('');
-      setAppPassword('');
-    } catch {
-      setAppleError('Couldn’t verify your Apple ID and app-specific password — double check them and try again.');
-    } finally {
-      setConnectingApple(false);
-    }
   };
 
   const finish = async () => {
@@ -233,7 +201,7 @@ export default function Calendar() {
                 <Text style={styles.connectedText}>Connected</Text>
               </View>
             )}
-            <Pressable style={styles.connectBadge} onPress={openAppleModal}>
+            <Pressable style={styles.connectBadge} onPress={() => setAppleModalVisible(true)}>
               <Ionicons name="logo-apple" size={16} color={colors.text} />
               <Text style={styles.connect}>{appleConnected ? 'Reconnect' : 'Connect'}</Text>
             </Pressable>
@@ -243,50 +211,12 @@ export default function Calendar() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
-      <Modal visible={appleModalVisible} transparent animationType="fade" onRequestClose={() => setAppleModalVisible(false)}>
-        <Pressable style={styles.overlay} onPress={() => !connectingApple && setAppleModalVisible(false)}>
-          <Pressable style={styles.appleCard} onPress={() => {}}>
-            <Text style={styles.appleTitle}>Connect Apple Calendar</Text>
-            <Text style={styles.appleBody}>
-              Use an app-specific password, not your regular Apple ID password.{' '}
-              <Text
-                style={styles.appleLink}
-                onPress={() => Linking.openURL('https://appleid.apple.com/account/manage')}
-              >
-                Generate one at appleid.apple.com
-              </Text>
-              .
-            </Text>
-            <FieldInput
-              label="Apple ID"
-              placeholder="you@icloud.com"
-              value={appleId}
-              onChangeText={setAppleId}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <FieldInput
-              label="App-specific password"
-              placeholder="xxxx-xxxx-xxxx-xxxx"
-              value={appPassword}
-              onChangeText={setAppPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-            {appleError ? <Text style={styles.error}>{appleError}</Text> : null}
-            <Pressable
-              style={[styles.cta, connectingApple && styles.ctaDisabled]}
-              onPress={handleConnectApple}
-              disabled={connectingApple}
-            >
-              {connectingApple ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.ctaText}>Connect</Text>}
-            </Pressable>
-            <Pressable onPress={() => !connectingApple && setAppleModalVisible(false)}>
-              <Text style={styles.skip}>Cancel</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ConnectAppleCalendarModal
+        visible={appleModalVisible}
+        onClose={() => setAppleModalVisible(false)}
+        onConnected={() => setAppleConnected(true)}
+        editMode={editMode}
+      />
 
       <View style={styles.footer}>
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={finish} disabled={submitting}>
@@ -429,36 +359,6 @@ const styles = StyleSheet.create({
     color: colors.error,
     marginTop: 10,
     marginBottom: 4,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  appleCard: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 20,
-  },
-  appleTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  appleBody: {
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 19,
-    marginBottom: 16,
-  },
-  appleLink: {
-    color: colors.accent,
-    fontWeight: '600',
   },
   footer: {
     padding: 20,

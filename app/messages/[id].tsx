@@ -33,7 +33,7 @@ const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
 
 export default function MessageThread() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [family, setFamily] = useState<SuggestedFamily | null>(null);
   const [draft, setDraft] = useState('');
@@ -43,6 +43,17 @@ export default function MessageThread() {
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [syncPromptProposalId, setSyncPromptProposalId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  // A signed-out visitor (e.g. opening an emailed link cold, in a private
+  // window) would otherwise spin forever below: subscribeToMessages'
+  // Firestore listener has no error handler, so firestore.rules denying
+  // the unauthenticated read just silently never calls back, rather than
+  // resolving to an empty list. Bouncing to sign-in first avoids ever
+  // hitting that — same pattern as app/proposal/[id].tsx.
+  useEffect(() => {
+    if (authLoading || user) return;
+    router.replace('/sign-in');
+  }, [authLoading, user]);
 
   // Own profile isn't hydrated by default on this route — needed just to
   // check googleCalendarSyncEnabled so the "add to calendar?" prompt
@@ -158,6 +169,14 @@ export default function MessageThread() {
       setSending(false);
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <SafeAreaView style={[styles.screen, styles.centered]} edges={['top', 'bottom']}>
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -289,6 +308,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   flex: {
     flex: 1,

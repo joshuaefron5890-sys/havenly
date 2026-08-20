@@ -84,12 +84,22 @@ function FamilyMini({
 
 export default function ProposalDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [proposal, setProposal] = useState<PlaydateProposal | null | undefined>(undefined);
   const [otherFamily, setOtherFamily] = useState<FamilyProfile | null>(null);
   const [myFamily, setMyFamily] = useState<SuggestedFamily | null>(null);
   const [responding, setResponding] = useState(false);
   const [canceling, setCanceling] = useState(false);
+
+  // A signed-out visitor (e.g. opening an emailed link cold, in a private
+  // window) would otherwise spin forever below: subscribeToProposal's
+  // Firestore listener has no error handler, so firestore.rules denying
+  // the unauthenticated read just silently never calls back, rather than
+  // resolving to null. Bouncing to sign-in first avoids ever hitting that.
+  useEffect(() => {
+    if (authLoading || user) return;
+    router.replace('/sign-in');
+  }, [authLoading, user]);
 
   // Own profile isn't hydrated by default on this route (only the
   // onboarding wizard's own layout does that) — needed here just to check
@@ -181,7 +191,7 @@ export default function ProposalDetail() {
     }
   };
 
-  if (proposal === undefined) {
+  if (authLoading || !user || proposal === undefined) {
     return (
       <SafeAreaView style={[styles.screen, styles.centered]} edges={['top', 'bottom']}>
         <ActivityIndicator color={colors.accent} />

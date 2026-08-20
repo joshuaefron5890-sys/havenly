@@ -1,7 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../components/EmptyState';
@@ -142,54 +151,56 @@ export default function ProposePlaydate() {
         <Text style={styles.headerTitle}>Propose a playdate</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.subhead}>with {familyDisplayName(targetProfile)}</Text>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.subhead}>with {familyDisplayName(targetProfile)}</Text>
 
-        <Text style={styles.label}>PICK A TIME</Text>
-        {slotsNote ? <Text style={styles.note}>{slotsNote}</Text> : null}
-        {slots === null ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : slots.length === 0 ? (
-          <EmptyState text="No overlapping times found in the next 3 weeks." />
-        ) : (
-          slots.slice(0, 12).map((slot) => {
-            const selected = selectedSlot?.start.getTime() === slot.start.getTime();
-            return (
-              <Pressable
-                key={slot.start.toISOString()}
-                style={[styles.slotRow, selected && styles.slotRowSelected]}
-                onPress={() => setSelectedSlot(slot)}
-              >
-                <View style={[styles.radio, selected && styles.radioSelected]} />
-                <View style={styles.slotTextWrap}>
-                  <Text style={styles.slotText}>{formatSlotLabel(slot)}</Text>
-                  <Text style={styles.slotWindowLabel}>{slot.label}</Text>
-                </View>
-              </Pressable>
-            );
-          })
-        )}
+          <Text style={styles.label}>PICK A TIME</Text>
+          {slotsNote ? <Text style={styles.note}>{slotsNote}</Text> : null}
+          {slots === null ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : slots.length === 0 ? (
+            <EmptyState text="No overlapping times found in the next 3 weeks." />
+          ) : (
+            slots.slice(0, 12).map((slot) => {
+              const selected = selectedSlot?.start.getTime() === slot.start.getTime();
+              return (
+                <Pressable
+                  key={slot.start.toISOString()}
+                  style={[styles.slotRow, selected && styles.slotRowSelected]}
+                  onPress={() => setSelectedSlot(slot)}
+                >
+                  <View style={[styles.radio, selected && styles.radioSelected]} />
+                  <View style={styles.slotTextWrap}>
+                    <Text style={styles.slotText}>{formatSlotLabel(slot)}</Text>
+                    <Text style={styles.slotWindowLabel}>{slot.label}</Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
 
-        <FieldInput label="Venue" placeholder="Address or place name" value={venue} onChangeText={setVenue} />
+          <FieldInput label="Venue" placeholder="Address or place name" value={venue} onChangeText={setVenue} />
 
-        <Text style={styles.label}>
-          MESSAGE<Text style={styles.optional}> · optional</Text>
-        </Text>
-        <TextInput
-          style={styles.messageInput}
-          placeholder="Add a note about the playdate…"
-          placeholderTextColor={colors.textMuted}
-          value={note}
-          onChangeText={setNote}
-          multiline
-        />
-      </ScrollView>
+          <Text style={styles.label}>
+            MESSAGE<Text style={styles.optional}> · optional</Text>
+          </Text>
+          <TextInput
+            style={styles.messageInput}
+            placeholder="Add a note about the playdate…"
+            placeholderTextColor={colors.textMuted}
+            value={note}
+            onChangeText={setNote}
+            multiline
+          />
+        </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable style={[styles.cta, !canSubmit && styles.ctaDisabled]} onPress={handleSubmit} disabled={!canSubmit}>
-          <Text style={styles.ctaText}>{submitting ? 'Sending…' : 'Send proposal'}</Text>
-        </Pressable>
-      </View>
+        <View style={styles.footer}>
+          <Pressable style={[styles.cta, !canSubmit && styles.ctaDisabled]} onPress={handleSubmit} disabled={!canSubmit}>
+            <Text style={styles.ctaText}>{submitting ? 'Sending…' : 'Send proposal'}</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -198,6 +209,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  flex: {
+    flex: 1,
   },
   centered: {
     flex: 1,

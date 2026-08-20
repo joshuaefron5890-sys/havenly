@@ -54,9 +54,7 @@ function FamilyMini({
         variant="person"
         iconSize={26}
       />
-      <Text style={styles.familyName} numberOfLines={1}>
-        {family ? familyDisplayName(family) : fallbackLabel}
-      </Text>
+      <Text style={styles.familyName}>{family ? familyDisplayName(family) : fallbackLabel}</Text>
       {family?.city ? (
         <Text style={styles.familyLocation} numberOfLines={1}>
           {family.city}, {family.state}

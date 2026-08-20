@@ -139,9 +139,9 @@ export function SquareCard({
           </View>
         ) : null}
       </View>
-      <Text style={styles.title} numberOfLines={2}>
-        {title}
-      </Text>
+      {/* No numberOfLines cap — a long name wraps to as many lines as it
+          needs rather than getting cut off with an ellipsis. */}
+      <Text style={styles.title}>{title}</Text>
       {contributedBy ? (
         <View style={styles.contributorRow}>
           <Ionicons name="person-circle-outline" size={11} color={colors.textMuted} />

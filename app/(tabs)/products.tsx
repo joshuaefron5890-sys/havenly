@@ -13,7 +13,14 @@ import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
-import { addFavoriteProduct, getFavoriteProductUrls, removeFavoriteProduct } from '../../lib/favorites';
+import {
+  addFavoriteContribution,
+  addFavoriteProduct,
+  getFavoriteContributionIds,
+  getFavoriteProductUrls,
+  removeFavoriteContribution,
+  removeFavoriteProduct,
+} from '../../lib/favorites';
 import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
 import { colors } from '../../theme/colors';
 
@@ -38,6 +45,7 @@ export default function Products() {
   const [tagFilter, setTagFilter] = useState(ALL);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [contributeVisible, setContributeVisible] = useState(false);
+  const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -60,6 +68,9 @@ export default function Products() {
       let cancelled = false;
       getFavoriteProductUrls(user.uid).then((urls) => {
         if (!cancelled) setFavoriteUrls(new Set(urls));
+      });
+      getFavoriteContributionIds(user.uid).then((ids) => {
+        if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('product').then((result) => {
         if (!cancelled) setContributions(result);
@@ -118,6 +129,24 @@ export default function Products() {
     }
   };
 
+  const toggleContributionFavorite = async (contributionId: string) => {
+    const wasFavorited = favoriteContributionIds.has(contributionId);
+    setFavoriteContributionIds((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(contributionId) : next.add(contributionId);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoriteContribution(contributionId) : addFavoriteContribution(contributionId));
+    } catch {
+      setFavoriteContributionIds((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(contributionId) : next.delete(contributionId);
+        return next;
+      });
+    }
+  };
+
   const submitContribution = async (name: string, values: Record<string, string>) => {
     await createContribution('product', values, name);
     const result = await fetchContributions('product');
@@ -162,6 +191,8 @@ export default function Products() {
                 icon={c.fields.imageUrl ? undefined : 'bag-outline'}
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',

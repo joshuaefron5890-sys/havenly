@@ -13,7 +13,14 @@ import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
-import { addFavoritePodcast, getFavoritePodcastIds, removeFavoritePodcast } from '../../lib/favorites';
+import {
+  addFavoriteContribution,
+  addFavoritePodcast,
+  getFavoriteContributionIds,
+  getFavoritePodcastIds,
+  removeFavoriteContribution,
+  removeFavoritePodcast,
+} from '../../lib/favorites';
 import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
 import { colors } from '../../theme/colors';
 
@@ -38,6 +45,7 @@ export default function Podcasts() {
   const [tagFilter, setTagFilter] = useState(ALL);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [contributeVisible, setContributeVisible] = useState(false);
+  const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -60,6 +68,9 @@ export default function Podcasts() {
       let cancelled = false;
       getFavoritePodcastIds(user.uid).then((ids) => {
         if (!cancelled) setFavoriteIds(new Set(ids));
+      });
+      getFavoriteContributionIds(user.uid).then((ids) => {
+        if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('podcast').then((result) => {
         if (!cancelled) setContributions(result);
@@ -113,6 +124,24 @@ export default function Podcasts() {
     }
   };
 
+  const toggleContributionFavorite = async (contributionId: string) => {
+    const wasFavorited = favoriteContributionIds.has(contributionId);
+    setFavoriteContributionIds((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(contributionId) : next.add(contributionId);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoriteContribution(contributionId) : addFavoriteContribution(contributionId));
+    } catch {
+      setFavoriteContributionIds((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(contributionId) : next.delete(contributionId);
+        return next;
+      });
+    }
+  };
+
   const submitContribution = async (name: string, values: Record<string, string>) => {
     await createContribution('podcast', values, name);
     const result = await fetchContributions('podcast');
@@ -156,6 +185,8 @@ export default function Podcasts() {
                 icon="mic-outline"
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',

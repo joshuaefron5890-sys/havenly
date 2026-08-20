@@ -21,15 +21,18 @@ import {
   proposalStartLabel,
 } from '../../lib/playdateProposals';
 import {
+  addFavoriteContribution,
   addFavoriteFamily,
   addFavoritePodcast,
   addFavoriteProduct,
   addFavoriteResource,
+  getFavoriteContributionIds,
   getFavoriteEventIds,
   getFavoriteFamilyUids,
   getFavoritePodcastIds,
   getFavoriteProductUrls,
   getFavoriteResourceUrls,
+  removeFavoriteContribution,
   removeFavoriteFamily,
   removeFavoritePodcast,
   removeFavoriteProduct,
@@ -119,6 +122,43 @@ export default function ForYou() {
   // make up "one row" below.
   const [gridWidth, setGridWidth] = useState<number | null>(null);
   const perRow = cardsPerRow(gridWidth);
+
+  // Shared across every section below — event/product/podcast/article
+  // contributions all live in the same 'contributions' collection and
+  // favorite field (see lib/favorites.ts), unlike curated content which
+  // has a type-specific favorite field per section.
+  const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let cancelled = false;
+      getFavoriteContributionIds(user.uid).then((ids) => {
+        if (!cancelled) setFavoriteContributionIds(new Set(ids));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [user])
+  );
+
+  const toggleContributionFavorite = async (contributionId: string) => {
+    const wasFavorited = favoriteContributionIds.has(contributionId);
+    setFavoriteContributionIds((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(contributionId) : next.add(contributionId);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoriteContribution(contributionId) : addFavoriteContribution(contributionId));
+    } catch {
+      setFavoriteContributionIds((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(contributionId) : next.delete(contributionId);
+        return next;
+      });
+    }
+  };
 
   // Families
   const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
@@ -910,6 +950,8 @@ export default function ForYou() {
                 icon="calendar-outline"
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -971,6 +1013,8 @@ export default function ForYou() {
                 icon={c.fields.imageUrl ? undefined : 'bag-outline'}
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -1030,6 +1074,8 @@ export default function ForYou() {
                 icon="mic-outline"
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -1091,6 +1137,8 @@ export default function ForYou() {
                 icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',

@@ -11,7 +11,8 @@ type FavoriteField =
   | 'favoritePodcastIds'
   | 'favoriteProductUrls'
   | 'favoriteResourceUrls'
-  | 'favoriteEventIds';
+  | 'favoriteEventIds'
+  | 'favoriteContributionIds';
 
 async function getFavoriteIds(uid: string, field: FavoriteField): Promise<string[]> {
   if (!db) return [];
@@ -51,3 +52,11 @@ export const removeFavoriteResource = (resourceUrl: string) => removeFavorite('f
 export const getFavoriteEventIds = (uid: string) => getFavoriteIds(uid, 'favoriteEventIds');
 export const addFavoriteEvent = (eventId: string) => addFavorite('favoriteEventIds', eventId);
 export const removeFavoriteEvent = (eventId: string) => removeFavorite('favoriteEventIds', eventId);
+
+// One shared field for every community-contributed product/podcast/event/
+// resource — they're all documents in the same 'contributions' collection
+// (see lib/contributions.ts), so a single id namespace covers all of them,
+// unlike the type-specific fields above for curated (non-community) content.
+export const getFavoriteContributionIds = (uid: string) => getFavoriteIds(uid, 'favoriteContributionIds');
+export const addFavoriteContribution = (contributionId: string) => addFavorite('favoriteContributionIds', contributionId);
+export const removeFavoriteContribution = (contributionId: string) => removeFavorite('favoriteContributionIds', contributionId);

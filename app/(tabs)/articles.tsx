@@ -23,7 +23,14 @@ import {
   ResourceSubtype,
   validateReferralContact,
 } from '../../lib/contributions';
-import { addFavoriteResource, getFavoriteResourceUrls, removeFavoriteResource } from '../../lib/favorites';
+import {
+  addFavoriteContribution,
+  addFavoriteResource,
+  getFavoriteContributionIds,
+  getFavoriteResourceUrls,
+  removeFavoriteContribution,
+  removeFavoriteResource,
+} from '../../lib/favorites';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
 
@@ -54,6 +61,7 @@ export default function Articles() {
   const [contributeSubtype, setContributeSubtype] = useState<ResourceSubtype | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [typeFilterVisible, setTypeFilterVisible] = useState(false);
+  const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -76,6 +84,9 @@ export default function Articles() {
       let cancelled = false;
       getFavoriteResourceUrls(user.uid).then((urls) => {
         if (!cancelled) setFavoriteUrls(new Set(urls));
+      });
+      getFavoriteContributionIds(user.uid).then((ids) => {
+        if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('article').then((result) => {
         if (!cancelled) setContributions(result);
@@ -130,6 +141,24 @@ export default function Articles() {
       setFavoriteUrls((prev) => {
         const next = new Set(prev);
         wasFavorited ? next.add(article.url) : next.delete(article.url);
+        return next;
+      });
+    }
+  };
+
+  const toggleContributionFavorite = async (contributionId: string) => {
+    const wasFavorited = favoriteContributionIds.has(contributionId);
+    setFavoriteContributionIds((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(contributionId) : next.add(contributionId);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoriteContribution(contributionId) : addFavoriteContribution(contributionId));
+    } catch {
+      setFavoriteContributionIds((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(contributionId) : next.delete(contributionId);
         return next;
       });
     }
@@ -197,6 +226,8 @@ export default function Articles() {
                 icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ContributeModal } from '../../components/ContributeModal';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import {
   CONTRIBUTION_SCHEMAS,
   ContributionType,
@@ -15,6 +16,7 @@ import {
   updateContribution,
 } from '../../lib/contributions';
 import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
+import { addFavoriteContribution, getFavoriteContributionIds, removeFavoriteContribution } from '../../lib/favorites';
 import { colors } from '../../theme/colors';
 
 // One detail screen for every contributed content type — the fields
@@ -39,6 +41,8 @@ export default function ContributionDetail() {
   );
   const [liveContributedByName, setLiveContributedByName] = useState(contributedByName || 'A Haven.ly family');
   const [editVisible, setEditVisible] = useState(false);
+  const [favorited, setFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   // The Resources tab's three sub-types (article/referral/blog) all share
   // Firestore type 'article' — which one this contribution actually is
@@ -64,6 +68,32 @@ export default function ContributionDetail() {
       cancelled = true;
     };
   }, [contributedByUid]);
+
+  useEffect(() => {
+    if (!id || !user) return;
+    let cancelled = false;
+    getFavoriteContributionIds(user.uid).then((ids) => {
+      if (!cancelled) setFavorited(ids.includes(id));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user]);
+
+  const toggleFavorite = async () => {
+    if (!id || favoriteBusy) return;
+    setFavoriteBusy(true);
+    const next = !favorited;
+    setFavorited(next); // optimistic — feels instant, reverted below on failure
+    try {
+      await (next ? addFavoriteContribution(id) : removeFavoriteContribution(id));
+    } catch {
+      setFavorited(!next);
+      showAlert('Couldn’t save that', 'Please try again.');
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
 
   const title = liveFields.title || 'Community contribution';
   const url = liveFields.url?.trim();
@@ -93,12 +123,21 @@ export default function ContributionDetail() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        {isOwner ? (
-          <Pressable style={styles.editButton} onPress={() => setEditVisible(true)}>
-            <Ionicons name="pencil" size={16} color={colors.text} />
-            <Text style={styles.editButtonText}>Edit</Text>
+        <View style={styles.headerActions}>
+          <Pressable style={styles.heartButton} onPress={toggleFavorite} disabled={favoriteBusy}>
+            <Ionicons
+              name={favorited ? 'heart' : 'heart-outline'}
+              size={18}
+              color={favorited ? colors.accent : colors.text}
+            />
           </Pressable>
-        ) : null}
+          {isOwner ? (
+            <Pressable style={styles.editButton} onPress={() => setEditVisible(true)}>
+              <Ionicons name="pencil" size={16} color={colors.text} />
+              <Text style={styles.editButtonText}>Edit</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -126,15 +165,6 @@ export default function ContributionDetail() {
             </Text>
             <Text style={styles.contributorSub}>Contributed this {schema?.noun ?? 'pick'}</Text>
           </View>
-          {/* A match score compares you to another family — meaningless (and
-              was showing a clamped-but-real-looking number) when you're
-              looking at your own contribution. */}
-          {family && !isOwner ? (
-            <View style={styles.matchBadge}>
-              <Text style={styles.matchScore}>{family.matchScore}</Text>
-              <Text style={styles.matchLabel}>match</Text>
-            </View>
-          ) : null}
         </Pressable>
 
         {contributedImageUrl ? <Image source={{ uri: contributedImageUrl }} style={styles.contributedImage} /> : null}
@@ -196,6 +226,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  heartButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -237,9 +280,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 16,
   },
-  // Mirrors app/family/[id].tsx's own photo + name + match-score treatment
-  // (scaled down for an inline row instead of a hero banner) — tapping
-  // through opens that exact same profile screen.
+  // Mirrors app/family/[id].tsx's own photo + name treatment (scaled down
+  // for an inline row instead of a hero banner) — tapping through opens
+  // that exact same profile screen. No match score here, unlike that
+  // screen — reviewing a contributed pick isn't about how well-matched the
+  // contributor is to you.
   contributorRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -267,25 +312,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 1,
-  },
-  matchBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  matchScore: {
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  matchLabel: {
-    fontSize: 7,
-    color: colors.textMuted,
   },
   contributedImage: {
     width: '100%',

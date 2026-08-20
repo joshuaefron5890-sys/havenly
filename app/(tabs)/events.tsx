@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import { familyPhoto, fetchFamiliesByUids } from '../../lib/families';
+import { addFavoriteContribution, getFavoriteContributionIds, removeFavoriteContribution } from '../../lib/favorites';
 import { fetchLatestProposal, PlaydateProposal, proposalStartLabel } from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
 
@@ -33,6 +34,7 @@ export default function Events() {
   const [filter, setFilter] = useState(ALL);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [contributeVisible, setContributeVisible] = useState(false);
+  const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -55,6 +57,9 @@ export default function Events() {
       let cancelled = false;
       fetchLatestProposal().then((result) => {
         if (!cancelled) setProposal(result);
+      });
+      getFavoriteContributionIds(user.uid).then((ids) => {
+        if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('event').then((result) => {
         if (!cancelled) setContributions(result);
@@ -107,6 +112,24 @@ export default function Events() {
     if (!q) return contributions;
     return contributions.filter((c) => (c.fields.title ?? '').toLowerCase().includes(q));
   }, [contributions, query]);
+
+  const toggleContributionFavorite = async (contributionId: string) => {
+    const wasFavorited = favoriteContributionIds.has(contributionId);
+    setFavoriteContributionIds((prev) => {
+      const next = new Set(prev);
+      wasFavorited ? next.delete(contributionId) : next.add(contributionId);
+      return next;
+    });
+    try {
+      await (wasFavorited ? removeFavoriteContribution(contributionId) : addFavoriteContribution(contributionId));
+    } catch {
+      setFavoriteContributionIds((prev) => {
+        const next = new Set(prev);
+        wasFavorited ? next.add(contributionId) : next.delete(contributionId);
+        return next;
+      });
+    }
+  };
 
   const submitContribution = async (name: string, values: Record<string, string>) => {
     await createContribution('event', values, name);
@@ -169,6 +192,8 @@ export default function Events() {
                 icon="calendar-outline"
                 community
                 contributedBy={c.contributedByName}
+                favorited={favoriteContributionIds.has(c.id)}
+                onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',

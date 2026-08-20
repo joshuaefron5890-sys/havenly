@@ -20,9 +20,11 @@
       }
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.joshuaefronsteam.havenly"
     },
     "android": {
+      "package": "com.joshuaefronsteam.havenly",
       "adaptiveIcon": {
         "backgroundColor": "#E8734A",
         "foregroundImage": "./assets/android-icon-foreground.png",

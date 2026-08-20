@@ -340,7 +340,7 @@ export default function ProposalDetail() {
         </View>
       ) : (
         <View style={styles.footer}>
-          <Pressable style={styles.secondaryButton} onPress={proposeNewTime}>
+          <Pressable style={[styles.secondaryButton, styles.secondaryButtonFill]} onPress={proposeNewTime}>
             <Text style={styles.secondaryButtonText}>Propose Update</Text>
           </Pressable>
         </View>
@@ -619,13 +619,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryButton: {
-    flex: 1,
     borderWidth: 1,
     borderColor: colors.accent,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
+  },
+  // Only meaningful in `footer`'s row layout, where this is the sole child
+  // and flex: 1 is what makes it fill the row's width — folded into
+  // `secondaryButton` itself, `flex: 1` collapsed the button's text to
+  // nothing on iOS whenever it was stacked in `footerStack`'s column
+  // layout instead (flex: 1 there sizes along the column's main axis —
+  // height — not width; React Native Web's browser-based flexbox handled
+  // the same style forgivingly, which is why this never showed up there).
+  secondaryButtonFill: {
+    flex: 1,
   },
   secondaryButtonText: {
     color: colors.accent,

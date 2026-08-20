@@ -160,7 +160,7 @@ export default function ContributionDetail() {
             iconSize={20}
           />
           <View style={styles.contributorInfo}>
-            <Text style={styles.contributorName}>
+            <Text style={styles.contributorName} numberOfLines={1}>
               {isOwner ? 'You' : family ? familyDisplayName(family) : liveContributedByName}
             </Text>
             <Text style={styles.contributorSub}>Contributed this {schema?.noun ?? 'pick'}</Text>

@@ -129,7 +129,9 @@ export default function FamilyDetail() {
           </View>
           <View style={styles.heroBottomRow}>
             <View style={styles.heroTitleWrap}>
-              <Text style={styles.heroTitle}>{familyName}</Text>
+              <Text style={styles.heroTitle} numberOfLines={1}>
+                {familyName}
+              </Text>
               {profile.city ? (
                 <Text style={styles.heroLocation} numberOfLines={1}>
                   {profile.city}, {profile.state}

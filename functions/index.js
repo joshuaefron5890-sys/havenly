@@ -3,7 +3,6 @@ const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
-const { XMLParser } = require('fast-xml-parser');
 
 admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
@@ -15,118 +14,6 @@ setGlobalOptions({ maxInstances: 10 });
 // Google Cloud Console > APIs & Services > Credentials > this OAuth client.
 const GOOGLE_CLIENT_ID = '315662747088-dr7k9f6sbk4gs431v4j2c06hoob92mkm.apps.googleusercontent.com';
 const googleClientSecret = defineSecret('GOOGLE_OAUTH_CLIENT_SECRET');
-
-const xmlParser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true });
-
-const CURRENT_USER_PRINCIPAL_BODY = `<?xml version="1.0" encoding="utf-8" ?>
-<propfind xmlns="DAV:">
-  <prop>
-    <current-user-principal/>
-  </prop>
-</propfind>`;
-
-const CALENDAR_HOME_SET_BODY = `<?xml version="1.0" encoding="utf-8" ?>
-<propfind xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <prop>
-    <C:calendar-home-set/>
-  </prop>
-</propfind>`;
-
-// caldav.icloud.com has no CORS headers, so this handshake can only ever
-// happen server-side — the client (lib/appleCalendar.ts) just calls this
-// function with the Apple ID + app-specific password and waits for a result.
-async function caldavPropfind(url, basicAuth, body, depth) {
-  const res = await fetch(url, {
-    method: 'PROPFIND',
-    redirect: 'follow',
-    headers: {
-      Authorization: `Basic ${Buffer.from(basicAuth).toString('base64')}`,
-      'Content-Type': 'application/xml; charset=utf-8',
-      Depth: depth,
-    },
-    body,
-  });
-  const text = await res.text();
-  return { status: res.status, text, finalUrl: res.url };
-}
-
-function firstHref(parsed, ...path) {
-  let node = parsed?.multistatus?.response;
-  if (Array.isArray(node)) node = node[0];
-  for (const key of path) {
-    node = node?.[key];
-    if (Array.isArray(node)) node = node[0];
-  }
-  const href = node?.href;
-  return typeof href === 'string' ? href : null;
-}
-
-exports.connectAppleCalendar = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Sign in required.');
-  }
-
-  const appleId = typeof request.data?.appleId === 'string' ? request.data.appleId.trim() : '';
-  const appPassword = typeof request.data?.appPassword === 'string' ? request.data.appPassword.trim() : '';
-  if (!appleId || !appPassword) {
-    throw new HttpsError('invalid-argument', 'Apple ID and app-specific password are required.');
-  }
-
-  const basicAuth = `${appleId}:${appPassword}`;
-
-  // iCloud's CalDAV entry point redirects every account to its own
-  // per-account server (e.g. pXX-caldav.icloud.com) — discover it, and the
-  // account's principal path, via the standard current-user-principal
-  // PROPFIND (RFC 5397) before doing anything else.
-  const principalRes = await caldavPropfind('https://caldav.icloud.com/', basicAuth, CURRENT_USER_PRINCIPAL_BODY, '0');
-  if (principalRes.status === 401) {
-    throw new HttpsError('unauthenticated', 'Apple ID or app-specific password was rejected.');
-  }
-  if (principalRes.status >= 400) {
-    throw new HttpsError('unknown', `iCloud CalDAV returned ${principalRes.status} discovering your account.`);
-  }
-
-  const principalPath = firstHref(xmlParser.parse(principalRes.text), 'propstat', 'prop', 'current-user-principal');
-  if (!principalPath) {
-    throw new HttpsError('unknown', 'Could not find your iCloud calendar principal.');
-  }
-
-  const baseOrigin = new URL(principalRes.finalUrl).origin;
-
-  // RFC 4791 calendar-home-set — the collection that actually holds the
-  // account's calendars, needed by any future free/busy lookup.
-  const homeRes = await caldavPropfind(`${baseOrigin}${principalPath}`, basicAuth, CALENDAR_HOME_SET_BODY, '0');
-  if (homeRes.status >= 400) {
-    throw new HttpsError('unknown', `iCloud CalDAV returned ${homeRes.status} finding your calendar home.`);
-  }
-  const calendarHomeSet = firstHref(xmlParser.parse(homeRes.text), 'propstat', 'prop', 'calendar-home-set');
-
-  // The app-specific password is stored (scoped to this user's own document,
-  // same security-rule boundary as the rest of their profile) because CalDAV
-  // has no OAuth-style refresh token — any future free/busy sync has to
-  // re-authenticate with it. It's revocable independently of the user's
-  // main Apple ID password from appleid.apple.com at any time.
-  await admin
-    .firestore()
-    .collection('users')
-    .doc(request.auth.uid)
-    .set(
-      {
-        appleCalendarConnected: true,
-        appleCalendar: {
-          appleId,
-          appPassword,
-          baseOrigin,
-          principalPath,
-          calendarHomeSet: calendarHomeSet ?? null,
-          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-      },
-      { merge: true }
-    );
-
-  return { connected: true };
-});
 
 // Shared by connectGoogleCalendar (calendar-only scope, requires an existing
 // session) and exchangeGoogleSignInCode (combined identity+calendar scope,
@@ -154,9 +41,8 @@ async function exchangeGoogleCode(code, clientSecret) {
 }
 
 // Stored scoped to this user's own document, same security-rule boundary as
-// the rest of their profile — mirrors how the Apple app-specific password is
-// stored, for the same reason (no way to re-query later without persisting a
-// re-usable credential).
+// the rest of their profile — there's no way to re-query it later without
+// persisting a re-usable credential.
 async function storeGoogleCalendarRefreshToken(uid, refreshToken) {
   await admin
     .firestore()
@@ -249,40 +135,6 @@ exports.getGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (req
   return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });
 
-// RFC 5545 requires literal backslash, semicolon, comma, and newline to be
-// escaped in TEXT values (SUMMARY, LOCATION) — otherwise a venue name with a
-// comma in it would truncate the field when a calendar client parses it.
-function escapeIcsText(text) {
-  return String(text)
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/\n/g, '\\n');
-}
-
-function toIcsUtc(iso) {
-  return new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-}
-
-function buildPlaydateIcs({ uid, summary, location, startIso, endIso }) {
-  return [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Haven.ly//Playdate//EN',
-    'BEGIN:VEVENT',
-    `UID:${uid}`,
-    `DTSTAMP:${toIcsUtc(new Date().toISOString())}`,
-    `DTSTART:${toIcsUtc(startIso)}`,
-    `DTEND:${toIcsUtc(endIso)}`,
-    `SUMMARY:${escapeIcsText(summary)}`,
-    location ? `LOCATION:${escapeIcsText(location)}` : null,
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ]
-    .filter(Boolean)
-    .join('\r\n');
-}
-
 // A deterministic id (Google allows a client-supplied one on insert, must
 // match base32hex — lowercase a-v and digits, 5-1024 chars; a sha1 hex
 // digest is entirely [0-9a-f], a subset of that) rather than letting Google
@@ -341,69 +193,6 @@ function buildPlaydateSummary(otherFamilyLastName) {
   return trimmed ? `Playdate with ${trimmed} Family` : 'Haven.ly playdate';
 }
 
-// A calendar-home-set collection (see connectAppleCalendar above) can hold
-// several calendars — the account's default one plus, for some users, a
-// shared or scheduling-only one. PROPFIND at Depth:1 lists all of them; this
-// picks the first genuine VEVENT calendar, skipping the home set entry
-// itself and iCloud's built-in schedule-inbox/schedule-outbox collections.
-async function caldavFindWritableCalendar(baseOrigin, homeSetPath, basicAuth) {
-  const body = `<?xml version="1.0" encoding="utf-8" ?>
-<propfind xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
-  <prop>
-    <resourcetype/>
-  </prop>
-</propfind>`;
-  const res = await caldavPropfind(`${baseOrigin}${homeSetPath}`, basicAuth, body, '1');
-  if (res.status >= 400) {
-    throw new Error(`iCloud CalDAV returned ${res.status} listing calendars`);
-  }
-  const parsed = xmlParser.parse(res.text);
-  let responses = parsed?.multistatus?.response;
-  if (!responses) return null;
-  if (!Array.isArray(responses)) responses = [responses];
-  for (const entry of responses) {
-    const href = entry?.href;
-    if (!href || href === homeSetPath) continue;
-    let propstats = entry?.propstat;
-    if (!propstats) continue;
-    if (!Array.isArray(propstats)) propstats = [propstats];
-    for (const propstat of propstats) {
-      const resourcetype = propstat?.prop?.resourcetype;
-      if (
-        resourcetype &&
-        typeof resourcetype === 'object' &&
-        'calendar' in resourcetype &&
-        !('schedule-inbox' in resourcetype) &&
-        !('schedule-outbox' in resourcetype)
-      ) {
-        return href;
-      }
-    }
-  }
-  return null;
-}
-
-async function createAppleCalendarEvent(appleCalendar, { uid, summary, location, startIso, endIso }) {
-  const basicAuth = `${appleCalendar.appleId}:${appleCalendar.appPassword}`;
-  const calendarHref = await caldavFindWritableCalendar(appleCalendar.baseOrigin, appleCalendar.calendarHomeSet, basicAuth);
-  if (!calendarHref) {
-    throw new Error('No writable iCloud calendar found');
-  }
-
-  const ics = buildPlaydateIcs({ uid, summary, location, startIso, endIso });
-  const res = await fetch(`${appleCalendar.baseOrigin}${calendarHref}${uid}.ics`, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Basic ${Buffer.from(basicAuth).toString('base64')}`,
-      'Content-Type': 'text/calendar; charset=utf-8',
-    },
-    body: ics,
-  });
-  if (!res.ok) {
-    throw new Error(`iCloud CalDAV event PUT failed (${res.status})`);
-  }
-}
-
 async function deleteGoogleCalendarEvent(refreshToken, clientSecret, eventId) {
   const accessToken = await refreshGoogleAccessToken(refreshToken, clientSecret);
   const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
@@ -418,28 +207,15 @@ async function deleteGoogleCalendarEvent(refreshToken, clientSecret, eventId) {
   }
 }
 
-async function deleteAppleCalendarEvent(appleCalendar, uid) {
-  const basicAuth = `${appleCalendar.appleId}:${appleCalendar.appPassword}`;
-  const calendarHref = await caldavFindWritableCalendar(appleCalendar.baseOrigin, appleCalendar.calendarHomeSet, basicAuth);
-  if (!calendarHref) return;
-  const res = await fetch(`${appleCalendar.baseOrigin}${calendarHref}${uid}.ics`, {
-    method: 'DELETE',
-    headers: { Authorization: `Basic ${Buffer.from(basicAuth).toString('base64')}` },
-  });
-  if (!res.ok && res.status !== 404) {
-    throw new Error(`iCloud CalDAV event DELETE failed (${res.status})`);
-  }
-}
-
 // Fires when a playdate proposal flips to 'accepted' (see
 // lib/playdateProposals.ts's respondToProposal) and puts the confirmed
-// playdate on each family's own calendar — whichever they have connected,
-// Google or Apple. A family with neither connected is silently skipped, and
-// one family's failure doesn't block the other's — same graceful-degradation
-// approach as every other multi-source feature in this app rather than
-// surfacing a hard error either family can't act on.
+// playdate on each family's own Google Calendar. A family with no calendar
+// connected is silently skipped, and one family's failure doesn't block the
+// other's — same graceful-degradation approach as every other multi-source
+// feature in this app rather than surfacing a hard error either family can't
+// act on.
 //
-// The Google branch only does anything for a family that both opted in to
+// This only does anything for a family that both opted in to
 // the sync toggle (app/onboarding/calendar.tsx) and completed a real
 // connect/reconnect under it — that's what actually gets a calendar.events-
 // scoped refresh token, checked just below via googleCalendarSyncEnabled.
@@ -475,7 +251,6 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
           if (!userData) return;
           const summary = buildPlaydateSummary(otherSnap.data()?.lastName);
 
-          const icsUid = `havenly-playdate-${event.params.proposalId}-${uid}@haven-ly.com`;
           // googleCalendarSyncEnabled reflects whether the family opted in to
           // the calendar.events (write) scope on connect — see the toggle in
           // app/onboarding/calendar.tsx. Skipping outright when it's false
@@ -490,19 +265,11 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
               startIso,
               endIso,
             });
-          } else if (userData.appleCalendar?.appleId && userData.appleCalendar?.appPassword) {
-            await createAppleCalendarEvent(userData.appleCalendar, {
-              uid: icsUid,
-              summary,
-              location: venue,
-              startIso,
-              endIso,
-            });
           } else {
             // Not an error — just nothing to do for this family — but logged
             // so "no event showed up" is diagnosable from Cloud Logging
             // without guessing whether the trigger even ran.
-            console.log(`Skipping calendar event for ${uid}: no eligible Google (sync enabled) or Apple connection.`);
+            console.log(`Skipping calendar event for ${uid}: no eligible Google connection (sync enabled).`);
           }
         } catch (err) {
           console.error(`Could not create playdate calendar event for ${uid}`, err);
@@ -514,9 +281,9 @@ exports.createPlaydateCalendarEvents = onDocumentUpdated(
 
 // Mirror of createPlaydateCalendarEvents above, firing when a proposal
 // flips to 'canceled' (lib/playdateProposals.ts's cancelProposal, only the
-// original creator can do this) — removes the event from either family's
-// calendar if one was ever created. Deletion by the same deterministic id
-// createGoogleCalendarEvent/buildPlaydateIcs used to create it, so this is
+// original creator can do this) — removes the event from each family's
+// Google Calendar if one was ever created. Deletion by the same
+// deterministic id createGoogleCalendarEvent used to create it, so this is
 // safe to run even for a family that never actually got an event (a
 // proposal cancelled while still 'proposed', or one whose calendar wasn't
 // connected/synced) — the delete just 404s and that's treated as success.
@@ -538,15 +305,12 @@ exports.cancelPlaydateCalendarEvents = onDocumentUpdated(
           const userData = userSnap.data();
           if (!userData) return;
 
-          const icsUid = `havenly-playdate-${event.params.proposalId}-${uid}@haven-ly.com`;
           if (userData.googleCalendarSyncEnabled && userData.googleCalendar?.refreshToken) {
             await deleteGoogleCalendarEvent(
               userData.googleCalendar.refreshToken,
               googleClientSecret.value(),
               googleEventIdFor(event.params.proposalId, uid)
             );
-          } else if (userData.appleCalendar?.appleId && userData.appleCalendar?.appPassword) {
-            await deleteAppleCalendarEvent(userData.appleCalendar, icsUid);
           }
         } catch (err) {
           console.error(`Could not remove playdate calendar event for ${uid}`, err);
@@ -900,7 +664,7 @@ function computeMatch(me, target) {
 // (getSuggestedFamilies, getFamiliesByUids) — the single place that decides
 // which fields of a user doc are actually safe to show someone else. User
 // docs also hold things that must never reach another user's device (a
-// Google Calendar refresh token, an Apple app-specific password), so this
+// Google Calendar refresh token), so this
 // hand-picks rather than passing the doc through. Note zipCode itself is
 // deliberately NOT included — city/state is what's shown publicly (see
 // contexts/OnboardingContext.tsx), the exact zip stays private.

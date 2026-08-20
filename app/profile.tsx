@@ -4,7 +4,6 @@ import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ConnectAppleCalendarModal } from '../components/ConnectAppleCalendarModal';
 import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
@@ -139,7 +138,6 @@ export default function Profile() {
   const [googleCalendarStatus, setGoogleCalendarStatus] = useState<'idle' | 'checking' | 'ok' | 'needs-reconnect' | 'error'>(
     'idle'
   );
-  const [appleModalVisible, setAppleModalVisible] = useState(false);
 
   const playdateLengthHours = longestPlaydateLengthHours(profile.children.map((c) => c.idealPlaydateLength));
   const daysAhead = 21;
@@ -360,19 +358,6 @@ export default function Profile() {
               <ConnectedBadge />
             )}
           </View>
-          <View style={styles.calendarRow}>
-            <View style={styles.calendarLabel}>
-              <Ionicons name="logo-apple" size={16} color={colors.text} />
-              <Text style={styles.fieldValue}>Apple Calendar</Text>
-            </View>
-            {profile.appleCalendarConnected ? (
-              <ConnectedBadge />
-            ) : (
-              <Pressable onPress={() => setAppleModalVisible(true)} hitSlop={8}>
-                <Text style={styles.connectLink}>Connect</Text>
-              </Pressable>
-            )}
-          </View>
         </SectionCard>
 
         <View style={styles.section}>
@@ -416,8 +401,6 @@ export default function Profile() {
           <Text style={styles.logoutText}>Log out</Text>
         </Pressable>
       </ScrollView>
-
-      <ConnectAppleCalendarModal visible={appleModalVisible} onClose={() => setAppleModalVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -505,11 +488,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   editLink: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.accent,
-  },
-  connectLink: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.accent,

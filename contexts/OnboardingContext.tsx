@@ -63,7 +63,6 @@ export type OnboardingProfile = {
   // free/busy. Determines which OAuth scope gets requested on (re)connect —
   // see requestGoogleCalendarAuthCode in lib/googleIdentity.ts.
   googleCalendarSyncEnabled: boolean;
-  appleCalendarConnected: boolean;
 };
 
 const initialProfile: OnboardingProfile = {
@@ -86,7 +85,6 @@ const initialProfile: OnboardingProfile = {
   availability: [],
   googleCalendarConnected: false,
   googleCalendarSyncEnabled: false,
-  appleCalendarConnected: false,
 };
 
 type OnboardingContextValue = {

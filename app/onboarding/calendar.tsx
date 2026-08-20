@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ConnectAppleCalendarModal } from '../../components/ConnectAppleCalendarModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { auth, db } from '../../lib/firebase';
@@ -26,9 +25,6 @@ export default function Calendar() {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [pushEvents, setPushEvents] = useState(profile.googleCalendarSyncEnabled);
-
-  const [appleConnected, setAppleConnected] = useState(profile.appleCalendarConnected);
-  const [appleModalVisible, setAppleModalVisible] = useState(false);
 
   // wantsSync is passed explicitly rather than read from the pushEvents
   // state — the sync toggle's onValueChange calls this directly with the
@@ -121,7 +117,6 @@ export default function Calendar() {
         {
           ...profile,
           googleCalendarConnected: googleConnected,
-          appleCalendarConnected: appleConnected,
           onboardingComplete: true,
           // Only stamp createdAt the first time onboarding actually finishes —
           // editing calendar settings afterward shouldn't reset it.
@@ -192,31 +187,8 @@ export default function Calendar() {
         </View>
         {googleError ? <Text style={styles.rowError}>{googleError}</Text> : null}
 
-        <View style={styles.calendarRow}>
-          <Text style={styles.calendarName}>Apple Calendar</Text>
-          <View style={styles.calendarActions}>
-            {appleConnected && (
-              <View style={styles.connectedBadge}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
-                <Text style={styles.connectedText}>Connected</Text>
-              </View>
-            )}
-            <Pressable style={styles.connectBadge} onPress={() => setAppleModalVisible(true)}>
-              <Ionicons name="logo-apple" size={16} color={colors.text} />
-              <Text style={styles.connect}>{appleConnected ? 'Reconnect' : 'Connect'}</Text>
-            </Pressable>
-          </View>
-        </View>
-
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
-
-      <ConnectAppleCalendarModal
-        visible={appleModalVisible}
-        onClose={() => setAppleModalVisible(false)}
-        onConnected={() => setAppleConnected(true)}
-        editMode={editMode}
-      />
 
       <View style={styles.footer}>
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={finish} disabled={submitting}>
@@ -262,26 +234,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 19,
   },
-  calendarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
   calendarName: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
   },
-  // Same box look as calendarRow (below, still used bare by the Apple row),
-  // but stacked in a column so the sync toggle can sit under the
-  // name/connect line instead of needing its own separate bordered card.
   calendarCard: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -377,10 +334,5 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: 16,
     fontWeight: '700',
-  },
-  skip: {
-    textAlign: 'center',
-    color: colors.textMuted,
-    fontSize: 14,
   },
 });

@@ -678,8 +678,9 @@ exports.addExternalEventToGoogleCalendar = onCall({ secrets: [googleClientSecret
 // 2027) — not worth building on for new work. The API key is set via
 // `firebase functions:secrets:set RESEND_API_KEY`, same pattern as
 // googleClientSecret above; RESEND_FROM_EMAIL must be an address on a
-// domain verified in the Resend dashboard (Domains > Add Domain), not
-// just any address — Resend rejects sends from an unverified one.
+// domain verified in the Resend dashboard (Domains > Add Domain) — set up
+// and confirmed verified for haven-ly.com — not just any address, since
+// Resend rejects sends from an unverified one.
 const APP_BASE_URL = 'https://haven-ly.com';
 const resendApiKey = defineSecret('RESEND_API_KEY');
 const RESEND_FROM_EMAIL = 'Haven.ly <notifications@haven-ly.com>';

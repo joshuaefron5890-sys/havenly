@@ -817,16 +817,31 @@ const crypto = require('node:crypto');
 const FAMILY_RELATIONSHIPS = ['Co-parent', 'Aunt', 'Uncle', 'Grandparent', 'Cousin', 'Close friend'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-async function sendRawEmail(to, subject, text) {
+// html is optional — every other call site here is a plain-text
+// notification. sendFamilyInvite is the one exception: its link carries a
+// 48-character token, long enough that a plain-text email's own line
+// wrapping can split it before an email client's auto-linkifier gets to
+// it, producing a truncated/broken link a recipient can click straight
+// into a "no longer valid" error. A real <a href> sidesteps that
+// entirely — its target isn't affected by how the surrounding text wraps.
+async function sendRawEmail(to, subject, text, html) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${resendApiKey.value()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: RESEND_FROM_EMAIL, to: [to], subject, text }),
+    body: JSON.stringify({ from: RESEND_FROM_EMAIL, to: [to], subject, text, ...(html ? { html } : {}) }),
   });
   if (!res.ok) {
     const errJson = await res.json().catch(() => ({}));
     console.error(`Resend send to ${to} failed (${res.status}): ${errJson.message || 'unknown error'}`);
   }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // Sends the invite. Any current family member (owner or a previously
@@ -879,7 +894,27 @@ exports.sendFamilyInvite = onCall({ secrets: [resendApiKey] }, async (request) =
     '',
     "You don't need to sign up with this email address — use whichever email (or Gmail) you'd like when you create your account.",
   ];
-  await sendRawEmail(email, `${invitedByName} invited you to join ${familyLabel} on Haven.ly`, lines.join('\n'));
+  const html = `
+    <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+      <p style="font-size: 16px; color: #1a1a1a; line-height: 1.5;">
+        <strong>${escapeHtml(invitedByName)}</strong> invited you to join <strong>${escapeHtml(familyLabel)}</strong>
+        on Haven.ly as their ${escapeHtml(relationship)}.
+      </p>
+      <p style="margin: 24px 0;">
+        <a href="${link}" style="background: #d97757; color: #ffffff; text-decoration: none; font-weight: 700; padding: 14px 28px; border-radius: 999px; display: inline-block;">
+          Accept your invite
+        </a>
+      </p>
+      <p style="font-size: 13px; color: #6b6b6b; line-height: 1.5;">
+        You don't need to sign up with this email address — use whichever email (or Gmail) you'd like when you
+        create your account.
+      </p>
+      <p style="font-size: 12px; color: #9a9a9a; word-break: break-all;">
+        Or paste this link into your browser: ${link}
+      </p>
+    </div>
+  `;
+  await sendRawEmail(email, `${invitedByName} invited you to join ${familyLabel} on Haven.ly`, lines.join('\n'), html);
 
   return { sent: true };
 });

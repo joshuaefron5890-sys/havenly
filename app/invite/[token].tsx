@@ -42,7 +42,11 @@ export default function AcceptInvite() {
       .then((result) => {
         if (!cancelled) setInvite(result);
       })
-      .catch(() => {
+      .catch((err: any) => {
+        // Logged rather than swallowed — this is the only trace of why an
+        // invite link failed (Cloud Functions logs aren't reachable from
+        // here), so losing it here means losing it entirely.
+        console.error('getFamilyInvite failed:', err?.code ?? err?.message ?? err);
         if (!cancelled) setInvite(null);
       });
     return () => {

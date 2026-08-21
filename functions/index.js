@@ -20,6 +20,55 @@ async function resolveFamilyUid(authUid) {
   return typeof familyUid === 'string' && familyUid ? familyUid : authUid;
 }
 
+// --- Clusters -----------------------------------------------------------
+//
+// A "cluster" is a metro-level community (Bay Area today; eventually LA,
+// NYC, etc.) — matching/discovery, community announcements, and
+// community-contributed content are all scoped to one, so a family only
+// ever sees other families/content from their own city, not a future
+// cluster on the other side of the country. Curated EXTERNAL sources
+// (TACA events, iTunes podcasts, Shopify products, MedlinePlus/RSS
+// articles) are deliberately NOT scoped here — they're either already
+// self-localizing via zip-radius distance math (TACA) or genuinely
+// national/virtual (podcasts, shopping, today's article sources), so
+// cluster-gating them would add complexity without a real benefit. The
+// one exception is TRIBE_EVENT_SOURCES below (regional orgs like Golden
+// Gate Regional Center) — those really are cluster-specific, tagged
+// individually where they're defined.
+//
+// No Firestore collection for this (yet) — deliberately a hardcoded
+// registry, matching SUPER_ADMIN_EMAILS' own reasoning elsewhere in this
+// file: this sandbox has no way to seed/manage a Firestore collection
+// directly, and a single-entry registry doesn't need one yet. Move this
+// to a real `clusters/{clusterId}` collection (with its own admin-managed
+// admin list) once there's an actual second cluster and a reason to edit
+// this without a deploy.
+const CLUSTERS = {
+  'bay-area': {
+    name: 'Bay Area',
+    admins: ['joshuaefron5890@gmail.com'],
+  },
+};
+const DEFAULT_CLUSTER_ID = 'bay-area';
+
+// Every family gets auto-assigned a cluster from their onboarding zip —
+// no user-facing picker, since there's only one real answer today. Always
+// returns DEFAULT_CLUSTER_ID for now; this is the one place real
+// zip-range/city matching logic goes once a second cluster exists (e.g. a
+// zip-prefix table, falling back to DEFAULT_CLUSTER_ID for anything
+// unmatched rather than leaving a family clusterless).
+function clusterForZip(zip) {
+  return DEFAULT_CLUSTER_ID;
+}
+
+// Existing families onboarded before clusters existed have no clusterId
+// on file at all — treated as DEFAULT_CLUSTER_ID (today's only cluster)
+// rather than excluded from matching/community content entirely.
+function clusterIdOf(userData) {
+  const clusterId = userData?.clusterId;
+  return typeof clusterId === 'string' && CLUSTERS[clusterId] ? clusterId : DEFAULT_CLUSTER_ID;
+}
+
 // Same OAuth client Firebase auto-created for the Google auth provider
 // (lib/googleIdentity.ts reuses its client ID client-side). The client
 // secret that pairs with it can only ever be used server-side — set via
@@ -658,42 +707,44 @@ exports.emailOnMessageSent = onDocumentCreated(
   }
 );
 
-// Kept in sync with firestore.rules' matching literal (which actually
-// enforces this — this constant alone grants nothing) and
-// lib/superAdmin.ts's copy (UI-only, decides whether to show the compose
-// bar on app/messages/community.tsx). request.auth.token.email is a
-// standard Firebase ID token claim, so this needs no custom claims setup.
-const SUPER_ADMIN_EMAILS = ['joshuaefron5890@gmail.com'];
-
-// Fires on every community announcement — fans out to literally everyone,
-// not just one family, so this is deliberately simple (individual
-// email/push sends, no batching) rather than optimized for a user count
-// this app isn't at yet. Revisit if the user base grows enough that a
-// single broadcast means hundreds+ of individual Resend/Expo calls.
+// Fires on every community announcement — fans out to every family in
+// the SAME cluster as the message, not literally everyone (see the
+// CLUSTERS comment near the top of this file). Deliberately simple
+// (individual email/push sends, no batching) rather than optimized for a
+// per-cluster user count this app isn't at yet. Revisit if a cluster
+// grows enough that a single broadcast means hundreds+ of individual
+// Resend/Expo calls.
 exports.notifyOnCommunityMessage = onDocumentCreated(
   { document: 'communityMessages/{messageId}', secrets: [resendApiKey] },
   async (event) => {
     const message = event.data?.data();
     const text = typeof message?.text === 'string' ? message.text.trim() : '';
     if (!text || typeof message.postedByUid !== 'string') return;
+    const clusterId = clusterIdOf(message);
 
     // Belt-and-suspenders: firestore.rules is what actually stops a
     // non-admin from writing this doc in the first place, but this
     // trigger runs with the Admin SDK regardless of what wrote it — worth
-    // one extra check before fanning out to literally everyone, in case
-    // those rules and this list ever drift.
+    // one extra check before fanning out to a whole cluster, in case
+    // those rules and CLUSTERS[clusterId].admins ever drift.
     const posterRecord = await admin.auth().getUser(message.postedByUid).catch(() => null);
-    if (!posterRecord?.email || !SUPER_ADMIN_EMAILS.includes(posterRecord.email)) {
-      console.error(`notifyOnCommunityMessage: postedByUid ${message.postedByUid} is not a super admin, skipping.`);
+    if (!posterRecord?.email || !CLUSTERS[clusterId]?.admins.includes(posterRecord.email)) {
+      console.error(`notifyOnCommunityMessage: postedByUid ${message.postedByUid} is not an admin of ${clusterId}, skipping.`);
       return;
     }
 
+    // Firestore can't query "clusterId is missing OR equals X" in one
+    // go (a plain where('clusterId','==',...) never matches a doc where
+    // the field doesn't exist at all, which is every family onboarded
+    // before clusters existed) — filtered here in code instead, via the
+    // same clusterIdOf fallback used everywhere else in this file, so
+    // those legacy families still get DEFAULT_CLUSTER_ID announcements.
     const usersSnap = await admin.firestore().collection('users').get();
-    const familyUids = usersSnap.docs.map((doc) => doc.id);
+    const familyUids = usersSnap.docs.filter((doc) => clusterIdOf(doc.data()) === clusterId).map((doc) => doc.id);
     const personalUidLists = await Promise.all(familyUids.map((uid) => personalUidsForFamily(uid)));
     const personalUids = [...new Set(personalUidLists.flat())];
 
-    const title = 'Haven.ly Community';
+    const title = `Haven.ly ${CLUSTERS[clusterId]?.name ?? 'Community'}`;
     const tokenSnaps = await Promise.all(
       personalUids.map((uid) => admin.firestore().collection('pushTokens').doc(uid).get())
     );
@@ -893,9 +944,10 @@ exports.getSuggestedFamilies = onCall(async (request) => {
     admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(500).get(),
   ]);
   const me = meSnap.data() ?? {};
+  const myClusterId = clusterIdOf(me);
 
   const families = snap.docs
-    .filter((doc) => doc.id !== familyUid)
+    .filter((doc) => doc.id !== familyUid && clusterIdOf(doc.data()) === myClusterId)
     .map((doc) => {
       const target = doc.data();
       return { ...toPublicFamily(doc.id, target), matchScore: computeMatch(me, target).matchScore };
@@ -1863,10 +1915,20 @@ function haversineMiles(a, b) {
 // zero-key, no-approval pattern as PRODUCT_SOURCES — new orgs can be added
 // here once confirmed (by hitting <base>/wp-json/tribe/events/v1/events)
 // to run the same plugin.
+// Each tagged with the cluster(s) it actually serves — all three of these
+// happen to be Bay Area orgs today, filtered to the caller's own cluster
+// in getNearbyEvents below (see the CLUSTERS comment near the top of this
+// file for why this differs from TACA, which stays cluster-agnostic).
+// Adding a source for a future cluster is just another entry here with
+// that cluster's id.
 const TRIBE_EVENT_SOURCES = [
-  { name: 'Golden Gate Regional Center', base: 'https://www.ggrc.org' },
-  { name: 'Regional Center of the East Bay', base: 'https://rceb.org' },
-  { name: 'Support for Families of Children with Disabilities', base: 'https://www.supportforfamilies.org' },
+  { name: 'Golden Gate Regional Center', base: 'https://www.ggrc.org', clusters: ['bay-area'] },
+  { name: 'Regional Center of the East Bay', base: 'https://rceb.org', clusters: ['bay-area'] },
+  {
+    name: 'Support for Families of Children with Disabilities',
+    base: 'https://www.supportforfamilies.org',
+    clusters: ['bay-area'],
+  },
 ];
 
 // Without an explicit date window, the API's default 2-year range plus a
@@ -1919,6 +1981,12 @@ exports.getNearbyEvents = onCall(async (request) => {
   const me = meSnap.data() ?? {};
   const myZip = typeof me.zipCode === 'string' ? me.zipCode : '';
   const myLocation = myZip ? await geocodeZip(myZip) : null;
+  const myClusterId = clusterIdOf(me);
+  // Only the regional orgs that actually serve this family's cluster —
+  // TACA (fetched separately below) stays cluster-agnostic since it's
+  // national and already self-localizes via the zip-radius filter further
+  // down.
+  const myTribeSources = TRIBE_EVENT_SOURCES.filter((s) => s.clusters.includes(myClusterId));
 
   // Sorted by most-recently-modified rather than paging through all ~100+
   // historical entries — TACA republishes their recurring meetups close to
@@ -1941,7 +2009,7 @@ exports.getNearbyEvents = onCall(async (request) => {
         }
       })
     ),
-    Promise.all(TRIBE_EVENT_SOURCES.map(fetchTribeEvents)),
+    Promise.all(myTribeSources.map(fetchTribeEvents)),
   ]);
 
   const now = Date.now();
@@ -1969,7 +2037,7 @@ exports.getNearbyEvents = onCall(async (request) => {
 
   const tribeCandidates = tribeResults
     .flatMap((events, i) => {
-      const source = TRIBE_EVENT_SOURCES[i];
+      const source = myTribeSources[i];
       return events.map((e) => {
         const eventDate =
           typeof e.utc_start_date === 'string' ? new Date(`${e.utc_start_date.replace(' ', 'T')}Z`) : null;

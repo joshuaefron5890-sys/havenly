@@ -13,6 +13,8 @@ import {
   where,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { DEFAULT_CLUSTER_ID } from './clusters';
+import { getMyClusterId } from './clusterContext';
 
 export type ContributionType = 'product' | 'podcast' | 'article' | 'event';
 
@@ -159,6 +161,10 @@ export type Contribution = {
   fields: Record<string, string>;
   contributedByUid: string;
   contributedByName: string;
+  // Falls back to DEFAULT_CLUSTER_ID for a contribution made before
+  // clusters existed — see fetchContributions' own comment for why this
+  // is filtered in code rather than in the Firestore query itself.
+  clusterId: string;
   createdAt: Date | null;
 };
 
@@ -174,6 +180,7 @@ function parseContribution(id: string, data: Record<string, unknown>): Contribut
     fields: typeof data.fields === 'object' && data.fields !== null ? (data.fields as Record<string, string>) : {},
     contributedByUid: typeof data.contributedByUid === 'string' ? data.contributedByUid : '',
     contributedByName: typeof data.contributedByName === 'string' ? data.contributedByName : 'A Haven.ly family',
+    clusterId: typeof data.clusterId === 'string' && data.clusterId ? data.clusterId : DEFAULT_CLUSTER_ID,
     createdAt: toDate(data.createdAt),
   };
 }
@@ -195,6 +202,7 @@ export async function createContribution(
     fields,
     contributedByUid: uid,
     contributedByName: contributorName.trim() || 'A Haven.ly family',
+    clusterId: getMyClusterId(),
     createdAt: serverTimestamp(),
   });
 }
@@ -222,14 +230,21 @@ export async function deleteContribution(id: string): Promise<void> {
   await deleteDoc(doc(db, 'contributions', id));
 }
 
-// Only filters by type (a single equality where — no composite index
-// needed, unlike the array-contains combinations elsewhere in this app);
-// sorted newest-first client-side.
+// Only queries by type (a single equality where — no composite index
+// needed, unlike the array-contains combinations elsewhere in this app).
+// Cluster is filtered here in code afterward, not in the query itself —
+// Firestore's equality filters never match a document where the field is
+// missing entirely, which every contribution made before clusters existed
+// would be, so a where('clusterId', ...) clause would silently hide all
+// of them. Sorted newest-first.
 export async function fetchContributions(type: ContributionType): Promise<Contribution[]> {
   if (!db) return [];
   const q = query(collection(db, 'contributions'), where('type', '==', type));
   const snap = await getDocs(q);
-  const items = snap.docs.map((d) => parseContribution(d.id, d.data()));
+  const myClusterId = getMyClusterId();
+  const items = snap.docs
+    .map((d) => parseContribution(d.id, d.data()))
+    .filter((c) => c.clusterId === myClusterId);
   items.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   return items;
 }

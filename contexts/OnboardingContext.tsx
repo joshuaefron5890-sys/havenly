@@ -58,6 +58,11 @@ export type OnboardingProfile = {
   zipCode: string;
   city: string;
   state: string;
+  // Auto-derived from zipCode (see lib/clusters.ts's clusterForZip), never
+  // user-facing — scopes matching/discovery and community content to the
+  // family's own metro-level community (see functions/index.js's own
+  // CLUSTERS comment for the full reasoning).
+  clusterId: string;
   // One entry per neurodivergent child (numNeurodivergentChildren of them) —
   // only their name is required, everything else is optional per child.
   children: ChildProfile[];
@@ -88,6 +93,7 @@ const initialProfile: OnboardingProfile = {
   zipCode: '',
   city: '',
   state: '',
+  clusterId: '',
   children: [],
   siblingProfiles: [],
   interests: [],

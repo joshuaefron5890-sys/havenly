@@ -9,6 +9,7 @@ import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { ZipCodeField } from '../../components/ZipCodeField';
 import { useOnboarding } from '../../contexts/OnboardingContext';
+import { clusterForZip } from '../../lib/clusters';
 import { stepAfterFamily } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
@@ -95,6 +96,7 @@ export default function Family() {
       zipCode,
       city,
       state,
+      clusterId: clusterForZip(zipCode),
     };
     updateProfile(patch);
     const nextStep = stepAfterFamily({ numChildren: children, numNeurodivergentChildren: neurodivergentChildren });

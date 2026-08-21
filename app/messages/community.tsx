@@ -11,8 +11,8 @@ import { isSuperAdminEmail } from '../../lib/superAdmin';
 import { colors } from '../../theme/colors';
 
 export default function CommunityThread() {
-  const { user } = useAuth();
-  const isSuperAdmin = isSuperAdminEmail(user?.email);
+  const { user, clusterId } = useAuth();
+  const isSuperAdmin = isSuperAdminEmail(user?.email, clusterId);
   const [messages, setMessages] = useState<CommunityMessage[] | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);

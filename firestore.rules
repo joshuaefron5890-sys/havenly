@@ -155,7 +155,14 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.contributedByUid == request.auth.uid
-        && request.resource.data.type in ['product', 'podcast', 'article', 'event'];
+        && request.resource.data.type in ['product', 'podcast', 'article', 'event']
+        // Not independently verified against the signer's own family
+        // clusterId (would need an extra get() here) — same trust level
+        // already given to contributedByName. A wrong value here at worst
+        // means a pick shows in the wrong cluster's feed, not a privacy
+        // issue, unlike the community-message admin check above.
+        && request.resource.data.clusterId is string
+        && request.resource.data.clusterId.size() > 0;
       // Only the original contributor can edit their own contribution, and
       // only its fields/attribution name — type, who contributed it, and
       // when are all pinned to their original value.
@@ -169,18 +176,23 @@ service cloud.firestore {
         && resource.data.contributedByUid == request.auth.uid;
     }
 
-    // Broadcast announcements from a super admin — every signed-in family
-    // reads the same feed (see app/messages/community.tsx), but only a
-    // super admin can post to it. request.auth.token.email works here
-    // (unlike a Firestore lookup) because Firebase's own ID token already
-    // carries the signer's email as a standard claim — no custom claims or
-    // extra doc read needed. This literal list must stay in sync with
-    // functions/index.js's SUPER_ADMIN_EMAILS and lib/superAdmin.ts's
-    // SUPER_ADMIN_EMAILS (rules can't import a JS constant).
+    // Broadcast announcements from a cluster admin (see functions/index.js's
+    // CLUSTERS comment for what a "cluster" is) — every signed-in family
+    // reads the whole feed (app/messages/community.tsx filters to its own
+    // clusterId client-side), but only that cluster's admin(s) can post to
+    // it. request.auth.token.email works here (unlike a Firestore lookup)
+    // because Firebase's own ID token already carries the signer's email
+    // as a standard claim — no custom claims or extra doc read needed.
+    // One ||'d clause per cluster below, kept in sync with
+    // functions/index.js's CLUSTERS and lib/clusters.ts (rules can't
+    // import a JS constant) — add a clause here for each new cluster's
+    // admin list as clusters are added.
     match /communityMessages/{messageId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
-        && request.auth.token.email in ['joshuaefron5890@gmail.com']
+        && (
+          (request.resource.data.clusterId == 'bay-area' && request.auth.token.email in ['joshuaefron5890@gmail.com'])
+        )
         && request.resource.data.postedByUid == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0;

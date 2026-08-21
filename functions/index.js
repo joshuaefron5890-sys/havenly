@@ -879,7 +879,7 @@ exports.getPodcastSuggestions = onCall(async (request) => {
       searchTags.map(async (tag) => {
         const term = encodeURIComponent(`${tag} parenting`);
         try {
-          const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=podcast&limit=10`);
+          const res = await fetch(`https://itunes.apple.com/search?term=${term}&media=podcast&limit=25`);
           if (!res.ok) return [];
           const json = await res.json();
           return Array.isArray(json.results) ? json.results.map((r) => ({ ...r, matchedTag: tag })) : [];
@@ -929,10 +929,14 @@ exports.getPodcastSuggestions = onCall(async (request) => {
     }
   }
 
+  // Not a UX-driven display cap (the client now reveals these
+  // incrementally as the user scrolls, see app/(tabs)/podcasts.tsx) — just
+  // a sanity ceiling against a pathological case, well above what ~20
+  // search terms deduped by feed would realistically ever produce.
   const podcasts = [...byFeed.values()]
     .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
-    .slice(0, 24);
+    .slice(0, 150);
 
   return { podcasts };
 });

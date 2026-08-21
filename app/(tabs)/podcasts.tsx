@@ -1,6 +1,14 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +35,7 @@ import { colors } from '../../theme/colors';
 
 const ALL = 'All';
 const SCHEMA = CONTRIBUTION_SCHEMAS.podcast;
+const PAGE_BATCH = 12;
 
 function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
   const favorited: T[] = [];
@@ -48,6 +57,10 @@ export default function Podcasts() {
   const [contributeVisible, setContributeVisible] = useState(false);
   const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
   const [contributorPhotos, setContributorPhotos] = useState<Map<string, string | null>>(new Map());
+  // The server already returns the full deduped/ranked list (see
+  // getPodcastSuggestions) — this just reveals more of what's already been
+  // fetched as the user scrolls, rather than a real paginated fetch.
+  const [visibleCount, setVisibleCount] = useState(PAGE_BATCH);
 
   useEffect(() => {
     if (!user) return;
@@ -102,6 +115,16 @@ export default function Podcasts() {
       return true;
     });
   }, [sorted, query, tagFilter]);
+
+  const visiblePodcasts = filtered?.slice(0, visibleCount);
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    if (distanceFromBottom < 400) {
+      setVisibleCount((prev) => Math.min(prev + PAGE_BATCH, filtered?.length ?? prev));
+    }
+  };
 
   const filteredContributions = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -162,7 +185,7 @@ export default function Podcasts() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Haven.ly" />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={200}>
         <SectionHero
           imageUrl="https://plus.unsplash.com/premium_photo-1664200913631-3d9218be0316?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           title="Podcasts worth a listen"
@@ -199,7 +222,7 @@ export default function Podcasts() {
                 }
               />
             ))}
-            {filtered?.map((podcast) => (
+            {visiblePodcasts?.map((podcast) => (
               <SquareCard
                 key={podcast.id}
                 title={podcast.title || 'Untitled podcast'}
@@ -228,6 +251,9 @@ export default function Podcasts() {
           </View>
         ) : doneLoadingPodcasts ? (
           <EmptyState text="No podcasts match that search." />
+        ) : null}
+        {(visiblePodcasts?.length ?? 0) < (filtered?.length ?? 0) ? (
+          <ActivityIndicator color={colors.accent} style={styles.loadingMore} />
         ) : null}
       </ScrollView>
 
@@ -258,6 +284,9 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginVertical: 12,
+  },
+  loadingMore: {
+    marginTop: 16,
   },
   contributeButton: {
     flexDirection: 'row',

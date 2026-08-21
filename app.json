@@ -22,7 +22,8 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "runtimeVersion": {
       "policy": "fingerprint"

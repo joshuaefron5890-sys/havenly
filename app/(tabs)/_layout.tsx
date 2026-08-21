@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { registerForPushNotificationsAsync } from '../../lib/pushNotifications';
 import { colors } from '../../theme/colors';
 
 export default function TabsLayout() {
@@ -16,6 +17,15 @@ export default function TabsLayout() {
     // showing tabs with nothing real behind them.
     router.replace('/sign-in');
   }, [loading, user]);
+
+  // Registered against the signed-in person's own uid (not familyUid —
+  // see lib/pushNotifications.ts), once per session reaching the tabs.
+  // Best-effort and silent: a denied permission or a simulator just means
+  // registerForPushNotificationsAsync resolves null, nothing to react to.
+  useEffect(() => {
+    if (!user) return;
+    registerForPushNotificationsAsync(user.uid);
+  }, [user]);
 
   if (loading || !user) {
     return (

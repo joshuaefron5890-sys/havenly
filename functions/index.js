@@ -503,6 +503,54 @@ async function sendNotificationEmail(toUid, subject, text) {
   }
 }
 
+// --- Push notifications -------------------------------------------------
+//
+// toUid/fromUid/participantUids on playdateProposals and conversations are
+// family uids (see resolveFamilyUid's comment) — a shared inbox everyone
+// in that family sees. Unlike sendNotificationEmail above (which still
+// only ever emails the family's original owner — a real, separate gap,
+// not addressed here), a push genuinely needs to reach every device of
+// every member who accepted an invite into that family, since any of them
+// could be the one with the app installed and notifications on. Each
+// person's own Expo push token(s) are saved to pushTokens/{their own
+// personal auth uid} by lib/pushNotifications.ts — this resolves a family
+// uid back out to every personal uid that belongs to it (the owner, via
+// resolveFamilyUid's own convention of "no familyMembers doc = owns their
+// own uid," plus every accepted member) and fans out to all of their
+// tokens at once.
+async function personalUidsForFamily(familyUid) {
+  const membersSnap = await admin.firestore().collection('familyMembers').where('familyUid', '==', familyUid).get();
+  return [familyUid, ...membersSnap.docs.map((doc) => doc.id)];
+}
+
+async function pushTokensForFamily(familyUid) {
+  const personalUids = await personalUidsForFamily(familyUid);
+  const snaps = await Promise.all(personalUids.map((uid) => admin.firestore().collection('pushTokens').doc(uid).get()));
+  return snaps.flatMap((snap) => (Array.isArray(snap.data()?.tokens) ? snap.data().tokens : []));
+}
+
+// Expo's push service (exp.host) needs no API key for a basic send like
+// this — it relays on to APNs/FCM using whatever credentials were
+// uploaded to the EAS project itself. Best-effort: a bad/expired token in
+// the list shouldn't block the others, so failures are logged, not
+// thrown — same reasoning as sendNotificationEmail's own try-and-log.
+async function sendExpoPush(tokens, title, body, data) {
+  const validTokens = tokens.filter((t) => typeof t === 'string' && t.startsWith('ExponentPushToken'));
+  if (!validTokens.length) return;
+  try {
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(validTokens.map((to) => ({ to, title, body, data, sound: 'default' }))),
+    });
+    if (!res.ok) {
+      console.error(`Expo push send failed (${res.status}): ${await res.text().catch(() => '')}`);
+    }
+  } catch (err) {
+    console.error('Expo push send threw:', err?.message ?? err);
+  }
+}
+
 // Fires when a playdate is proposed — the recipient might not have the
 // app open to see it otherwise. Proposing also writes a message into the
 // conversation (see sendProposalMessage in lib/messages.ts) — the
@@ -529,9 +577,40 @@ exports.emailOnPlaydateProposed = onDocumentCreated(
       `View and respond: ${APP_BASE_URL}/proposal/${event.params.proposalId}`,
     ].filter((line) => line !== null);
 
-    await sendNotificationEmail(proposal.toUid, `${family} sent you a playdate invite`, lines.join('\n'));
+    await Promise.all([
+      sendNotificationEmail(proposal.toUid, `${family} sent you a playdate invite`, lines.join('\n')),
+      pushTokensForFamily(proposal.toUid).then((tokens) =>
+        sendExpoPush(tokens, `${family} sent you a playdate invite`, details || 'Tap to view and respond.', {
+          url: `/proposal/${event.params.proposalId}`,
+        })
+      ),
+    ]);
   }
 );
+
+// Fires when the recipient responds — the proposer might not have the app
+// open to see it otherwise. Only ever fires on a genuine proposed ->
+// accepted/declined transition, not on the creator's own later cancel
+// (status update rules restrict who can move a proposal to which status,
+// but this still re-checks the specific transition itself rather than
+// trusting "status changed" alone).
+exports.pushOnPlaydateResponded = onDocumentUpdated('playdateProposals/{proposalId}', async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  if (!before || !after || before.status !== 'proposed') return;
+  if (after.status !== 'accepted' && after.status !== 'declined') return;
+  if (typeof after.fromUid !== 'string' || typeof after.toUid !== 'string') return;
+
+  const toSnap = await admin.firestore().collection('users').doc(after.toUid).get();
+  const family = familyLabelFor(toSnap.data()?.lastName);
+  const dateLabel = typeof after.dateLabel === 'string' ? after.dateLabel : '';
+  const verb = after.status === 'accepted' ? 'accepted' : 'declined';
+
+  const tokens = await pushTokensForFamily(after.fromUid);
+  await sendExpoPush(tokens, `${family} ${verb} your playdate invite`, dateLabel || 'Tap to view.', {
+    url: `/proposal/${event.params.proposalId}`,
+  });
+});
 
 // Fires on every new message — skips a playdate-proposal message (the
 // trigger above already emails that one) and an empty/system message.
@@ -546,12 +625,20 @@ exports.emailOnMessageSent = onDocumentCreated(
     const text = typeof message.text === 'string' ? message.text.trim() : '';
     if (!text) return;
 
+    // senderFamilyUid, not senderUid — participantUids holds family uids
+    // (see lib/messages.ts), and senderUid is the specific person who
+    // typed it, which only ever equals their own family's uid for an
+    // account owner. Comparing participantUids against the raw personal
+    // senderUid here would find "the other side" correctly only by
+    // accident for an invited member sending a message.
+    const senderFamilyUid = typeof message.senderFamilyUid === 'string' ? message.senderFamilyUid : message.senderUid;
+
     const conversationSnap = await admin.firestore().collection('conversations').doc(event.params.conversationId).get();
     const participantUids = conversationSnap.data()?.participantUids;
-    const toUid = Array.isArray(participantUids) ? participantUids.find((uid) => uid !== message.senderUid) : null;
+    const toUid = Array.isArray(participantUids) ? participantUids.find((uid) => uid !== senderFamilyUid) : null;
     if (!toUid) return;
 
-    const fromSnap = await admin.firestore().collection('users').doc(message.senderUid).get();
+    const fromSnap = await admin.firestore().collection('users').doc(senderFamilyUid).get();
     const family = familyLabelFor(fromSnap.data()?.lastName);
 
     const lines = [
@@ -562,7 +649,12 @@ exports.emailOnMessageSent = onDocumentCreated(
       `Reply: ${APP_BASE_URL}/messages/${event.params.conversationId}`,
     ];
 
-    await sendNotificationEmail(toUid, `New message from ${family}`, lines.join('\n'));
+    await Promise.all([
+      sendNotificationEmail(toUid, `New message from ${family}`, lines.join('\n')),
+      pushTokensForFamily(toUid).then((tokens) =>
+        sendExpoPush(tokens, `New message from ${family}`, text, { url: `/messages/${event.params.conversationId}` })
+      ),
+    ]);
   }
 );
 

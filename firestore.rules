@@ -44,6 +44,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Expo push tokens for whoever is actually signed in on this device
+    // (see lib/pushNotifications.ts) — scoped to the individual person,
+    // not the family, since two family members share the family's data
+    // but never a device. Cloud Functions read these with the Admin SDK
+    // (functions/index.js's pushTokensForFamily), unaffected by this rule.
+    match /pushTokens/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Direct messages between two families. conversationId is a
     // deterministic sorted-uid pair (see lib/messages.ts) so the same two
     // people always land in the same thread, but these rules don't rely on

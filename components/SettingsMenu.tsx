@@ -11,7 +11,7 @@ import { colors } from '../theme/colors';
 
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, familyMemberInfo } = useAuth();
   const { width } = useWindowDimensions();
   // The Google account photo URL can fail to load (expired, blocked by
   // referrer policy, etc.) — React Native Web then renders a broken-image
@@ -20,7 +20,7 @@ export function SettingsMenu() {
 
   useEffect(() => {
     setAvatarFailed(false);
-  }, [user?.photoURL]);
+  }, [user?.photoURL, familyMemberInfo?.photoUrl]);
 
   // Modal portals straight to the browser's <body> on web, so it renders
   // relative to the full browser window rather than ResponsiveContainer's
@@ -59,15 +59,17 @@ export function SettingsMenu() {
         <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
           <Pressable style={[styles.menu, { marginRight: rightInset }]} onPress={() => {}}>
             <Pressable style={styles.item} onPress={goToProfile}>
-              {user?.photoURL && !avatarFailed ? (
+              {(familyMemberInfo?.photoUrl || user?.photoURL) && !avatarFailed ? (
                 <Image
-                  source={{ uri: user.photoURL }}
+                  source={{ uri: familyMemberInfo?.photoUrl ?? user!.photoURL! }}
                   style={styles.avatar}
                   onError={() => setAvatarFailed(true)}
                 />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarInitials}>{initials(user?.displayName, user?.email)}</Text>
+                  <Text style={styles.avatarInitials}>
+                    {initials(familyMemberInfo?.name || user?.displayName, user?.email)}
+                  </Text>
                 </View>
               )}
               <Text style={styles.itemText}>Profile</Text>

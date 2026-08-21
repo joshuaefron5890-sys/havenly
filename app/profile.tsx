@@ -91,7 +91,7 @@ function formatTimeRange(start: Date, end: Date): string {
 }
 
 export default function Profile() {
-  const { user, familyUid, loading: authLoading } = useAuth();
+  const { user, familyUid, familyMemberInfo, loading: authLoading } = useAuth();
   const { profile, updateProfile } = useOnboarding();
   const [hydrating, setHydrating] = useState(true);
   // The Google account photo URL can fail to load (expired, blocked by
@@ -129,7 +129,7 @@ export default function Profile() {
 
   useEffect(() => {
     setAvatarFailed(false);
-  }, [user?.photoURL]);
+  }, [user?.photoURL, familyMemberInfo?.photoUrl]);
 
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingFamilyInvite[]>([]);
@@ -251,15 +251,6 @@ export default function Profile() {
     numNeurodivergentChildren: profile.numNeurodivergentChildren,
   });
   const fullName = `${profile.firstName} ${profile.lastName}`.trim();
-  // Which member of the family is actually looking at this screen right
-  // now — profile.firstName/lastName and familyPhotoUrl below are the
-  // FAMILY's shared data (same for everyone who's a member), but the
-  // identity header just above them should show the signed-in person's own
-  // name/photo, matched by their own auth uid against the members list
-  // already fetched for the "Family members" section. For the owner this
-  // is the same name as fullName either way (see functions/index.js's
-  // getFamilyMembers); for an invited member it's theirs, not the owner's.
-  const myself = members.find((m) => m.uid === user?.uid);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -272,18 +263,20 @@ export default function Profile() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.identity}>
-          {(myself?.photoUrl || user?.photoURL) && !avatarFailed ? (
+          {(familyMemberInfo?.photoUrl || user?.photoURL) && !avatarFailed ? (
             <Image
-              source={{ uri: myself?.photoUrl ?? user!.photoURL! }}
+              source={{ uri: familyMemberInfo?.photoUrl ?? user!.photoURL! }}
               style={styles.avatar}
               onError={() => setAvatarFailed(true)}
             />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarInitials}>{initials(myself?.name || user?.displayName, user?.email)}</Text>
+              <Text style={styles.avatarInitials}>
+                {initials(familyMemberInfo?.name || user?.displayName, user?.email)}
+              </Text>
             </View>
           )}
-          <Text style={styles.name}>{myself?.name || fullName || user?.displayName || 'Your account'}</Text>
+          <Text style={styles.name}>{familyMemberInfo?.name || fullName || user?.displayName || 'Your account'}</Text>
           <Text style={styles.email}>{user?.email}</Text>
         </View>
 

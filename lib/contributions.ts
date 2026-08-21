@@ -1,5 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, Timestamp, where } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  where,
+} from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 export type ContributionType = 'product' | 'podcast' | 'article' | 'event';
@@ -201,6 +213,13 @@ export async function updateContribution(
     { fields, contributedByName: contributorName.trim() || 'A Haven.ly family' },
     { merge: true }
   );
+}
+
+// Only the original contributor can call this successfully — enforced
+// again server-side in firestore.rules.
+export async function deleteContribution(id: string): Promise<void> {
+  if (!db) throw new Error('not-signed-in');
+  await deleteDoc(doc(db, 'contributions', id));
 }
 
 // Only filters by type (a single equality where — no composite index

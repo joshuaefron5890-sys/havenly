@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ContributeModal } from '../../components/ContributeModal';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
-import { showAlert } from '../../lib/alert';
+import { showAlert, showConfirm } from '../../lib/alert';
 import {
   CONTRIBUTION_SCHEMAS,
   ContributionType,
+  deleteContribution,
   resourceSubtypeOf,
   RESOURCE_SUBTYPE_SCHEMAS,
   updateContribution,
@@ -43,6 +44,7 @@ export default function ContributionDetail() {
   const [editVisible, setEditVisible] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   // The Resources tab's three sub-types (article/referral/blog) all share
   // Firestore type 'article' — which one this contribution actually is
@@ -117,6 +119,23 @@ export default function ContributionDetail() {
     setLiveContributedByName(name);
   };
 
+  const handleDelete = async () => {
+    if (!id || deleteBusy) return;
+    const confirmed = await showConfirm(
+      `Delete this ${schema?.noun ?? 'pick'}?`,
+      'This removes it for everyone, not just you. This can’t be undone.'
+    );
+    if (!confirmed) return;
+    setDeleteBusy(true);
+    try {
+      await deleteContribution(id);
+      router.back();
+    } catch {
+      showAlert('Couldn’t delete that', 'Please try again.');
+      setDeleteBusy(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -131,6 +150,11 @@ export default function ContributionDetail() {
               color={favorited ? colors.accent : colors.text}
             />
           </Pressable>
+          {isOwner ? (
+            <Pressable style={styles.deleteButton} onPress={handleDelete} disabled={deleteBusy}>
+              <Ionicons name="trash-outline" size={16} color={colors.error} />
+            </Pressable>
+          ) : null}
           {isOwner ? (
             <Pressable style={styles.editButton} onPress={() => setEditVisible(true)}>
               <Ionicons name="pencil" size={16} color={colors.text} />
@@ -232,6 +256,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   heartButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButton: {
     width: 36,
     height: 36,
     borderRadius: 12,

@@ -121,7 +121,10 @@ service cloud.firestore {
         && resource != null
         && resource.data.contributedByUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fields', 'contributedByName']);
-      allow delete: if false;
+      // Only the original contributor can delete their own contribution.
+      allow delete: if request.auth != null
+        && resource != null
+        && resource.data.contributedByUid == request.auth.uid;
     }
   }
 }

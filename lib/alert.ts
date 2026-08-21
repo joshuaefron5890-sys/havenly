@@ -14,3 +14,19 @@ export function showAlert(title: string, message?: string): void {
   }
   Alert.alert(title, message);
 }
+
+// Same web-fallback reasoning as showAlert — Alert.alert's buttons (and
+// their onPress callbacks) are a no-op on web, so a destructive action
+// gated behind them would just silently never confirm there either.
+// Resolves true only if the user actually confirmed.
+export function showConfirm(title: string, message: string, confirmLabel = 'Delete'): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return Promise.resolve(window.confirm(`${title}\n\n${message}`));
+  }
+  return new Promise((resolve) => {
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: confirmLabel, style: 'destructive', onPress: () => resolve(true) },
+    ]);
+  });
+}

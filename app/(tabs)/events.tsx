@@ -22,6 +22,10 @@ import { colors } from '../../theme/colors';
 const ALL = 'All';
 const VIRTUAL = 'Virtual';
 const IN_PERSON = 'In-person';
+// Community-contributed events don't carry a `source` the way a curated
+// NearbyEvent does (TACA, a regional center, etc.) — this is their stand-in
+// so they can appear as one more option in the same filter row.
+const COMMUNITY_SOURCE = 'Community';
 const SCHEMA = CONTRIBUTION_SCHEMAS.event;
 
 export default function Events() {
@@ -32,6 +36,7 @@ export default function Events() {
   const [proposalFamilyPhotos, setProposalFamilyPhotos] = useState<[string | null, string | null] | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(ALL);
+  const [sourceFilter, setSourceFilter] = useState(ALL);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [contributeVisible, setContributeVisible] = useState(false);
   const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
@@ -95,23 +100,39 @@ export default function Events() {
     return [ALL, VIRTUAL, IN_PERSON, ...[...categories].sort()];
   }, [events]);
 
+  // Sources actually present in the current feed, plus "Community" tacked
+  // on at the end when there's at least one community-submitted event to
+  // filter to — derived rather than a fixed list, so a new curated source
+  // just shows up here automatically.
+  const sourceOptions = useMemo(() => {
+    if (!events) return [ALL];
+    const sources = new Set<string>();
+    events.forEach((e) => sources.add(e.source));
+    const options = [ALL, ...[...sources].sort()];
+    if (contributions.length > 0) options.push(COMMUNITY_SOURCE);
+    return options;
+  }, [events, contributions]);
+
   const filteredEvents = useMemo(() => {
     if (!events) return null;
+    if (sourceFilter === COMMUNITY_SOURCE) return [];
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
       if (filter === VIRTUAL && !e.virtual) return false;
       if (filter === IN_PERSON && e.virtual) return false;
       if (filter !== ALL && filter !== VIRTUAL && filter !== IN_PERSON && !e.categories.includes(filter)) return false;
+      if (sourceFilter !== ALL && e.source !== sourceFilter) return false;
       if (q && !e.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [events, query, filter]);
+  }, [events, query, filter, sourceFilter]);
 
   const filteredContributions = useMemo(() => {
+    if (sourceFilter !== ALL && sourceFilter !== COMMUNITY_SOURCE) return [];
     const q = query.trim().toLowerCase();
     if (!q) return contributions;
     return contributions.filter((c) => (c.fields.title ?? '').toLowerCase().includes(q));
-  }, [contributions, query]);
+  }, [contributions, query, sourceFilter]);
 
   const toggleContributionFavorite = async (contributionId: string) => {
     const wasFavorited = favoriteContributionIds.has(contributionId);
@@ -161,6 +182,12 @@ export default function Events() {
 
         <SearchBar value={query} onChangeText={setQuery} placeholder="Search events" />
         {filterOptions.length > 3 ? <FilterChips options={filterOptions} selected={filter} onSelect={setFilter} /> : null}
+        {sourceOptions.length > 2 ? (
+          <>
+            <Text style={styles.sourceLabel}>SOURCE</Text>
+            <FilterChips options={sourceOptions} selected={sourceFilter} onSelect={setSourceFilter} />
+          </>
+        ) : null}
 
         {error ? <EmptyState text={`Couldn’t load nearby events (${error}). Community-submitted ones still show below.`} /> : null}
         {events === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
@@ -262,6 +289,13 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginVertical: 12,
+  },
+  sourceLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 8,
   },
   contributeButton: {
     flexDirection: 'row',

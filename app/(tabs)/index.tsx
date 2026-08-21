@@ -395,7 +395,6 @@ export default function ForYou() {
       });
       fetchContributions('article').then((result) => {
         if (!cancelled) setArticleContributions(result);
-        if (!cancelled) mergeContributorPhotos(result);
       });
       return () => {
         cancelled = true;
@@ -813,10 +812,27 @@ export default function ForYou() {
   const shownPodcastContributions = podcastContributions.slice(0, perRow);
   const shownPodcasts = (sortedPodcasts ?? []).slice(0, Math.max(0, perRow - shownPodcastContributions.length));
 
-  const shownArticleContributions = articleContributions.slice(0, ARTICLE_PAGE_SIZE);
-  const shownArticles = (sortedArticles ?? []).slice(
+  // Resources are the one exception to the "community first" ordering
+  // above — a resource you've already favorited should surface before an
+  // unfavorited community pick, not after. sortedArticles already lists
+  // favorited ones first (sortFavoritedFirst), so counting how many of its
+  // leading entries are favorited is enough to split it without a second
+  // filter pass.
+  let favoritedArticleCount = 0;
+  while (
+    favoritedArticleCount < (sortedArticles?.length ?? 0) &&
+    favoriteResourceUrls.has(sortedArticles![favoritedArticleCount].url)
+  ) {
+    favoritedArticleCount++;
+  }
+  const shownFavoritedArticles = (sortedArticles ?? []).slice(0, Math.min(favoritedArticleCount, ARTICLE_PAGE_SIZE));
+  const shownArticleContributions = articleContributions.slice(
     0,
-    Math.max(0, ARTICLE_PAGE_SIZE - shownArticleContributions.length)
+    Math.max(0, ARTICLE_PAGE_SIZE - shownFavoritedArticles.length)
+  );
+  const shownArticles = (sortedArticles ?? []).slice(
+    shownFavoritedArticles.length,
+    shownFavoritedArticles.length + Math.max(0, ARTICLE_PAGE_SIZE - shownFavoritedArticles.length - shownArticleContributions.length)
   );
 
   return (
@@ -1145,8 +1161,30 @@ export default function ForYou() {
         />
         {articlesError ? <EmptyState text={`Couldn’t load articles (${articlesError}).`} /> : null}
         {sortedArticles === null && !articlesError ? <ActivityIndicator color={colors.accent} /> : null}
-        {shownArticleContributions.length > 0 || shownArticles.length > 0 ? (
+        {shownFavoritedArticles.length > 0 || shownArticleContributions.length > 0 || shownArticles.length > 0 ? (
           <>
+            {shownFavoritedArticles.map((article) => (
+              <ListRow
+                key={article.url}
+                title={article.title}
+                subtitle={resourceSubtitle(article)}
+                icon="document-text-outline"
+                favorited={favoriteResourceUrls.has(article.url)}
+                onToggleFavorite={() => toggleArticleFavorite(article)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/article/[id]',
+                    params: {
+                      id: encodeURIComponent(article.url),
+                      title: article.title,
+                      summary: article.summary,
+                      url: article.url,
+                      matchedTags: article.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
             {shownArticleContributions.map((c) => (
               <ListRow
                 key={c.id}
@@ -1154,8 +1192,6 @@ export default function ForYou() {
                 subtitle={resourceSubtypeOf(c) === 'referral' ? c.fields.specialty : undefined}
                 icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
-                contributedBy={c.contributedByName}
-                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>

@@ -33,7 +33,6 @@ import {
 } from '../../lib/favorites';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { BlogPost, blogPostSubtitle, fetchBlogFeed } from '../../lib/blogs';
-import { fetchContributorPhotos } from '../../lib/families';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -49,6 +48,40 @@ function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (ite
   return [...favorited, ...rest];
 }
 
+// Generic filler words plus a few Haven.ly-specific ones common enough
+// across titles (child/kids/parenting/guide-type words) to be useless as a
+// quick filter — excluded so the derived list below surfaces an actual
+// topic ("sleep", "sensory", "meltdown") instead of restating the obvious.
+const KEYWORD_STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'your', 'from', 'this', 'that', 'about', 'into', 'what', 'how', 'are', 'you',
+  'can', 'has', 'have', 'will', 'its', 'when', 'why', 'who', 'all', 'not', 'but', 'out', 'use', 'used', 'using',
+  'one', 'two', 'more', 'than', 'over', 'under', 'need', 'know', 'make', 'made', 'get', 'gets', 'new', 'guide',
+  'tips', 'help', 'helping', 'helps', 'kids', 'kid', 'child', 'children', 'parent', 'parents', 'parenting',
+  'family', 'families',
+]);
+
+// Surfaces whatever topics are actually common across the titles currently
+// on screen — a quicker, content-aware alternative to typing a search term,
+// and one that changes with the feed instead of being a fixed list. Each
+// word only counts once per title (a title repeating a word shouldn't
+// outweigh two different titles that each mention it once), and a word
+// needs to show up in at least 2 different titles to surface at all, so a
+// single oddly-worded title doesn't produce a one-off, useless chip.
+function extractKeywords(titles: string[], max: number): string[] {
+  const counts = new Map<string, number>();
+  for (const title of titles) {
+    const words = new Set((title.toLowerCase().match(/[a-z][a-z'-]{3,}/g) ?? []).filter((w) => !KEYWORD_STOPWORDS.has(w)));
+    for (const word of words) {
+      counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, max)
+    .map(([word]) => word);
+}
+
 export default function Articles() {
   const { user } = useAuth();
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
@@ -57,6 +90,7 @@ export default function Articles() {
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL);
+  const [keywordFilter, setKeywordFilter] = useState(ALL);
   const [subtypeFilter, setSubtypeFilter] = useState<ResourceSubtype | typeof ALL>(ALL);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   // null while the picker is up (or nothing is open); set once a sub-type
@@ -65,7 +99,6 @@ export default function Articles() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [typeFilterVisible, setTypeFilterVisible] = useState(false);
   const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
-  const [contributorPhotos, setContributorPhotos] = useState<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -112,7 +145,6 @@ export default function Articles() {
       });
       fetchContributions('article').then((result) => {
         if (!cancelled) setContributions(result);
-        if (!cancelled) fetchContributorPhotos(result).then((photos) => !cancelled && setContributorPhotos(photos));
       });
       return () => {
         cancelled = true;
@@ -129,6 +161,19 @@ export default function Articles() {
     return [ALL, ...[...tags].sort()];
   }, [sorted]);
 
+  // Derived from whatever's actually on screen right now (curated articles,
+  // blog posts, and community picks alike) rather than a fixed list, so it
+  // tracks the real content instead of going stale.
+  const keywordOptions = useMemo(() => {
+    const titles = [
+      ...(sorted ?? []).map((a) => a.title),
+      ...(blogPosts ?? []).map((p) => p.title),
+      ...contributions.map((c) => c.fields.title ?? ''),
+    ];
+    const keywords = extractKeywords(titles, 8);
+    return keywords.length ? [ALL, ...keywords] : [];
+  }, [sorted, blogPosts, contributions]);
+
   const filtered = useMemo(() => {
     if (!sorted) return null;
     // MedlinePlus results are always plain articles — any other sub-type
@@ -137,19 +182,21 @@ export default function Articles() {
     const q = query.trim().toLowerCase();
     return sorted.filter((a) => {
       if (tagFilter !== ALL && !a.matchedTags.includes(tagFilter)) return false;
+      if (keywordFilter !== ALL && !a.title.toLowerCase().includes(keywordFilter)) return false;
       if (q && !a.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [sorted, query, tagFilter, subtypeFilter]);
+  }, [sorted, query, tagFilter, keywordFilter, subtypeFilter]);
 
   const filteredContributions = useMemo(() => {
     const q = query.trim().toLowerCase();
     return contributions.filter((c) => {
       if (subtypeFilter !== ALL && resourceSubtypeOf(c) !== subtypeFilter) return false;
+      if (keywordFilter !== ALL && !(c.fields.title ?? '').toLowerCase().includes(keywordFilter)) return false;
       if (q && !(c.fields.title ?? '').toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [contributions, query, subtypeFilter]);
+  }, [contributions, query, keywordFilter, subtypeFilter]);
 
   const sortedBlogPosts = blogPosts ? sortFavoritedFirst(blogPosts, favoriteUrls, (p) => p.url) : null;
 
@@ -160,8 +207,12 @@ export default function Articles() {
     // filter hides them entirely.
     if (subtypeFilter !== ALL && subtypeFilter !== 'blog') return [];
     const q = query.trim().toLowerCase();
-    return sortedBlogPosts.filter((p) => !q || p.title.toLowerCase().includes(q));
-  }, [sortedBlogPosts, query, subtypeFilter]);
+    return sortedBlogPosts.filter((p) => {
+      if (keywordFilter !== ALL && !p.title.toLowerCase().includes(keywordFilter)) return false;
+      if (q && !p.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [sortedBlogPosts, query, keywordFilter, subtypeFilter]);
 
   // Shared by MedlinePlus articles and blog posts — both are plain
   // { url } curated content favorited via the same favoriteResourceUrls
@@ -250,6 +301,12 @@ export default function Articles() {
           </View>
         </Pressable>
         {tagOptions.length > 2 ? <FilterChips options={tagOptions} selected={tagFilter} onSelect={setTagFilter} /> : null}
+        {keywordOptions.length > 1 ? (
+          <>
+            <Text style={styles.keywordLabel}>TRENDING TOPICS</Text>
+            <FilterChips options={keywordOptions} selected={keywordFilter} onSelect={setKeywordFilter} />
+          </>
+        ) : null}
 
         {error ? <EmptyState text={`Couldn’t load articles (${error}). Community picks still show below.`} /> : null}
         {sorted === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
@@ -263,8 +320,6 @@ export default function Articles() {
                 subtitle={resourceSubtypeOf(c) === 'referral' ? c.fields.specialty : undefined}
                 icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
-                contributedBy={c.contributedByName}
-                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onPress={() =>
@@ -451,6 +506,13 @@ const styles = StyleSheet.create({
   typeFilterValueText: {
     fontSize: 14,
     color: colors.textMuted,
+  },
+  keywordLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 8,
   },
   pickerBackdrop: {
     flex: 1,

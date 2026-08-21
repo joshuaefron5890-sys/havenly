@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlogIcon } from '../../components/BlogIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
 import { addFavoriteResource, getFavoriteResourceUrls, removeFavoriteResource } from '../../lib/favorites';
@@ -77,7 +78,11 @@ export default function ArticleDetail() {
         </View>
 
         <View style={styles.iconWrap}>
-          <Ionicons name="document-text-outline" size={28} color={colors.accent} />
+          {source ? (
+            <BlogIcon size={28} color={colors.accent} />
+          ) : (
+            <Ionicons name="document-text-outline" size={28} color={colors.accent} />
+          )}
         </View>
 
         <Text style={styles.title}>{title || 'Article'}</Text>

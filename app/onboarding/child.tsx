@@ -28,11 +28,17 @@ const NEURODIVERGENCE_OPTIONS = [
 ];
 
 export default function Child() {
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const { edit, startIndex } = useLocalSearchParams<{ edit?: string; startIndex?: string }>();
   const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const total = Math.max(1, profile.numNeurodivergentChildren);
-  const [childIndex, setChildIndex] = useState(0);
+  // Lets Profile's "Add a child" jump straight to the new (last, empty)
+  // child instead of landing on child 1 and requiring several "Next child"
+  // taps through everyone already filled in.
+  const parsedStartIndex = startIndex ? Number(startIndex) : 0;
+  const [childIndex, setChildIndex] = useState(
+    Number.isInteger(parsedStartIndex) && parsedStartIndex >= 0 && parsedStartIndex < total ? parsedStartIndex : 0
+  );
   const [childrenData, setChildrenData] = useState<ChildProfile[]>(() =>
     Array.from({ length: total }, (_, i) => ({ ...emptyChildProfile, ...profile.children[i] }))
   );

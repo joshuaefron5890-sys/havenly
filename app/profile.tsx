@@ -12,7 +12,7 @@ import { signOutUser } from '../lib/firebase';
 import { getGoogleFreeBusy } from '../lib/googleCalendar';
 import { initials } from '../lib/initials';
 import { numSiblings } from '../lib/onboardingFlow';
-import { loadOnboardingProgress } from '../lib/onboardingProgress';
+import { loadOnboardingProgress, saveOnboardingStep } from '../lib/onboardingProgress';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 import { INTERESTS } from '../theme/interests';
@@ -187,6 +187,23 @@ export default function Profile() {
     };
   }, [hydrating, profile.googleCalendarConnected, profile.availability.length, playdateLengthHours]);
 
+  // Appends a new, blank neurodivergent-child slot and jumps straight into
+  // filling it out — covers a family that forgot one during onboarding,
+  // without making them re-run the whole "how many children" stepper on
+  // the Family step first. numChildren stays at least as large as
+  // numNeurodivergentChildren, same invariant the Family step's own
+  // steppers enforce.
+  const addChild = () => {
+    const newIndex = profile.numNeurodivergentChildren;
+    const patch = {
+      numNeurodivergentChildren: newIndex + 1,
+      numChildren: Math.max(profile.numChildren, newIndex + 1),
+    };
+    updateProfile(patch);
+    saveOnboardingStep(patch, '/profile', { editMode: true });
+    router.push(`/onboarding/child?edit=1&startIndex=${newIndex}` as any);
+  };
+
   const logOut = async () => {
     await signOutUser();
     // A plain router.replace('/') can land back on the tabs' own index
@@ -257,12 +274,14 @@ export default function Profile() {
           <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
         </SectionCard>
 
-        {profile.children.length > 0 && (
-          <SectionCard
-            title={profile.children.length > 1 ? 'Neurodivergent children' : 'Neurodivergent child'}
-            editHref="/onboarding/child?edit=1"
-          >
-            {profile.children.map((child, i) => (
+        <SectionCard
+          title={profile.children.length > 1 ? 'Neurodivergent children' : 'Neurodivergent child'}
+          editHref="/onboarding/child?edit=1"
+        >
+          {profile.children.length === 0 ? (
+            <Text style={styles.empty}>No children added yet</Text>
+          ) : (
+            profile.children.map((child, i) => (
               <View key={i} style={styles.personRow}>
                 <Photo
                   source={child.photoUrl ? { uri: child.photoUrl } : undefined}
@@ -278,9 +297,13 @@ export default function Profile() {
                   {child.neurodivergence.length > 0 ? <TagText items={child.neurodivergence} /> : null}
                 </View>
               </View>
-            ))}
-          </SectionCard>
-        )}
+            ))
+          )}
+          <Pressable style={styles.addChildButton} onPress={addChild}>
+            <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+            <Text style={styles.addChildText}>Add a child</Text>
+          </Pressable>
+        </SectionCard>
 
         {siblingCount > 0 && profile.siblingProfiles.length > 0 && (
           <SectionCard
@@ -573,6 +596,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginBottom: 6,
+  },
+  addChildButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  addChildText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
   playStyleBlock: {
     marginTop: 16,

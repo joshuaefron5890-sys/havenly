@@ -33,6 +33,7 @@ export default function Family() {
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [zipError, setZipError] = useState<string | null>(null);
 
   const handlePickPhoto = async () => {
     setPhotoError(null);
@@ -76,6 +77,15 @@ export default function Family() {
   };
 
   const handleContinue = () => {
+    // city is only ever non-empty once the zip has actually resolved
+    // (see ZipCodeField) — cleared both while typing and on a bad zip, so
+    // it doubles as "is this a real, looked-up zip" without needing its
+    // own separate validity flag.
+    if (!zipCode || !city) {
+      setZipError('Add your zip code to continue — it’s how we find events and families near you.');
+      return;
+    }
+    setZipError(null);
     const patch = {
       numChildren: children,
       numNeurodivergentChildren: neurodivergentChildren,
@@ -175,11 +185,13 @@ export default function Family() {
           city={city}
           state={state}
           onChange={(next) => {
+            setZipError(null);
             setZipCode(next.zip);
             setCity(next.city);
             setState(next.state);
           }}
         />
+        {zipError ? <Text style={styles.zipErrorText}>{zipError}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -204,6 +216,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.error,
     textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 16,
+  },
+  zipErrorText: {
+    fontSize: 12,
+    color: colors.error,
     marginTop: -12,
     marginBottom: 16,
   },

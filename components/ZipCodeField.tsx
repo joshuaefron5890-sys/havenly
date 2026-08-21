@@ -51,9 +51,7 @@ export function ZipCodeField({
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>
-        ZIP CODE<Text style={styles.optional}> · optional</Text>
-      </Text>
+      <Text style={styles.label}>ZIP CODE</Text>
       <TextInput
         style={[styles.input, status === 'error' && styles.inputError]}
         placeholder="10001"
@@ -88,10 +86,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     letterSpacing: 1.5,
     marginBottom: 6,
-  },
-  optional: {
-    fontWeight: '400',
-    textTransform: 'none',
   },
   input: {
     borderWidth: 1,

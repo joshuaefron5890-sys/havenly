@@ -36,7 +36,13 @@ export function ListRow({
   image?: ImageSourcePropType;
   // Shown instead of a blank placeholder box when there's no real image to
   // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
-  icon?: keyof typeof Ionicons.glyphMap | 'referral' | 'blog';
+  // 'community-logo' fills the whole thumbnail with the Haven.ly mark
+  // itself (the Community announcements row) — distinct from the
+  // `community` boolean below, which instead overlays a small corner
+  // badge of the same mark onto some OTHER icon/image (a contribution's
+  // own icon or photo), since a full-thumbnail logo makes that corner
+  // badge redundant.
+  icon?: keyof typeof Ionicons.glyphMap | 'referral' | 'blog' | 'community-logo';
   // A missing `image` gets a gender-neutral avatar silhouette instead of a
   // bare color block — for rows that show a specific family's photo (the
   // Messages inbox), where "no photo yet" should still read as "a person".
@@ -55,15 +61,21 @@ export function ListRow({
     <Container style={styles.row} onPress={onPress}>
       <View style={styles.thumbnailWrap}>
         {!image && icon ? (
-          <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
-            {icon === 'referral' ? (
-              <ReferralIcon size={20} color={colors.surface} />
-            ) : icon === 'blog' ? (
-              <BlogIcon size={20} color={colors.surface} />
-            ) : (
-              <Ionicons name={icon} size={20} color={colors.surface} />
-            )}
-          </View>
+          icon === 'community-logo' ? (
+            <View style={[styles.thumbnail, styles.iconThumbnail, styles.communityIconThumbnail, styles.communityLogoThumbnail]}>
+              <Image source={require('../assets/logo-mark.png')} style={styles.communityLogoImage} resizeMode="contain" />
+            </View>
+          ) : (
+            <View style={[styles.thumbnail, styles.iconThumbnail, community && styles.communityIconThumbnail]}>
+              {icon === 'referral' ? (
+                <ReferralIcon size={20} color={colors.surface} />
+              ) : icon === 'blog' ? (
+                <BlogIcon size={20} color={colors.surface} />
+              ) : (
+                <Ionicons name={icon} size={20} color={colors.surface} />
+              )}
+            </View>
+          )
         ) : (
           <Photo
             source={image}
@@ -72,7 +84,7 @@ export function ListRow({
             iconSize={20}
           />
         )}
-        {community ? (
+        {community && icon !== 'community-logo' ? (
           <View style={styles.communityBadge}>
             <Image source={require('../assets/logo-mark.png')} style={styles.communityBadgeMark} resizeMode="contain" />
           </View>
@@ -151,6 +163,13 @@ const styles = StyleSheet.create({
     // Community-contributed items get a blue thumbnail instead of black,
     // matching SquareCard's same treatment.
     backgroundColor: colors.community,
+  },
+  communityLogoThumbnail: {
+    padding: 8,
+  },
+  communityLogoImage: {
+    width: '100%',
+    height: '100%',
   },
   heart: {
     padding: 2,

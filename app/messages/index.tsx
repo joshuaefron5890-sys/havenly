@@ -68,8 +68,7 @@ export default function MessagesInbox() {
         <ListRow
           title="Community"
           subtitle={communityMessages.at(-1)?.text || 'Announcements from Haven.ly'}
-          icon="megaphone-outline"
-          community
+          icon="community-logo"
           onPress={() => router.push('/messages/community')}
         />
         {conversations === null ? (

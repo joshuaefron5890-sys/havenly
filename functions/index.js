@@ -883,9 +883,14 @@ exports.getSuggestedFamilies = onCall(async (request) => {
   }
 
   const familyUid = await resolveFamilyUid(request.auth.uid);
+  // 500 is a sanity ceiling, not a UX decision — same reasoning as the
+  // podcast/product feeds' own caps (see getPodcastSuggestions,
+  // getRecommendedProducts). Home's own "Families like you" preview still
+  // only ever shows one row (client-side slice); the full list here is
+  // what powers the dedicated Families tab (app/(tabs)/families.tsx).
   const [meSnap, snap] = await Promise.all([
     admin.firestore().collection('users').doc(familyUid).get(),
-    admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(30).get(),
+    admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(500).get(),
   ]);
   const me = meSnap.data() ?? {};
 

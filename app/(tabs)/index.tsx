@@ -52,7 +52,6 @@ import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '.
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { colors } from '../../theme/colors';
 
-const PAGE_SIZE = 6;
 // Articles stayed a row list (see the section below) rather than joining
 // the square-card grid — a lone document icon centered in a big square
 // looked odd next to cards with real photos, and a text-heavy row reads
@@ -76,17 +75,10 @@ function cardsPerRow(gridWidth: number | null): number {
   return Math.max(1, Math.floor((availableWidth + GRID_GAP) / (CARD_WIDTH + GRID_GAP)));
 }
 
-// Only offers the toggle once there's actually more than pageSize to show
-// — no "View all" on a list that's already fully visible.
-function expandAction(count: number, expanded: boolean, setExpanded: (v: boolean) => void, pageSize = PAGE_SIZE) {
-  if (count <= pageSize) return {};
-  return { action: expanded ? 'Show less' : 'View all', onAction: () => setExpanded(!expanded) };
-}
-
-// Products/Podcasts/Articles each have their own dedicated tab now (see
-// app/(tabs)/products.tsx etc.) — "View all" on the Home page navigates
-// there instead of expanding in place, unlike Families/Events which have
-// no such destination and still expand inline.
+// Every section on Home now has its own dedicated tab (see
+// app/(tabs)/products.tsx, families.tsx, etc.) — "View all" navigates
+// there instead of expanding in place. Only offers the action once
+// there's actually more than pageSize to show.
 function viewAllAction(count: number, pageSize: number, onPress: () => void) {
   if (count <= pageSize) return {};
   return { action: 'View all', onAction: onPress };
@@ -176,7 +168,6 @@ export default function ForYou() {
   const [familiesError, setFamiliesError] = useState<string | null>(null);
   const [favoriteFamilies, setFavoriteFamilies] = useState<SuggestedFamily[] | null>(null);
   const [favoriteFamilyUids, setFavoriteFamilyUids] = useState<Set<string>>(new Set());
-  const [familiesExpanded, setFamiliesExpanded] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -940,7 +931,7 @@ export default function ForYou() {
 
         <SectionHeader
           title="Families like you"
-          {...expandAction(mergedFamilies.length, familiesExpanded, setFamiliesExpanded, perRow)}
+          {...viewAllAction(mergedFamilies.length, perRow, () => router.push('/(tabs)/families'))}
         />
         {familiesError ? (
           <EmptyState text={`Couldn’t load families (${familiesError}).`} />
@@ -950,7 +941,7 @@ export default function ForYou() {
           <EmptyState text="No other families onboarded yet — check back soon." />
         ) : (
           <View style={styles.grid}>
-            {(familiesExpanded ? mergedFamilies : mergedFamilies.slice(0, perRow)).map((family) => {
+            {mergedFamilies.slice(0, perRow).map((family) => {
               const photoUrl = familyPhoto(family);
               return (
                 <SquareCard

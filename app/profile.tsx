@@ -280,10 +280,6 @@ export default function Profile() {
           <Text style={styles.email}>{user?.email}</Text>
         </View>
 
-        <SectionCard title="Account" editHref="/onboarding/account?edit=1">
-          <Field label="Name" value={fullName} />
-        </SectionCard>
-
         <SectionCard title="Family" editHref="/onboarding/family?edit=1">
           {profile.familyPhotoUrl ? <Photo source={{ uri: profile.familyPhotoUrl }} style={styles.familyPhoto} /> : null}
           <Field

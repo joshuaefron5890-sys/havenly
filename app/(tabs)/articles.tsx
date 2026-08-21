@@ -33,6 +33,7 @@ import {
 } from '../../lib/favorites';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { BlogPost, blogPostSubtitle, fetchBlogFeed } from '../../lib/blogs';
+import { fetchContributorPhotos } from '../../lib/families';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -64,6 +65,7 @@ export default function Articles() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [typeFilterVisible, setTypeFilterVisible] = useState(false);
   const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
+  const [contributorPhotos, setContributorPhotos] = useState<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -110,6 +112,7 @@ export default function Articles() {
       });
       fetchContributions('article').then((result) => {
         if (!cancelled) setContributions(result);
+        if (!cancelled) fetchContributorPhotos(result).then((photos) => !cancelled && setContributorPhotos(photos));
       });
       return () => {
         cancelled = true;
@@ -261,6 +264,7 @@ export default function Articles() {
                 icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
                 contributedBy={c.contributedByName}
+                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onPress={() =>

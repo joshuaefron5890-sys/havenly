@@ -42,6 +42,7 @@ import {
   familyDisplayName,
   familyPhoto,
   familySubtitle,
+  fetchContributorPhotos,
   fetchFamiliesByUids,
   fetchSuggestedFamilies,
   SuggestedFamily,
@@ -160,6 +161,16 @@ export default function ForYou() {
     }
   };
 
+  // Also shared across every section — merged rather than replaced on each
+  // section's own fetch, since two sections' contributors can overlap and
+  // their fetches land independently of each other.
+  const [contributorPhotos, setContributorPhotos] = useState<Map<string, string | null>>(new Map());
+  const mergeContributorPhotos = (contributions: Contribution[]) => {
+    fetchContributorPhotos(contributions).then((photos) => {
+      setContributorPhotos((prev) => new Map([...prev, ...photos]));
+    });
+  };
+
   // Families
   const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
   const [familiesError, setFamiliesError] = useState<string | null>(null);
@@ -268,6 +279,7 @@ export default function ForYou() {
       });
       fetchContributions('product').then((result) => {
         if (!cancelled) setProductContributions(result);
+        if (!cancelled) mergeContributorPhotos(result);
       });
       return () => {
         cancelled = true;
@@ -325,6 +337,7 @@ export default function ForYou() {
       });
       fetchContributions('podcast').then((result) => {
         if (!cancelled) setPodcastContributions(result);
+        if (!cancelled) mergeContributorPhotos(result);
       });
       return () => {
         cancelled = true;
@@ -382,6 +395,7 @@ export default function ForYou() {
       });
       fetchContributions('article').then((result) => {
         if (!cancelled) setArticleContributions(result);
+        if (!cancelled) mergeContributorPhotos(result);
       });
       return () => {
         cancelled = true;
@@ -443,6 +457,7 @@ export default function ForYou() {
       });
       fetchContributions('event').then((result) => {
         if (!cancelled) setEventContributions(result);
+        if (!cancelled) mergeContributorPhotos(result);
       });
       getFavoriteEventIds(user.uid).then((ids) => {
         if (!cancelled) setFavoriteEventIds(new Set(ids));
@@ -950,6 +965,7 @@ export default function ForYou() {
                 icon="calendar-outline"
                 community
                 contributedBy={c.contributedByName}
+                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>
@@ -1013,6 +1029,7 @@ export default function ForYou() {
                 icon={c.fields.imageUrl ? undefined : 'bag-outline'}
                 community
                 contributedBy={c.contributedByName}
+                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>
@@ -1074,6 +1091,7 @@ export default function ForYou() {
                 icon="mic-outline"
                 community
                 contributedBy={c.contributedByName}
+                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>
@@ -1137,6 +1155,7 @@ export default function ForYou() {
                 icon={RESOURCE_SUBTYPE_SCHEMAS[resourceSubtypeOf(c)].icon}
                 community
                 contributedBy={c.contributedByName}
+                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>

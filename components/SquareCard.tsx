@@ -24,6 +24,7 @@ export function SquareCard({
   badgeVariant = 'accent',
   community,
   contributedBy,
+  contributorPhoto,
   matchScore,
   softFallback,
   personFallback,
@@ -55,6 +56,10 @@ export function SquareCard({
   // for playdate-status pills like "Proposed") on purpose.
   community?: boolean;
   contributedBy?: string;
+  // The contributor's own family photo, shown in place of the generic
+  // person icon next to their name — null/undefined (no photo on file, or
+  // not resolved yet) falls back to that icon instead of leaving a gap.
+  contributorPhoto?: string | null;
   // A small circle in the thumbnail's bottom-right corner — kept separate
   // from `badge` (top, spans the width) so a card can carry both a status
   // label like "Suggested" and its match percentage at once.
@@ -144,7 +149,11 @@ export function SquareCard({
       </Text>
       {contributedBy ? (
         <View style={styles.contributorRow}>
-          <Ionicons name="person-circle-outline" size={11} color={colors.textMuted} />
+          {contributorPhoto ? (
+            <Image source={{ uri: contributorPhoto }} style={styles.contributorAvatar} />
+          ) : (
+            <Ionicons name="person-circle-outline" size={11} color={colors.textMuted} />
+          )}
           <Text style={styles.contributorText} numberOfLines={1}>
             {contributedBy.split(' ')[0]}
           </Text>
@@ -313,6 +322,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     marginTop: 2,
+  },
+  contributorAvatar: {
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: colors.accentMuted,
   },
   contributorText: {
     flex: 1,

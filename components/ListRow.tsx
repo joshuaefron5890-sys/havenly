@@ -12,6 +12,7 @@ export function ListRow({
   badge,
   community,
   contributedBy,
+  contributorPhoto,
   image,
   icon,
   personPlaceholder,
@@ -28,6 +29,10 @@ export function ListRow({
   // `subtitle` when set (contributions don't have a separate subtitle).
   community?: boolean;
   contributedBy?: string;
+  // The contributor's own family photo, shown in place of the generic
+  // person icon next to their name — null/undefined (no photo on file, or
+  // not resolved yet) falls back to that icon instead of leaving a gap.
+  contributorPhoto?: string | null;
   image?: ImageSourcePropType;
   // Shown instead of a blank placeholder box when there's no real image to
   // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
@@ -85,7 +90,11 @@ export function ListRow({
           </Text>
         ) : community && contributedBy ? (
           <View style={styles.contributorRow}>
-            <Ionicons name="person-circle-outline" size={12} color={colors.textMuted} />
+            {contributorPhoto ? (
+              <Image source={{ uri: contributorPhoto }} style={styles.contributorAvatar} />
+            ) : (
+              <Ionicons name="person-circle-outline" size={12} color={colors.textMuted} />
+            )}
             <Text style={styles.contributorText} numberOfLines={1}>
               {contributedBy}
             </Text>
@@ -177,6 +186,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     marginTop: 2,
+  },
+  contributorAvatar: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.accentMuted,
   },
   contributorText: {
     flex: 1,

@@ -50,6 +50,18 @@ export function familyPhoto(family: SuggestedFamily): string | null {
   return family.familyPhotoUrl ?? family.children.find((c) => c.photoUrl)?.photoUrl ?? null;
 }
 
+// Batch-resolves each community contribution's own family photo, for the
+// small avatar shown next to "Contributed by" on a card — one deduped
+// fetchFamiliesByUids call per screen instead of one per card.
+export async function fetchContributorPhotos(
+  contributions: { contributedByUid: string }[]
+): Promise<Map<string, string | null>> {
+  const uids = [...new Set(contributions.map((c) => c.contributedByUid).filter(Boolean))];
+  if (!uids.length) return new Map();
+  const families = await fetchFamiliesByUids(uids);
+  return new Map(families.map((f) => [f.uid, familyPhoto(f)]));
+}
+
 export function familySubtitle(family: SuggestedFamily): string {
   const kids = family.children
     .filter((c) => c.name)

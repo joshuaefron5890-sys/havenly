@@ -59,7 +59,11 @@ export default function Child() {
       .then((schools) => {
         if (!cancelled) setNearbySchools(schools);
       })
-      .catch(() => {
+      .catch((err: any) => {
+        // Logged rather than swallowed — an empty suggestion list looks
+        // identical whether the fetch failed or genuinely found nothing,
+        // so this is the only way to tell those apart.
+        console.error('fetchNearbySchools failed:', err?.code ?? err?.message ?? err);
         if (!cancelled) setNearbySchools([]);
       });
     return () => {

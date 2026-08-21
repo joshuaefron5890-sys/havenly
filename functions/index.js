@@ -2019,17 +2019,25 @@ async function fetchSchoolsForState(fipsCode) {
     try {
       while (url && pagesFetched < SCHOOL_PAGE_LIMIT) {
         const res = await fetch(url);
-        if (!res.ok) break;
+        if (!res.ok) {
+          console.error(`getNearbySchools: fetch failed (${res.status}) for ${url}`);
+          break;
+        }
         const data = await res.json();
         const results = Array.isArray(data?.results) ? data.results : [];
+        console.log(
+          `getNearbySchools: year ${year} page ${pagesFetched + 1} — ${results.length} results` +
+            (results[0] ? `, sample keys: ${Object.keys(results[0]).join(',')}` : '')
+        );
         schools.push(...results);
         url = typeof data?.next === 'string' ? data.next : null;
         pagesFetched += 1;
       }
-    } catch {
-      // Whatever was collected before the failure is still usable below.
+    } catch (err) {
+      console.error(`getNearbySchools: fetchSchoolsForState threw for fips=${fipsCode} year=${year}:`, err?.message ?? err);
     }
     if (schools.length) return schools;
+    console.log(`getNearbySchools: year ${year} returned 0 schools for fips=${fipsCode}, trying next year`);
   }
   return [];
 }
@@ -2047,16 +2055,20 @@ exports.getNearbySchools = onCall(async (request) => {
     zip = typeof meSnap.data()?.zipCode === 'string' ? meSnap.data().zipCode : '';
   }
   if (!zip) {
+    console.log('getNearbySchools: no zip on file for caller, returning empty.');
     return { schools: [] };
   }
 
   const myLocation = await geocodeZip(zip);
   const fipsCode = myLocation?.state ? STATE_FIPS[myLocation.state] : null;
   if (!myLocation || !fipsCode) {
+    console.error(`getNearbySchools: couldn't resolve location/fips for zip=${zip}`, myLocation);
     return { schools: [] };
   }
+  console.log(`getNearbySchools: zip=${zip} -> state=${myLocation.state} fips=${fipsCode}`);
 
   const raw = await fetchSchoolsForState(fipsCode);
+  console.log(`getNearbySchools: fetched ${raw.length} raw schools for fips=${fipsCode}`);
 
   const schools = raw
     .map((s) => {
@@ -2077,6 +2089,7 @@ exports.getNearbySchools = onCall(async (request) => {
     .filter((s) => s && s.name);
 
   schools.sort((a, b) => a.distanceMiles - b.distanceMiles);
+  console.log(`getNearbySchools: ${schools.length} within ${SCHOOL_SEARCH_RADIUS_MILES}mi after filtering`);
 
   return { schools: schools.slice(0, 100) };
 });

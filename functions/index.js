@@ -899,8 +899,14 @@ exports.getPodcastSuggestions = onCall(async (request) => {
   const byFeed = new Map();
   for (const list of resultsPerTag) {
     for (const podcast of list) {
-      const key = podcast.collectionId ?? podcast.feedUrl;
-      if (!key) continue;
+      // String()'d — the Kids & Family chart (fetchFamilyPodcastChart)
+      // returns collectionId as a string, while the iTunes Search API
+      // returns it as a number. Using either raw as a Map key let the same
+      // show, found via both sources, count as two different keys and show
+      // up twice.
+      const rawKey = podcast.collectionId ?? podcast.feedUrl;
+      if (!rawKey) continue;
+      const key = String(rawKey);
       const existing = byFeed.get(key);
       if (existing) {
         existing.matchedTags.add(podcast.matchedTag);

@@ -1189,17 +1189,29 @@ exports.getBlogFeed = onCall(async (request) => {
   return { posts };
 });
 
-// Neurodivergent-specialty retailers confirmed to expose Shopify's public
+// Neurodivergent-specialty retailers exposing Shopify's public
 // predictive-search endpoint — the same JSON API their own on-site search
 // bar calls, so results are searchable by keyword without needing a
 // private Storefront API token. Several other candidates (National Autism
 // Resources, Different Roads to Learning, Stimtastic, ARK Therapeutic,
 // TheraSpecs) all 404 on this endpoint at the domain guessed for them and
 // were dropped.
+//
+// The first three below were confirmed working via a one-off diagnostic.
+// The next three are newly added and NOT similarly confirmed — this
+// sandbox's network egress blocks essentially all retail domains (even
+// re-testing the three already-confirmed ones fails from here), so there
+// was no way to verify them before shipping. Each candidate's own
+// try/catch below means a wrong guess just silently contributes zero
+// results rather than breaking anything; worth spot-checking the Products
+// tab after deploy and pruning whichever of these three don't pan out.
 const PRODUCT_SOURCES = [
   { name: 'Fun and Function', base: 'https://funandfunction.com' },
   { name: 'Harkla', base: 'https://www.harkla.co' },
   { name: 'Chewigem', base: 'https://chewigem.com' },
+  { name: 'Autism Community Store', base: 'https://autismcommunitystore.com' },
+  { name: 'eSpecial Needs', base: 'https://especialneeds.com' },
+  { name: 'The Autism Store', base: 'https://www.autism-store.com' },
 ];
 
 // Shopify's predictive-search endpoint matches literally — a plain word
@@ -1207,17 +1219,20 @@ const PRODUCT_SOURCES = [
 // but the long descriptive labels used during onboarding
 // (app/onboarding/child.tsx's NEURODIVERGENCE_OPTIONS) mostly don't appear
 // verbatim anywhere in the catalog, so they returned nothing. Map each one
-// to a short, retail-friendly keyword instead; anything not listed here
-// (a future onboarding option, say) falls back to the label as-is.
+// to a handful of short, retail-friendly keywords instead of just one —
+// these are small boutique catalogs (see the comment below), so a single
+// term missing stock shouldn't mean the whole tag comes back empty.
+// Anything not listed here (a future onboarding option, say) falls back to
+// searching the raw label as-is.
 const PRODUCT_SEARCH_TERMS = {
-  Autism: 'autism',
-  ADHD: 'adhd',
-  Dyslexia: 'reading',
-  Dyspraxia: 'motor skills',
-  'Sensory processing differences': 'sensory',
-  'Communication differences': 'communication',
-  Anxiety: 'calming',
-  'Intellectual/developmental disability': 'developmental',
+  Autism: ['autism', 'sensory', 'stim'],
+  ADHD: ['adhd', 'fidget', 'focus'],
+  Dyslexia: ['reading', 'phonics'],
+  Dyspraxia: ['motor skills', 'coordination'],
+  'Sensory processing differences': ['sensory', 'weighted', 'tactile'],
+  'Communication differences': ['communication', 'visual schedule'],
+  Anxiety: ['calming', 'anxiety'],
+  'Intellectual/developmental disability': ['developmental', 'special needs'],
   // No product-relevant keyword for these — skip rather than search for
   // something meaningless like "prefer not to say".
   'Still figuring it out': null,
@@ -1251,9 +1266,10 @@ exports.getRecommendedProducts = onCall(async (request) => {
   // alongside whatever the child's tags produce, not only when there are
   // no usable tags at all, to keep the section from coming back empty
   // just because one specific term has nothing in stock.
-  const mappedSearches = neurodivergence
-    .map((tag) => ({ tag, term: tag in PRODUCT_SEARCH_TERMS ? PRODUCT_SEARCH_TERMS[tag] : tag }))
-    .filter((s) => s.term);
+  const mappedSearches = neurodivergence.flatMap((tag) => {
+    const terms = tag in PRODUCT_SEARCH_TERMS ? PRODUCT_SEARCH_TERMS[tag] : [tag];
+    return (terms ?? []).map((term) => ({ tag, term }));
+  });
   const searches = mappedSearches.some((s) => s.term === 'sensory')
     ? mappedSearches
     : [...mappedSearches, { tag: 'General', term: 'sensory' }];

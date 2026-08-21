@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { emptySiblingProfile, SiblingProfile, useOnboarding } from '../../contex
 import { numSiblings, stepBeforeSiblings } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
+import { fetchNearbySchools, NearbySchool, schoolSubtitle } from '../../lib/schools';
 import { colors } from '../../theme/colors';
 
 export default function Siblings() {
@@ -30,7 +31,33 @@ export default function Siblings() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Same "nearby, then narrowed by typing" picker as the neurodivergent
+  // child step (app/onboarding/child.tsx) — fetched once for the family's
+  // own zip, not per keystroke.
+  const [nearbySchools, setNearbySchools] = useState<NearbySchool[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchNearbySchools()
+      .then((schools) => {
+        if (!cancelled) setNearbySchools(schools);
+      })
+      .catch((err: any) => {
+        console.error('fetchNearbySchools failed:', err?.code ?? err?.message ?? err);
+        if (!cancelled) setNearbySchools([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const current = siblingsData[siblingIndex];
+
+  const schoolSuggestions = useMemo(() => {
+    if (!nearbySchools?.length) return [];
+    const q = current.school.trim().toLowerCase();
+    const matches = q ? nearbySchools.filter((s) => s.name.toLowerCase().includes(q)) : nearbySchools;
+    return matches.slice(0, 5);
+  }, [nearbySchools, current.school]);
 
   const updateCurrent = (patch: Partial<SiblingProfile>) => {
     setSiblingsData((prev) => prev.map((s, i) => (i === siblingIndex ? { ...s, ...patch } : s)));
@@ -137,6 +164,21 @@ export default function Siblings() {
         </View>
         <FieldInput label="Gender" placeholder="e.g. Girl" optional value={current.gender} onChangeText={(gender) => updateCurrent({ gender })} />
         <FieldInput label="Grade" placeholder="e.g. 4th grade" optional value={current.grade} onChangeText={(grade) => updateCurrent({ grade })} />
+        <FieldInput label="School" placeholder="e.g. Lincoln Elementary" optional value={current.school} onChangeText={(school) => updateCurrent({ school })} />
+        {schoolSuggestions.length > 0 ? (
+          <View style={styles.schoolSuggestions}>
+            {schoolSuggestions.map((school) => (
+              <Pressable
+                key={school.id}
+                style={styles.schoolSuggestionRow}
+                onPress={() => updateCurrent({ school: school.name })}
+              >
+                <Text style={styles.schoolSuggestionName}>{school.name}</Text>
+                <Text style={styles.schoolSuggestionMeta}>{schoolSubtitle(school)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -173,6 +215,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: -12,
     marginBottom: 16,
+  },
+  schoolSuggestions: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    marginTop: -10,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  schoolSuggestionRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  schoolSuggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  schoolSuggestionMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   row: {
     flexDirection: 'row',

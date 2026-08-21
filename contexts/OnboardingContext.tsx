@@ -30,10 +30,18 @@ export type SiblingProfile = {
   age: string;
   gender: string;
   grade: string;
+  school: string;
   photoUrl: string | null;
 };
 
-export const emptySiblingProfile: SiblingProfile = { name: '', age: '', gender: '', grade: '', photoUrl: null };
+export const emptySiblingProfile: SiblingProfile = {
+  name: '',
+  age: '',
+  gender: '',
+  grade: '',
+  school: '',
+  photoUrl: null,
+};
 
 export type OnboardingProfile = {
   firstName: string;

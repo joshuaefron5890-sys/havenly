@@ -377,8 +377,9 @@ export default function Profile() {
                 <View style={styles.personInfo}>
                   <Text style={styles.personName}>{sibling.name || `Sibling ${i + 1}`}</Text>
                   <Text style={styles.personMeta}>
-                    {[sibling.age && `Age ${sibling.age}`, sibling.gender, sibling.grade].filter(Boolean).join(' · ') ||
-                      'No details yet'}
+                    {[sibling.age && `Age ${sibling.age}`, sibling.gender, sibling.grade, sibling.school]
+                      .filter(Boolean)
+                      .join(' · ') || 'No details yet'}
                   </Text>
                 </View>
               </View>

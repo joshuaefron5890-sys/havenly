@@ -693,16 +693,45 @@ function locationBonus(me, target) {
   return me.city === target.city && me.state === target.state ? 8 : 0;
 }
 
+// Every kid in the family, neurodivergent or not — unlike
+// ageClosenessBonus (which only ever looked at .children, the
+// neurodivergent ones specifically, matching the app's core matching
+// focus), a same-school connection matters just as much for a sibling as
+// it does for the neurodivergent child, so this pulls from both.
+function schoolsOf(family) {
+  const children = Array.isArray(family.children) ? family.children : [];
+  const siblings = Array.isArray(family.siblingProfiles) ? family.siblingProfiles : [];
+  return [...children, ...siblings]
+    .map((c) => (typeof c?.school === 'string' ? c.school.trim().toLowerCase() : ''))
+    .filter(Boolean);
+}
+
+// Counted as overlapping (child, child) pairs, not just distinct shared
+// schools — two of my kids at the same school as one of theirs is a
+// stronger signal than either alone, and this is the one bonus below
+// that's meant to reward that multiplicity rather than just "yes/no."
+function schoolOverlapCount(me, target) {
+  const mySchools = schoolsOf(me);
+  const theirSchools = schoolsOf(target);
+  let overlaps = 0;
+  for (const mine of mySchools) {
+    for (const theirs of theirSchools) {
+      if (mine === theirs) overlaps += 1;
+    }
+  }
+  return overlaps;
+}
+
 // Weighted, capped point system — deliberately not "% of everything that
 // overlaps," which would treat a shared taste in Pokémon the same as
 // shared neurodivergent experience. Heaviest weight goes to the two
 // signals that actually predict a good match: shared neurodivergent
 // experience (the app's core "someone who gets it" value) and shared
 // goals (so a family wanting casual playdates doesn't get matched with one
-// looking for a close friendship). Child age closeness and shared
-// interests count for less; shared availability is closer to a small
-// logistics bonus than a real compatibility signal. Clamped well under
-// 100 — no two real families should ever read as a "sure thing."
+// looking for a close friendship). Child age closeness, shared interests,
+// and same-school kids count for less; shared availability is closer to a
+// small logistics bonus than a real compatibility signal. Clamped well
+// under 100 — no two real families should ever read as a "sure thing."
 function computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, sharedAvailability) {
   const myGoals = Array.isArray(me.goals) ? me.goals : [];
   const theirGoals = Array.isArray(target.goals) ? target.goals : [];
@@ -719,7 +748,8 @@ function computeMatchScore(me, target, sharedInterests, sharedNeurodivergence, s
     Math.min(sharedInterests.length, 5) * 3 +
     Math.min(sharedSoundsGoodTo.length, 4) * 3 +
     Math.min(sharedAvailability.length, 4) * 1.5 +
-    locationBonus(me, target);
+    locationBonus(me, target) +
+    Math.min(schoolOverlapCount(me, target), 2) * 6;
 
   return Math.round(Math.max(50, Math.min(97, 50 + points)));
 }

@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { ChildProfile, emptyChildProfile, useOnboarding } from '../../contexts/O
 import { stepAfterChild } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
+import { fetchNearbySchools, NearbySchool, schoolSubtitle } from '../../lib/schools';
 import { colors } from '../../theme/colors';
 
 const NEURODIVERGENCE_OPTIONS = [
@@ -47,7 +48,37 @@ export default function Child() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetched once for the family's own zip (see functions/index.js's
+  // getNearbySchools) — not re-fetched per keystroke, since the API
+  // answers "what's nearby," not a live text search. Typing just filters
+  // this fixed list client-side below.
+  const [nearbySchools, setNearbySchools] = useState<NearbySchool[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchNearbySchools()
+      .then((schools) => {
+        if (!cancelled) setNearbySchools(schools);
+      })
+      .catch(() => {
+        if (!cancelled) setNearbySchools([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const current = childrenData[childIndex];
+
+  // A short "near you" list to tap even before typing anything, narrowed
+  // by whatever's been typed so far once there's something to match
+  // against. Capped at 5 — this is meant to be a quick assist, not a full
+  // searchable directory.
+  const schoolSuggestions = useMemo(() => {
+    if (!nearbySchools?.length) return [];
+    const q = current.school.trim().toLowerCase();
+    const matches = q ? nearbySchools.filter((s) => s.name.toLowerCase().includes(q)) : nearbySchools;
+    return matches.slice(0, 5);
+  }, [nearbySchools, current.school]);
 
   const updateCurrent = (patch: Partial<ChildProfile>) => {
     setChildrenData((prev) => prev.map((c, i) => (i === childIndex ? { ...c, ...patch } : c)));
@@ -160,6 +191,20 @@ export default function Child() {
         </View>
         <FieldInput label="Grade" placeholder="e.g. 1st grade" optional value={current.grade} onChangeText={(grade) => updateCurrent({ grade })} />
         <FieldInput label="School" placeholder="e.g. Lincoln Elementary" optional value={current.school} onChangeText={(school) => updateCurrent({ school })} />
+        {schoolSuggestions.length > 0 ? (
+          <View style={styles.schoolSuggestions}>
+            {schoolSuggestions.map((school) => (
+              <Pressable
+                key={school.id}
+                style={styles.schoolSuggestionRow}
+                onPress={() => updateCurrent({ school: school.name })}
+              >
+                <Text style={styles.schoolSuggestionName}>{school.name}</Text>
+                <Text style={styles.schoolSuggestionMeta}>{schoolSubtitle(school)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
         <Text style={styles.label}>NEURODIVERGENCE · SELECT ANY</Text>
         <View style={styles.chips}>
@@ -208,6 +253,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: -12,
     marginBottom: 16,
+  },
+  schoolSuggestions: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    marginTop: -10,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  schoolSuggestionRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  schoolSuggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  schoolSuggestionMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   row: {
     flexDirection: 'row',

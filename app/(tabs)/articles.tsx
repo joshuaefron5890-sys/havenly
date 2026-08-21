@@ -32,6 +32,7 @@ import {
   removeFavoriteResource,
 } from '../../lib/favorites';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
+import { BlogPost, blogPostSubtitle, fetchBlogFeed } from '../../lib/blogs';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -51,6 +52,7 @@ export default function Articles() {
   const { user } = useAuth();
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[] | null>(null);
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState(ALL);
@@ -72,6 +74,24 @@ export default function Articles() {
       })
       .catch((err: any) => {
         if (!cancelled) setError(err?.message ?? err?.code ?? 'unknown error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Best-effort, like the community contributions below — a blog RSS feed
+  // being down shouldn't block or show an error for the rest of the
+  // screen, it should just quietly show fewer blog posts.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    fetchBlogFeed()
+      .then((result) => {
+        if (!cancelled) setBlogPosts(result);
+      })
+      .catch(() => {
+        if (!cancelled) setBlogPosts([]);
       });
     return () => {
       cancelled = true;
@@ -128,19 +148,34 @@ export default function Articles() {
     });
   }, [contributions, query, subtypeFilter]);
 
-  const toggleFavorite = async (article: HealthResource) => {
-    const wasFavorited = favoriteUrls.has(article.url);
+  const sortedBlogPosts = blogPosts ? sortFavoritedFirst(blogPosts, favoriteUrls, (p) => p.url) : null;
+
+  const filteredBlogPosts = useMemo(() => {
+    if (!sortedBlogPosts) return null;
+    // Same reasoning as the MedlinePlus gate above, just the other
+    // direction — these are always blog posts, so any other sub-type
+    // filter hides them entirely.
+    if (subtypeFilter !== ALL && subtypeFilter !== 'blog') return [];
+    const q = query.trim().toLowerCase();
+    return sortedBlogPosts.filter((p) => !q || p.title.toLowerCase().includes(q));
+  }, [sortedBlogPosts, query, subtypeFilter]);
+
+  // Shared by MedlinePlus articles and blog posts — both are plain
+  // { url } curated content favorited via the same favoriteResourceUrls
+  // field, unlike community contributions which use favoriteContributionIds.
+  const toggleFavorite = async (item: { url: string }) => {
+    const wasFavorited = favoriteUrls.has(item.url);
     setFavoriteUrls((prev) => {
       const next = new Set(prev);
-      wasFavorited ? next.delete(article.url) : next.add(article.url);
+      wasFavorited ? next.delete(item.url) : next.add(item.url);
       return next;
     });
     try {
-      await (wasFavorited ? removeFavoriteResource(article.url) : addFavoriteResource(article.url));
+      await (wasFavorited ? removeFavoriteResource(item.url) : addFavoriteResource(item.url));
     } catch {
       setFavoriteUrls((prev) => {
         const next = new Set(prev);
-        wasFavorited ? next.add(article.url) : next.delete(article.url);
+        wasFavorited ? next.add(item.url) : next.delete(item.url);
         return next;
       });
     }
@@ -184,7 +219,7 @@ export default function Articles() {
   // branch, so a contributor's own just-submitted article would silently
   // vanish behind "Couldn't load articles" whenever that unrelated feed had
   // trouble.
-  const hasContent = (filtered?.length ?? 0) > 0 || filteredContributions.length > 0;
+  const hasContent = (filtered?.length ?? 0) > 0 || filteredContributions.length > 0 || (filteredBlogPosts?.length ?? 0) > 0;
   const doneLoadingArticles = sorted !== null || Boolean(error);
 
   return (
@@ -253,6 +288,28 @@ export default function Articles() {
                       summary: article.summary,
                       url: article.url,
                       matchedTags: article.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
+            {filteredBlogPosts?.map((post) => (
+              <ListRow
+                key={post.url}
+                title={post.title}
+                subtitle={blogPostSubtitle(post)}
+                icon="blog"
+                favorited={favoriteUrls.has(post.url)}
+                onToggleFavorite={() => toggleFavorite(post)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/article/[id]',
+                    params: {
+                      id: encodeURIComponent(post.url),
+                      title: post.title,
+                      summary: post.snippet,
+                      url: post.url,
+                      source: post.source,
                     },
                   })
                 }

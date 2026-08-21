@@ -1080,6 +1080,83 @@ exports.getHealthResources = onCall(async (request) => {
   return { resources };
 });
 
+// Curated blogs written by/for neurodivergent parents — pulled directly
+// from each site's own public RSS feed (no API key, same "read a feed you
+// don't control" approach as TACA's events above, just RSS instead of a
+// JSON REST endpoint). Picked for being written from lived experience as
+// an autistic/ADHD/neurodivergent parent, not just clinical content.
+const BLOG_SOURCES = [
+  { name: 'NeuroClastic', feedUrl: 'https://neuroclastic.com/feed' },
+  { name: 'ADDitude', feedUrl: 'https://www.additudemag.com/category/blog/feed/' },
+  { name: 'Neurodiverging', feedUrl: 'https://www.neurodiverging.com/feed/' },
+  { name: 'Beautifully Complex', feedUrl: 'https://parentingadhdandautism.com/feed/' },
+];
+
+// Regex extraction rather than a structured XML parse — see stripHtml's
+// comment for why. Each <item> is one blog post; a feed's <description> is
+// often the full HTML post body, so it's stripped and capped down to a
+// plain-text snippet rather than shown as-is.
+function extractRssItems(xml) {
+  const items = [];
+  const itemRegex = /<item\b[^>]*>([\s\S]*?)<\/item>/g;
+  let match;
+  while ((match = itemRegex.exec(xml))) {
+    const body = match[1];
+    const title = extractFirstTag(body, 'title');
+    const link = extractFirstTag(body, 'link');
+    const pubDate = extractFirstTag(body, 'pubDate');
+    const description = extractFirstTag(body, 'description');
+    if (title && link) {
+      items.push({ title, link, pubDate, description });
+    }
+  }
+  return items;
+}
+
+// Powers the "Blog" filter on the Resources screen. Unlike
+// getHealthResources/getPodcastSuggestions, there's no per-user tag search
+// here — a blog's own RSS feed only ever offers its latest posts, not a
+// keyword search — so this returns the same merged, most-recent-first feed
+// to every caller.
+exports.getBlogFeed = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+
+  const resultsPerSource = await Promise.all(
+    BLOG_SOURCES.map(async (source) => {
+      try {
+        const res = await fetch(source.feedUrl);
+        if (!res.ok) return [];
+        const xml = await res.text();
+        return extractRssItems(xml).map((item) => ({ ...item, source: source.name }));
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  const posts = resultsPerSource
+    .flat()
+    .map((item) => {
+      const parsed = item.pubDate ? new Date(item.pubDate) : null;
+      const publishedAt = parsed && !isNaN(parsed.getTime()) ? parsed : null;
+      const snippet = item.description.length > 220 ? `${item.description.slice(0, 220).trim()}…` : item.description;
+      return { url: item.link, title: item.title, snippet, source: item.source, publishedAt };
+    })
+    // Most recent first; a post with an unparseable date sorts last rather
+    // than clustering at the front under an implicit "now".
+    .sort((a, b) => {
+      if (!a.publishedAt) return 1;
+      if (!b.publishedAt) return -1;
+      return b.publishedAt - a.publishedAt;
+    })
+    .slice(0, 20)
+    .map((p) => ({ ...p, publishedAt: p.publishedAt ? p.publishedAt.toISOString() : null }));
+
+  return { posts };
+});
+
 // Neurodivergent-specialty retailers confirmed to expose Shopify's public
 // predictive-search endpoint — the same JSON API their own on-site search
 // bar calls, so results are searchable by keyword without needing a

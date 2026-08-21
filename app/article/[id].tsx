@@ -9,20 +9,25 @@ import { showAlert } from '../../lib/alert';
 import { addFavoriteResource, getFavoriteResourceUrls, removeFavoriteResource } from '../../lib/favorites';
 import { colors } from '../../theme/colors';
 
-// Article data comes from MedlinePlus's public search API and is already
-// fully fetched client-side on the dashboard, so it's handed over via route
-// params instead of being re-fetched here — there's no "look up an article
-// by id" endpoint, and nothing here is sensitive. The article's own url
-// (not the route's [id], which is just an encoded copy) is the favorite
-// key, matching what getHealthResources uses server-side.
+// Article data comes from MedlinePlus's public search API (or, for a blog
+// post, functions/index.js's getBlogFeed) and is already fully fetched
+// client-side on the dashboard, so it's handed over via route params
+// instead of being re-fetched here — there's no "look up an article by id"
+// endpoint, and nothing here is sensitive. The item's own url (not the
+// route's [id], which is just an encoded copy) is the favorite key,
+// matching what both server functions use for their own favoriting.
 export default function ArticleDetail() {
-  const { title, summary, url, matchedTags } = useLocalSearchParams<{
+  const { title, summary, url, matchedTags, source } = useLocalSearchParams<{
     id: string;
     title?: string;
     summary?: string;
     url: string;
     matchedTags?: string;
+    // Absent for a MedlinePlus article (matchedTags implies that origin) —
+    // present with the blog's name (e.g. "NeuroClastic") for a blog post.
+    source?: string;
   }>();
+  const attribution = source || 'MedlinePlus';
   const { user } = useAuth();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
@@ -76,7 +81,7 @@ export default function ArticleDetail() {
         </View>
 
         <Text style={styles.title}>{title || 'Article'}</Text>
-        <Text style={styles.attribution}>MedlinePlus</Text>
+        <Text style={styles.attribution}>{attribution}</Text>
 
         {summary ? (
           <View style={styles.card}>
@@ -111,7 +116,7 @@ export default function ArticleDetail() {
           disabled={!url}
           onPress={() => url && Linking.openURL(url)}
         >
-          <Text style={styles.ctaText}>Read on MedlinePlus</Text>
+          <Text style={styles.ctaText}>Read on {attribution}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

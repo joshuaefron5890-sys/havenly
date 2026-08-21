@@ -456,7 +456,6 @@ export default function ForYou() {
       });
       fetchContributions('event').then((result) => {
         if (!cancelled) setEventContributions(result);
-        if (!cancelled) mergeContributorPhotos(result);
       });
       getFavoriteEventIds(user.uid).then((ids) => {
         if (!cancelled) setFavoriteEventIds(new Set(ids));
@@ -980,8 +979,6 @@ export default function ForYou() {
                 title={c.fields.title ?? 'Community event'}
                 icon="calendar-outline"
                 community
-                contributedBy={c.contributedByName}
-                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>

@@ -1279,7 +1279,7 @@ exports.getRecommendedProducts = onCall(async (request) => {
       searches.map(async ({ tag, term }) => {
         try {
           const res = await fetch(
-            `${source.base}/search/suggest.json?q=${encodeURIComponent(term)}&resources[type]=product&resources[limit]=5&resources[options][unavailable_products]=hide`
+            `${source.base}/search/suggest.json?q=${encodeURIComponent(term)}&resources[type]=product&resources[limit]=10&resources[options][unavailable_products]=hide`
           );
           if (!res.ok) return [];
           const data = await res.json();
@@ -1345,10 +1345,14 @@ exports.getRecommendedProducts = onCall(async (request) => {
     }
   }
 
+  // Not a UX-driven display cap (the client reveals these incrementally as
+  // the user scrolls, see app/(tabs)/products.tsx) — just a sanity ceiling
+  // against a pathological case, well above what this many sources/terms
+  // deduped by URL would realistically ever produce.
   const products = [...byUrl.values()]
     .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
-    .slice(0, 15);
+    .slice(0, 150);
 
   return { products };
 });

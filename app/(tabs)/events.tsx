@@ -16,7 +16,12 @@ import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributi
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import { familyPhoto, fetchFamiliesByUids } from '../../lib/families';
 import { addFavoriteContribution, getFavoriteContributionIds, removeFavoriteContribution } from '../../lib/favorites';
-import { fetchLatestProposal, PlaydateProposal, proposalStartLabel } from '../../lib/playdateProposals';
+import {
+  fetchAcceptedProposals,
+  fetchPendingProposals,
+  PlaydateProposal,
+  proposalStartLabel,
+} from '../../lib/playdateProposals';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -26,14 +31,19 @@ const IN_PERSON = 'In-person';
 // NearbyEvent does (TACA, a regional center, etc.) — this is their stand-in
 // so they can appear as one more option in the same filter row.
 const COMMUNITY_SOURCE = 'Community';
+// Same idea as COMMUNITY_SOURCE — a playdate proposal/confirmation isn't
+// from any curated source either, it's personal to this user, so it gets
+// its own stand-in option in the same filter row.
+const PLAYDATES_SOURCE = 'Playdates';
 const SCHEMA = CONTRIBUTION_SCHEMAS.event;
 
 export default function Events() {
   const { user } = useAuth();
   const [events, setEvents] = useState<NearbyEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [proposal, setProposal] = useState<PlaydateProposal | null>(null);
-  const [proposalFamilyPhotos, setProposalFamilyPhotos] = useState<[string | null, string | null] | null>(null);
+  const [pendingProposals, setPendingProposals] = useState<PlaydateProposal[]>([]);
+  const [confirmedProposals, setConfirmedProposals] = useState<PlaydateProposal[]>([]);
+  const [proposalPhotos, setProposalPhotos] = useState<Record<string, [string | null, string | null]>>({});
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(ALL);
   const [sourceFilter, setSourceFilter] = useState(ALL);
@@ -60,8 +70,11 @@ export default function Events() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      fetchLatestProposal().then((result) => {
-        if (!cancelled) setProposal(result);
+      fetchPendingProposals().then((result) => {
+        if (!cancelled) setPendingProposals(result);
+      });
+      fetchAcceptedProposals().then((result) => {
+        if (!cancelled) setConfirmedProposals(result);
       });
       getFavoriteContributionIds(user.uid).then((ids) => {
         if (!cancelled) setFavoriteContributionIds(new Set(ids));
@@ -75,21 +88,34 @@ export default function Events() {
     }, [user])
   );
 
+  const allProposals = useMemo(
+    () => [
+      ...confirmedProposals.map((p) => ({ ...p, badge: 'Confirmed' as const, badgeVariant: 'positive' as const })),
+      ...pendingProposals.map((p) => ({ ...p, badge: 'Proposed' as const, badgeVariant: 'accent' as const })),
+    ],
+    [confirmedProposals, pendingProposals]
+  );
+
   useEffect(() => {
-    if (!proposal) {
-      setProposalFamilyPhotos(null);
+    if (!allProposals.length) {
+      setProposalPhotos({});
       return;
     }
     let cancelled = false;
-    fetchFamiliesByUids([proposal.fromUid, proposal.toUid]).then((result) => {
+    const uids = [...new Set(allProposals.flatMap((p) => [p.fromUid, p.toUid]))];
+    fetchFamiliesByUids(uids).then((result) => {
       if (cancelled) return;
       const byUid = new Map(result.map((f) => [f.uid, familyPhoto(f)]));
-      setProposalFamilyPhotos([byUid.get(proposal.fromUid) ?? null, byUid.get(proposal.toUid) ?? null]);
+      const photos: Record<string, [string | null, string | null]> = {};
+      for (const p of allProposals) {
+        photos[p.id] = [byUid.get(p.fromUid) ?? null, byUid.get(p.toUid) ?? null];
+      }
+      setProposalPhotos(photos);
     });
     return () => {
       cancelled = true;
     };
-  }, [proposal]);
+  }, [allProposals]);
 
   // "Virtual"/"In-person" lead the filter row (a distinction that matters
   // for every event), followed by whatever categories actually turned up.
@@ -110,12 +136,13 @@ export default function Events() {
     events.forEach((e) => sources.add(e.source));
     const options = [ALL, ...[...sources].sort()];
     if (contributions.length > 0) options.push(COMMUNITY_SOURCE);
+    if (allProposals.length > 0) options.push(PLAYDATES_SOURCE);
     return options;
-  }, [events, contributions]);
+  }, [events, contributions, allProposals]);
 
   const filteredEvents = useMemo(() => {
     if (!events) return null;
-    if (sourceFilter === COMMUNITY_SOURCE) return [];
+    if (sourceFilter === COMMUNITY_SOURCE || sourceFilter === PLAYDATES_SOURCE) return [];
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
       if (filter === VIRTUAL && !e.virtual) return false;
@@ -133,6 +160,15 @@ export default function Events() {
     if (!q) return contributions;
     return contributions.filter((c) => (c.fields.title ?? '').toLowerCase().includes(q));
   }, [contributions, query, sourceFilter]);
+
+  const filteredProposals = useMemo(() => {
+    if (sourceFilter !== ALL && sourceFilter !== PLAYDATES_SOURCE) return [];
+    const q = query.trim().toLowerCase();
+    if (!q) return allProposals;
+    return allProposals.filter(
+      (p) => proposalStartLabel(p).toLowerCase().includes(q) || p.venue.toLowerCase().includes(q)
+    );
+  }, [allProposals, query, sourceFilter]);
 
   const toggleContributionFavorite = async (contributionId: string) => {
     const wasFavorited = favoriteContributionIds.has(contributionId);
@@ -163,7 +199,7 @@ export default function Events() {
   // live inside the same branch as the events error/loading state, so a
   // contributor's own just-submitted event would silently vanish behind
   // "Couldn't load events" whenever that unrelated feed had trouble.
-  const hasContent = Boolean(proposal) || (filteredEvents?.length ?? 0) > 0 || filteredContributions.length > 0;
+  const hasContent = filteredProposals.length > 0 || (filteredEvents?.length ?? 0) > 0 || filteredContributions.length > 0;
   const doneLoadingEvents = events !== null || Boolean(error);
 
   return (
@@ -194,24 +230,25 @@ export default function Events() {
 
         {hasContent ? (
           <View style={styles.grid}>
-            {proposal ? (
-              <SquareCard
-                key={`proposal-${proposal.id}`}
-                title={proposalStartLabel(proposal)}
-                subtitle={proposal.venue}
-                icon="calendar"
-                pairImages={
-                  proposalFamilyPhotos
-                    ? [
-                        proposalFamilyPhotos[0] ? { uri: proposalFamilyPhotos[0] } : undefined,
-                        proposalFamilyPhotos[1] ? { uri: proposalFamilyPhotos[1] } : undefined,
-                      ]
-                    : undefined
-                }
-                badge="Proposed"
-                onPress={() => router.push(`/proposal/${proposal.id}`)}
-              />
-            ) : null}
+            {filteredProposals.map((p) => {
+              const photos = proposalPhotos[p.id];
+              return (
+                <SquareCard
+                  key={`proposal-${p.id}`}
+                  title={proposalStartLabel(p)}
+                  subtitle={p.venue}
+                  icon="calendar"
+                  pairImages={
+                    photos
+                      ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
+                      : undefined
+                  }
+                  badge={p.badge}
+                  badgeVariant={p.badgeVariant}
+                  onPress={() => router.push(`/proposal/${p.id}`)}
+                />
+              );
+            })}
             {filteredContributions.map((c) => (
               <SquareCard
                 key={c.id}

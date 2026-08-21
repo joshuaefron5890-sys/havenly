@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { User } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { OnboardingProfile } from '../contexts/OnboardingContext';
-import { auth, db } from './firebase';
+import { db } from './firebase';
+import { getMyFamilyUid } from './familyContext';
 
 // Best-effort — a failed save shouldn't block the wizard, since the
 // in-memory OnboardingContext still has everything for the current session.
@@ -20,7 +21,7 @@ export async function saveOnboardingStep(
   nextStep: string,
   options?: { editMode?: boolean }
 ): Promise<void> {
-  const uid = auth?.currentUser?.uid;
+  const uid = getMyFamilyUid();
   if (!uid || !db) return;
   try {
     await setDoc(
@@ -61,6 +62,21 @@ export async function routeSignedInUser(
   hydrateProfile: (patch: Partial<OnboardingProfile>) => void
 ): Promise<void> {
   try {
+    // An invited family member (see lib/familyMembers.ts) never has their
+    // own users/{uid} doc — their family's profile lives at
+    // users/{familyUid} instead — so loadOnboardingProgress(user.uid) below
+    // would always read as "no saved progress" for them and wrongly send
+    // them into the onboarding wizard on every sign-in. A familyMembers doc
+    // only exists once they've actually accepted an invite (see
+    // app/invite/[token].tsx), so its presence alone is enough to route
+    // them straight into the app instead.
+    if (db) {
+      const memberSnap = await getDoc(doc(db, 'familyMembers', user.uid));
+      if (memberSnap.exists()) {
+        router.replace('/(tabs)');
+        return;
+      }
+    }
     const progress = await loadOnboardingProgress(user.uid);
     if (progress?.onboardingComplete) {
       router.replace('/(tabs)');

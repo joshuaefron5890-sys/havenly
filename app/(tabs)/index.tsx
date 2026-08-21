@@ -114,7 +114,7 @@ function mergeFamilies(favorited: SuggestedFamily[], suggested: SuggestedFamily[
 }
 
 export default function ForYou() {
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const firstName = user?.displayName?.trim().split(' ')[0] || '';
 
   // Measured once from a zero-height spacer at the top of the scroll
@@ -134,7 +134,7 @@ export default function ForYou() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoriteContributionIds(user.uid).then((ids) => {
+      getFavoriteContributionIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       return () => {
@@ -200,7 +200,7 @@ export default function ForYou() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoriteFamilyUids(user.uid)
+      getFavoriteFamilyUids(familyUid ?? user.uid)
         .then((ids) => {
           if (cancelled) return null;
           setFavoriteFamilyUids(new Set(ids));
@@ -274,7 +274,7 @@ export default function ForYou() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoriteProductUrls(user.uid).then((urls) => {
+      getFavoriteProductUrls(familyUid ?? user.uid).then((urls) => {
         if (!cancelled) setFavoriteProductUrls(new Set(urls));
       });
       fetchContributions('product').then((result) => {
@@ -331,7 +331,7 @@ export default function ForYou() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoritePodcastIds(user.uid).then((ids) => {
+      getFavoritePodcastIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoritePodcastIds(new Set(ids));
       });
       fetchContributions('podcast').then((result) => {
@@ -389,7 +389,7 @@ export default function ForYou() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoriteResourceUrls(user.uid).then((urls) => {
+      getFavoriteResourceUrls(familyUid ?? user.uid).then((urls) => {
         if (!cancelled) setFavoriteResourceUrls(new Set(urls));
       });
       fetchContributions('article').then((result) => {
@@ -456,7 +456,7 @@ export default function ForYou() {
       fetchContributions('event').then((result) => {
         if (!cancelled) setEventContributions(result);
       });
-      getFavoriteEventIds(user.uid).then((ids) => {
+      getFavoriteEventIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoriteEventIds(new Set(ids));
       });
       return () => {

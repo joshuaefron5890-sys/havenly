@@ -7,6 +7,19 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
 
+// An invited family member (co-parent, aunt, etc. — see sendFamilyInvite
+// below) signs in with their OWN Firebase Auth uid, but every family's data
+// lives at users/{ownerUid}, the uid of whoever originally created the
+// account. familyMembers/{authUid} is the mapping from "whoever is actually
+// signed in" to "whose family data they should see" — a doc only exists
+// here for an invited member, so an owner (the overwhelmingly common case)
+// resolves to themselves with zero extra reads beyond the miss.
+async function resolveFamilyUid(authUid) {
+  const memberSnap = await admin.firestore().collection('familyMembers').doc(authUid).get();
+  const familyUid = memberSnap.data()?.familyUid;
+  return typeof familyUid === 'string' && familyUid ? familyUid : authUid;
+}
+
 // Same OAuth client Firebase auto-created for the Google auth provider
 // (lib/googleIdentity.ts reuses its client ID client-side). The client
 // secret that pairs with it can only ever be used server-side — set via
@@ -699,14 +712,15 @@ exports.getSuggestedFamilies = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
 
+  const familyUid = await resolveFamilyUid(request.auth.uid);
   const [meSnap, snap] = await Promise.all([
-    admin.firestore().collection('users').doc(request.auth.uid).get(),
+    admin.firestore().collection('users').doc(familyUid).get(),
     admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(30).get(),
   ]);
   const me = meSnap.data() ?? {};
 
   const families = snap.docs
-    .filter((doc) => doc.id !== request.auth.uid)
+    .filter((doc) => doc.id !== familyUid)
     .map((doc) => {
       const target = doc.data();
       return { ...toPublicFamily(doc.id, target), matchScore: computeMatch(me, target).matchScore };
@@ -731,7 +745,7 @@ exports.getFamiliesByUids = onCall(async (request) => {
   }
 
   const [meSnap, snaps] = await Promise.all([
-    admin.firestore().collection('users').doc(request.auth.uid).get(),
+    admin.firestore().collection('users').doc(await resolveFamilyUid(request.auth.uid)).get(),
     Promise.all(uids.map((uid) => admin.firestore().collection('users').doc(uid).get())),
   ]);
   const me = meSnap.data() ?? {};
@@ -760,7 +774,7 @@ exports.getFamilyProfile = onCall(async (request) => {
   }
 
   const [meSnap, targetSnap] = await Promise.all([
-    admin.firestore().collection('users').doc(request.auth.uid).get(),
+    admin.firestore().collection('users').doc(await resolveFamilyUid(request.auth.uid)).get(),
     admin.firestore().collection('users').doc(targetUid).get(),
   ]);
   if (!targetSnap.exists) {
@@ -786,6 +800,189 @@ exports.getFamilyProfile = onCall(async (request) => {
     sharedAvailability,
     matchScore,
   };
+});
+
+// --- Family membership (invite a co-parent/relative) -----------------
+//
+// "Full access" invites: an invited member's Firebase Auth uid never
+// matches the family's uid, but familyMembers/{theirUid} maps them onto it,
+// and resolveFamilyUid (top of file) is what every other family-scoped
+// function/rule uses to treat them exactly like the family that invited
+// them. crypto.randomBytes rather than a Firestore auto-id for the invite
+// token — auto-ids are short enough (20 base64 chars, but generated
+// client-reachable-adjacent) that treating one as an unguessable secret
+// would be riskier than a purpose-built 192-bit random token.
+const crypto = require('node:crypto');
+
+const FAMILY_RELATIONSHIPS = ['Co-parent', 'Aunt', 'Uncle', 'Grandparent', 'Cousin', 'Close friend'];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function sendRawEmail(to, subject, text) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${resendApiKey.value()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: RESEND_FROM_EMAIL, to: [to], subject, text }),
+  });
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    console.error(`Resend send to ${to} failed (${res.status}): ${errJson.message || 'unknown error'}`);
+  }
+}
+
+// Sends the invite. Any current family member (owner or a previously
+// invited member — full access includes being able to grow the family)
+// can call this; who actually sent it is recorded on the invite doc for
+// the email body ("Josh invited you...") but doesn't otherwise gate
+// anything further.
+exports.sendFamilyInvite = onCall({ secrets: [resendApiKey] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const name = typeof request.data?.name === 'string' ? request.data.name.trim() : '';
+  const relationship = typeof request.data?.relationship === 'string' ? request.data.relationship : '';
+  const email = typeof request.data?.email === 'string' ? request.data.email.trim() : '';
+  if (!name) {
+    throw new HttpsError('invalid-argument', 'Name is required.');
+  }
+  if (!FAMILY_RELATIONSHIPS.includes(relationship)) {
+    throw new HttpsError('invalid-argument', 'Not a recognized relationship.');
+  }
+  if (!EMAIL_RE.test(email)) {
+    throw new HttpsError('invalid-argument', 'A valid email is required.');
+  }
+
+  const familyUid = await resolveFamilyUid(request.auth.uid);
+  const [familySnap, inviterRecord] = await Promise.all([
+    admin.firestore().collection('users').doc(familyUid).get(),
+    admin.auth().getUser(request.auth.uid).catch(() => null),
+  ]);
+  const familyLabel = familyLabelFor(familySnap.data()?.lastName);
+  const invitedByName = inviterRecord?.displayName || 'A family member';
+
+  const token = crypto.randomBytes(24).toString('hex');
+  await admin.firestore().collection('familyInvites').doc(token).set({
+    familyUid,
+    invitedByUid: request.auth.uid,
+    invitedByName,
+    name,
+    relationship,
+    email,
+    status: 'pending',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const link = `${APP_BASE_URL}/invite/${token}`;
+  const lines = [
+    `${invitedByName} invited you to join ${familyLabel} on Haven.ly as their ${relationship}.`,
+    '',
+    `Accept your invite: ${link}`,
+    '',
+    "You don't need to sign up with this email address — use whichever email (or Gmail) you'd like when you create your account.",
+  ];
+  await sendRawEmail(email, `${invitedByName} invited you to join ${familyLabel} on Haven.ly`, lines.join('\n'));
+
+  return { sent: true };
+});
+
+// No auth required — the invitee doesn't have an account yet when they
+// first open the link. Only ever returns what's safe to show someone
+// who's proven nothing but knowledge of the token itself.
+exports.getFamilyInvite = onCall(async (request) => {
+  const token = typeof request.data?.token === 'string' ? request.data.token : '';
+  if (!token) {
+    throw new HttpsError('invalid-argument', 'Missing invite token.');
+  }
+  const inviteSnap = await admin.firestore().collection('familyInvites').doc(token).get();
+  const invite = inviteSnap.data();
+  if (!invite || invite.status !== 'pending') {
+    throw new HttpsError('not-found', 'This invite link is no longer valid.');
+  }
+  const familySnap = await admin.firestore().collection('users').doc(invite.familyUid).get();
+  return {
+    familyLabel: familyLabelFor(familySnap.data()?.lastName),
+    invitedByName: invite.invitedByName,
+    name: invite.name,
+    relationship: invite.relationship,
+  };
+});
+
+// Called once the invitee has a real Firebase Auth account (they either
+// just created one or signed in with Google) — links THAT uid to the
+// inviting family. photoUrl comes from the client's own upload (see
+// lib/photoUpload.ts), already scoped to the caller's own uid by Storage's
+// own rules, so it's trusted as-is here.
+exports.acceptFamilyInvite = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const token = typeof request.data?.token === 'string' ? request.data.token : '';
+  const photoUrl = typeof request.data?.photoUrl === 'string' ? request.data.photoUrl : null;
+  if (!token) {
+    throw new HttpsError('invalid-argument', 'Missing invite token.');
+  }
+  const inviteRef = admin.firestore().collection('familyInvites').doc(token);
+  const inviteSnap = await inviteRef.get();
+  const invite = inviteSnap.data();
+  if (!invite || invite.status !== 'pending') {
+    throw new HttpsError('not-found', 'This invite link is no longer valid.');
+  }
+
+  await admin.firestore().collection('familyMembers').doc(request.auth.uid).set({
+    familyUid: invite.familyUid,
+    name: invite.name,
+    relationship: invite.relationship,
+    photoUrl,
+    role: 'member',
+    joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  await inviteRef.set(
+    { status: 'accepted', acceptedByUid: request.auth.uid, acceptedAt: admin.firestore.FieldValue.serverTimestamp() },
+    { merge: true }
+  );
+
+  return { familyUid: invite.familyUid };
+});
+
+// Powers Profile's "Family members" list — the owner has no familyMembers
+// doc of their own (see resolveFamilyUid's comment), so they're synthesized
+// here from the family's own users/{familyUid} doc rather than being just
+// another row in the query below.
+exports.getFamilyMembers = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const familyUid = await resolveFamilyUid(request.auth.uid);
+  const [ownerSnap, membersSnap, pendingSnap] = await Promise.all([
+    admin.firestore().collection('users').doc(familyUid).get(),
+    admin.firestore().collection('familyMembers').where('familyUid', '==', familyUid).get(),
+    admin.firestore().collection('familyInvites').where('familyUid', '==', familyUid).where('status', '==', 'pending').get(),
+  ]);
+  const owner = ownerSnap.data() ?? {};
+  const members = [
+    {
+      uid: familyUid,
+      name: [owner.firstName, owner.lastName].filter(Boolean).join(' ') || 'Account owner',
+      relationship: 'Owner',
+      photoUrl: owner.familyPhotoUrl ?? null,
+      role: 'owner',
+    },
+    ...membersSnap.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        uid: doc.id,
+        name: data.name ?? '',
+        relationship: data.relationship ?? '',
+        photoUrl: data.photoUrl ?? null,
+        role: 'member',
+      };
+    }),
+  ];
+  const pendingInvites = pendingSnap.docs.map((doc) => {
+    const data = doc.data();
+    return { name: data.name ?? '', relationship: data.relationship ?? '', email: data.email ?? '' };
+  });
+
+  return { members, pendingInvites };
 });
 
 // Apple's public, unauthenticated "top charts" endpoint (the same one that
@@ -833,7 +1030,7 @@ exports.getPodcastSuggestions = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
 
-  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const meSnap = await admin.firestore().collection('users').doc(await resolveFamilyUid(request.auth.uid)).get();
   const me = meSnap.data() ?? {};
   // The two placeholder onboarding options ("Still figuring it out",
   // "Prefer not to say" — see app/onboarding/child.tsx's
@@ -1056,7 +1253,7 @@ exports.getHealthResources = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
 
-  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const meSnap = await admin.firestore().collection('users').doc(await resolveFamilyUid(request.auth.uid)).get();
   const me = meSnap.data() ?? {};
   const neurodivergence = [
     ...new Set(
@@ -1248,7 +1445,7 @@ exports.getRecommendedProducts = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
 
-  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const meSnap = await admin.firestore().collection('users').doc(await resolveFamilyUid(request.auth.uid)).get();
   const me = meSnap.data() ?? {};
   const neurodivergence = [
     ...new Set(
@@ -1503,7 +1700,7 @@ exports.getNearbyEvents = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
 
-  const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
+  const meSnap = await admin.firestore().collection('users').doc(await resolveFamilyUid(request.auth.uid)).get();
   const me = meSnap.data() ?? {};
   const myZip = typeof me.zipCode === 'string' ? me.zipCode : '';
   const myLocation = myZip ? await geocodeZip(myZip) : null;

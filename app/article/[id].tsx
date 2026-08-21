@@ -29,14 +29,14 @@ export default function ArticleDetail() {
     source?: string;
   }>();
   const attribution = source || 'MedlinePlus';
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
     if (!url || !user) return;
     let cancelled = false;
-    getFavoriteResourceUrls(user.uid).then((urls) => {
+    getFavoriteResourceUrls(familyUid ?? user.uid).then((urls) => {
       if (!cancelled) setFavorited(urls.includes(url));
     });
     return () => {

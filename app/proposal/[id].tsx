@@ -84,7 +84,7 @@ function FamilyMini({
 
 export default function ProposalDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, loading: authLoading } = useAuth();
+  const { user, familyUid, loading: authLoading } = useAuth();
   const [proposal, setProposal] = useState<PlaydateProposal | null | undefined>(undefined);
   const [otherFamily, setOtherFamily] = useState<FamilyProfile | null>(null);
   const [myFamily, setMyFamily] = useState<SuggestedFamily | null>(null);
@@ -109,7 +109,7 @@ export default function ProposalDetail() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    loadOnboardingProgress(user.uid).then((progress) => {
+    loadOnboardingProgress(familyUid ?? user.uid).then((progress) => {
       if (!cancelled && progress && Object.keys(progress.profile).length) {
         updateProfile(progress.profile);
       }
@@ -118,7 +118,7 @@ export default function ProposalDetail() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, familyUid]);
 
   const [syncPromptProposalId, setSyncPromptProposalId] = useState<string | null>(null);
 
@@ -127,7 +127,8 @@ export default function ProposalDetail() {
     return subscribeToProposal(id, setProposal);
   }, [id]);
 
-  const otherUid = proposal && user ? (proposal.fromUid === user.uid ? proposal.toUid : proposal.fromUid) : undefined;
+  const otherUid =
+    proposal && familyUid ? (proposal.fromUid === familyUid ? proposal.toUid : proposal.fromUid) : undefined;
 
   useEffect(() => {
     if (!otherUid) return;
@@ -141,15 +142,15 @@ export default function ProposalDetail() {
   }, [otherUid]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!familyUid) return;
     let cancelled = false;
-    fetchFamiliesByUids([user.uid]).then((result) => {
+    fetchFamiliesByUids([familyUid]).then((result) => {
       if (!cancelled && result[0]) setMyFamily(result[0]);
     });
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [familyUid]);
 
   const respond = async (status: 'accepted' | 'declined') => {
     if (!id || responding) return;
@@ -212,9 +213,9 @@ export default function ProposalDetail() {
     );
   }
 
-  const isRecipient = user?.uid === proposal.toUid;
+  const isRecipient = familyUid === proposal.toUid;
   const canRespond = isRecipient && proposal.status === 'proposed';
-  const isCreator = user?.uid === proposal.fromUid;
+  const isCreator = familyUid === proposal.fromUid;
   const canCancel = isCreator && (proposal.status === 'proposed' || proposal.status === 'accepted');
 
   return (

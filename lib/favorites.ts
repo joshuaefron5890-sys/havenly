@@ -1,5 +1,6 @@
 import { arrayRemove, arrayUnion, doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { db } from './firebase';
+import { getMyFamilyUid } from './familyContext';
 
 // A user's own favorites, stored directly on their own Firestore doc
 // (users/{uid}.<field>) — a normal write to one's own document, unlike
@@ -22,13 +23,13 @@ async function getFavoriteIds(uid: string, field: FavoriteField): Promise<string
 }
 
 async function addFavorite(field: FavoriteField, id: string): Promise<void> {
-  const uid = auth?.currentUser?.uid;
+  const uid = getMyFamilyUid();
   if (!uid || !db) return;
   await setDoc(doc(db, 'users', uid), { [field]: arrayUnion(id) }, { merge: true });
 }
 
 async function removeFavorite(field: FavoriteField, id: string): Promise<void> {
-  const uid = auth?.currentUser?.uid;
+  const uid = getMyFamilyUid();
   if (!uid || !db) return;
   await setDoc(doc(db, 'users', uid), { [field]: arrayRemove(id) }, { merge: true });
 }

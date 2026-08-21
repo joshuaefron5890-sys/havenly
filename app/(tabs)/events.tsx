@@ -38,7 +38,7 @@ const PLAYDATES_SOURCE = 'Playdates';
 const SCHEMA = CONTRIBUTION_SCHEMAS.event;
 
 export default function Events() {
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [events, setEvents] = useState<NearbyEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<PlaydateProposal[]>([]);
@@ -76,7 +76,7 @@ export default function Events() {
       fetchAcceptedProposals().then((result) => {
         if (!cancelled) setConfirmedProposals(result);
       });
-      getFavoriteContributionIds(user.uid).then((ids) => {
+      getFavoriteContributionIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('event').then((result) => {

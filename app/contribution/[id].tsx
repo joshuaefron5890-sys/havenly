@@ -32,7 +32,7 @@ export default function ContributionDetail() {
     contributedByName?: string;
     contributedByUid?: string;
   }>();
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
 
   // Local, editable copies of what the route params passed in — updated in
   // place after a successful edit so the screen reflects the change right
@@ -74,7 +74,7 @@ export default function ContributionDetail() {
   useEffect(() => {
     if (!id || !user) return;
     let cancelled = false;
-    getFavoriteContributionIds(user.uid).then((ids) => {
+    getFavoriteContributionIds(familyUid ?? user.uid).then((ids) => {
       if (!cancelled) setFavorited(ids.includes(id));
     });
     return () => {

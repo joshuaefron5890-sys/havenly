@@ -12,7 +12,7 @@ import { Conversation, otherParticipant, subscribeToConversations } from '../../
 import { colors } from '../../theme/colors';
 
 export default function MessagesInbox() {
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [families, setFamilies] = useState<Map<string, SuggestedFamily>>(new Map());
 
@@ -27,9 +27,9 @@ export default function MessagesInbox() {
   // Function that hand-picks which fields of another user's doc are
   // public (see functions/index.js's toPublicFamily comment).
   useEffect(() => {
-    if (!user || !conversations) return;
+    if (!user || !familyUid || !conversations) return;
     const otherUids = conversations
-      .map((c) => otherParticipant(c, user.uid))
+      .map((c) => otherParticipant(c, familyUid))
       .filter((uid): uid is string => typeof uid === 'string')
       .filter((uid) => !families.has(uid));
     if (!otherUids.length) return;
@@ -46,7 +46,7 @@ export default function MessagesInbox() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, conversations]);
+  }, [user, familyUid, conversations]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
@@ -64,7 +64,7 @@ export default function MessagesInbox() {
           <EmptyState text="No conversations yet — message a family from their profile to start one." />
         ) : (
           conversations.map((conversation) => {
-            const otherUid = user ? otherParticipant(conversation, user.uid) : undefined;
+            const otherUid = familyUid ? otherParticipant(conversation, familyUid) : undefined;
             const family = otherUid ? families.get(otherUid) : undefined;
             const photoUrl = family ? familyPhoto(family) : null;
             return (

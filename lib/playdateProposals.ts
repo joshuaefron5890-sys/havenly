@@ -11,7 +11,8 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { db } from './firebase';
+import { getMyFamilyUid } from './familyContext';
 import { getOrCreateConversation, PlaydateProposalDetails, sendProposalMessage } from './messages';
 
 export type ProposalStatus = 'proposed' | 'accepted' | 'declined' | 'canceled';
@@ -52,7 +53,7 @@ export async function createPlaydateProposal(
   details: PlaydateProposalDetails,
   note: string
 ): Promise<string> {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) {
     throw new Error('not-signed-in');
   }
@@ -120,7 +121,7 @@ function parseProposal(id: string, data: Record<string, unknown>): PlaydatePropo
 // is filtered client-side instead (same array-contains-only pattern used by
 // subscribeToConversations).
 export async function fetchLatestProposal(): Promise<PlaydateProposal | null> {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) return null;
   const q = query(collection(db, 'playdateProposals'), where('participantUids', 'array-contains', myUid));
   const snap = await getDocs(q);
@@ -139,7 +140,7 @@ export async function fetchLatestProposal(): Promise<PlaydateProposal | null> {
 // that one only needs the single most recent for the Events section's
 // badge card, not the full list.
 export async function fetchPendingProposals(): Promise<PlaydateProposal[]> {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) return [];
   const q = query(collection(db, 'playdateProposals'), where('participantUids', 'array-contains', myUid));
   const snap = await getDocs(q);
@@ -156,7 +157,7 @@ export async function fetchPendingProposals(): Promise<PlaydateProposal[]> {
 // surface. Same array-contains-only + client-side status filter as
 // fetchLatestProposal, for the same composite-index reason.
 export async function fetchAcceptedProposals(): Promise<PlaydateProposal[]> {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) return [];
   const q = query(collection(db, 'playdateProposals'), where('participantUids', 'array-contains', myUid));
   const snap = await getDocs(q);
@@ -172,7 +173,7 @@ export async function fetchAcceptedProposals(): Promise<PlaydateProposal[]> {
 // to its own conversationId to know whether a proposal it's rendering is
 // still pending, and to react instantly when the other side responds.
 export function subscribeToMyProposals(callback: (proposals: PlaydateProposal[]) => void): () => void {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) {
     callback([]);
     return () => {};

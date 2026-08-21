@@ -8,6 +8,7 @@ import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
+import { FamilyMember, getFamilyMembers, PendingFamilyInvite } from '../lib/familyMembers';
 import { signOutUser } from '../lib/firebase';
 import { getGoogleFreeBusy } from '../lib/googleCalendar';
 import { initials } from '../lib/initials';
@@ -90,7 +91,7 @@ function formatTimeRange(start: Date, end: Date): string {
 }
 
 export default function Profile() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, familyUid, loading: authLoading } = useAuth();
   const { profile, updateProfile } = useOnboarding();
   const [hydrating, setHydrating] = useState(true);
   // The Google account photo URL can fail to load (expired, blocked by
@@ -111,7 +112,7 @@ export default function Profile() {
       return;
     }
     let cancelled = false;
-    loadOnboardingProgress(user.uid)
+    loadOnboardingProgress(familyUid ?? user.uid)
       .then((progress) => {
         if (cancelled) return;
         if (progress && Object.keys(progress.profile).length) {
@@ -124,11 +125,32 @@ export default function Profile() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user]);
+  }, [authLoading, user, familyUid]);
 
   useEffect(() => {
     setAvatarFailed(false);
   }, [user?.photoURL]);
+
+  const [members, setMembers] = useState<FamilyMember[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingFamilyInvite[]>([]);
+  useEffect(() => {
+    if (authLoading || !user) return;
+    let cancelled = false;
+    getFamilyMembers()
+      .then(({ members, pendingInvites }) => {
+        if (!cancelled) {
+          setMembers(members);
+          setPendingInvites(pendingInvites);
+        }
+      })
+      .catch(() => {
+        // Best-effort — an empty list just hides the section's extra rows,
+        // it doesn't block anything else on this screen.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user]);
 
   const [slots, setSlots] = useState<SuggestedSlot[] | null>(null);
   const [slotsError, setSlotsError] = useState<string | null>(null);
@@ -273,6 +295,41 @@ export default function Profile() {
           <Field label="Siblings usually included" value={profile.siblingsIncluded ?? ''} />
           <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
         </SectionCard>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Family members</Text>
+          </View>
+          {members.map((member) => (
+            <View key={member.uid} style={styles.personRow}>
+              <Photo
+                source={member.photoUrl ? { uri: member.photoUrl } : undefined}
+                style={styles.personPhoto}
+                variant="person"
+                iconSize={22}
+              />
+              <View style={styles.personInfo}>
+                <Text style={styles.personName}>{member.name || 'Family member'}</Text>
+                <Text style={styles.personMeta}>{member.relationship}</Text>
+              </View>
+            </View>
+          ))}
+          {pendingInvites.map((invite) => (
+            <View key={invite.email} style={styles.personRow}>
+              <View style={[styles.personPhoto, styles.avatarFallback]}>
+                <Ionicons name="mail-outline" size={20} color={colors.accent} />
+              </View>
+              <View style={styles.personInfo}>
+                <Text style={styles.personName}>{invite.name || invite.email}</Text>
+                <Text style={styles.personMeta}>{invite.relationship} · Invite sent</Text>
+              </View>
+            </View>
+          ))}
+          <Pressable style={styles.addChildButton} onPress={() => router.push('/invite-family-member')}>
+            <Ionicons name="person-add-outline" size={18} color={colors.accent} />
+            <Text style={styles.addChildText}>Invite a family member</Text>
+          </Pressable>
+        </View>
 
         <SectionCard
           title={profile.children.length > 1 ? 'Neurodivergent children' : 'Neurodivergent child'}

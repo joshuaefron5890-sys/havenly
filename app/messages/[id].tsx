@@ -33,7 +33,7 @@ const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
 
 export default function MessageThread() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, loading: authLoading } = useAuth();
+  const { user, familyUid, loading: authLoading } = useAuth();
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [family, setFamily] = useState<SuggestedFamily | null>(null);
   const [draft, setDraft] = useState('');
@@ -63,7 +63,7 @@ export default function MessageThread() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    loadOnboardingProgress(user.uid).then((progress) => {
+    loadOnboardingProgress(familyUid ?? user.uid).then((progress) => {
       if (!cancelled && progress && Object.keys(progress.profile).length) {
         updateProfile(progress.profile);
       }
@@ -72,12 +72,12 @@ export default function MessageThread() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, familyUid]);
 
   // The conversation id is a deterministic sorted "uidA_uidB" pair (see
   // lib/messages.ts) — the other participant can be read straight out of
   // it without a separate lookup.
-  const otherUid = id && user ? id.split('_').find((uid) => uid !== user.uid) : undefined;
+  const otherUid = id && familyUid ? id.split('_').find((uid) => uid !== familyUid) : undefined;
 
   useEffect(() => {
     if (!id) return;
@@ -199,16 +199,16 @@ export default function MessageThread() {
             <Text style={styles.empty}>Say hello — this is the start of your conversation.</Text>
           ) : (
             messages.map((message) => {
-              const mine = message.senderUid === user?.uid;
+              const mine = message.senderFamilyUid === familyUid;
               if (message.type === 'playdate_proposal' && message.proposal) {
                 const liveProposal = proposals.find((p) => p.date === message.proposal?.date);
                 // Gated on the proposal's actual recipient, not just "not
                 // the sender of this message" — the two happen to coincide
                 // in a normal 1:1 thread, but pinning to toUid directly is
                 // unambiguous and matches app/proposal/[id].tsx's own check.
-                const canRespond = user?.uid === liveProposal?.toUid && liveProposal?.status === 'proposed';
+                const canRespond = familyUid === liveProposal?.toUid && liveProposal?.status === 'proposed';
                 const canCancel =
-                  user?.uid === liveProposal?.fromUid &&
+                  familyUid === liveProposal?.fromUid &&
                   (liveProposal?.status === 'proposed' || liveProposal?.status === 'accepted');
                 return (
                   <View key={message.id} style={styles.proposalCard}>

@@ -1,14 +1,47 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // A user's own document. Every other user's account is only ever
-    // reachable through Cloud Functions (see functions/index.js's
-    // toPublicFamily comment) — those run with the Admin SDK and aren't
-    // subject to these rules at all, so this only needs to cover the
-    // "read/write my own doc" case the client actually does directly
-    // (onboarding, favorites, calendar connection state).
+    // Resolves whoever is actually signed in to the family whose data they
+    // should see — mirrors functions/index.js's resolveFamilyUid. A
+    // familyMembers/{authUid} doc only exists for someone who accepted a
+    // family invite (see functions/index.js's acceptFamilyInvite); the
+    // overwhelmingly common case (an account's own owner) has no such doc
+    // and resolves to themselves via the ternary's else branch.
+    function myFamilyUid() {
+      return exists(/databases/$(database)/documents/familyMembers/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/familyMembers/$(request.auth.uid)).data.familyUid
+        : request.auth.uid;
+    }
+
+    // A family's own document — "full access" for an invited member means
+    // they can read/write it exactly like the family that invited them.
+    // Every other family's account is only ever reachable through Cloud
+    // Functions (see functions/index.js's toPublicFamily comment) — those
+    // run with the Admin SDK and aren't subject to these rules at all, so
+    // this only needs to cover the "read/write my own family's doc" case
+    // the client actually does directly (onboarding, favorites, calendar
+    // connection state).
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if request.auth != null && myFamilyUid() == uid;
+    }
+
+    // The mapping an invited member's own uid resolves through above — only
+    // ever written by acceptFamilyInvite (Admin SDK, bypasses these rules
+    // entirely), so this only needs to allow a member to read their own
+    // membership record (used by lib/onboardingProgress.ts's
+    // routeSignedInUser to route them straight into the app instead of
+    // onboarding).
+    match /familyMembers/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Invite tokens — the token itself is the unguessable secret (see
+    // sendFamilyInvite's comment), and both reading an invite's details
+    // (pre-signup, so unauthenticated) and accepting one are only ever done
+    // through Cloud Functions, never directly against Firestore.
+    match /familyInvites/{token} {
+      allow read, write: if false;
     }
 
     // Direct messages between two families. conversationId is a
@@ -26,12 +59,12 @@ service cloud.firestore {
       // the first place, but this guard keeps the rule itself correct on
       // its own terms.)
       function isParticipant() {
-        return request.auth != null && resource != null && request.auth.uid in resource.data.participantUids;
+        return request.auth != null && resource != null && myFamilyUid() in resource.data.participantUids;
       }
 
       allow read: if isParticipant();
       allow create: if request.auth != null
-        && request.auth.uid in request.resource.data.participantUids
+        && myFamilyUid() in request.resource.data.participantUids
         && request.resource.data.participantUids.size() == 2;
       // Only lastMessage/lastMessageAt should ever change after creation —
       // the participant list is fixed for the life of a conversation. Set
@@ -54,7 +87,7 @@ service cloud.firestore {
         function isConversationParticipant() {
           return request.auth != null
             && exists(/databases/$(database)/documents/conversations/$(conversationId))
-            && request.auth.uid in
+            && myFamilyUid() in
                get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantUids;
         }
 
@@ -74,10 +107,10 @@ service cloud.firestore {
     match /playdateProposals/{proposalId} {
       allow read: if request.auth != null
         && resource != null
-        && request.auth.uid in resource.data.participantUids;
+        && myFamilyUid() in resource.data.participantUids;
       allow create: if request.auth != null
-        && request.resource.data.fromUid == request.auth.uid
-        && request.auth.uid in request.resource.data.participantUids
+        && request.resource.data.fromUid == myFamilyUid()
+        && myFamilyUid() in request.resource.data.participantUids
         && request.resource.data.participantUids.size() == 2
         && request.resource.data.status == 'proposed';
       // Two people can update status, in different ways: the recipient can
@@ -95,10 +128,10 @@ service cloud.firestore {
         && resource != null
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && (
-          (request.auth.uid == resource.data.toUid
+          (myFamilyUid() == resource.data.toUid
             && resource.data.status == 'proposed'
             && request.resource.data.status in ['accepted', 'declined'])
-          || (request.auth.uid == resource.data.fromUid
+          || (myFamilyUid() == resource.data.fromUid
             && resource.data.status in ['proposed', 'accepted']
             && request.resource.data.status == 'canceled')
         );

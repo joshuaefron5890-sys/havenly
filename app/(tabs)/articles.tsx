@@ -83,7 +83,7 @@ function extractKeywords(titles: string[], max: number): string[] {
 }
 
 export default function Articles() {
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [blogPosts, setBlogPosts] = useState<BlogPost[] | null>(null);
@@ -137,10 +137,10 @@ export default function Articles() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoriteResourceUrls(user.uid).then((urls) => {
+      getFavoriteResourceUrls(familyUid ?? user.uid).then((urls) => {
         if (!cancelled) setFavoriteUrls(new Set(urls));
       });
-      getFavoriteContributionIds(user.uid).then((ids) => {
+      getFavoriteContributionIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('article').then((result) => {

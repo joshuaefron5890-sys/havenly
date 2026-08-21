@@ -38,7 +38,7 @@ const SCHEMA = CONTRIBUTION_SCHEMAS.podcast;
 const PAGE_BATCH = 12;
 
 export default function Podcasts() {
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -72,10 +72,10 @@ export default function Podcasts() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoritePodcastIds(user.uid).then((ids) => {
+      getFavoritePodcastIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoriteIds(new Set(ids));
       });
-      getFavoriteContributionIds(user.uid).then((ids) => {
+      getFavoriteContributionIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('podcast').then((result) => {

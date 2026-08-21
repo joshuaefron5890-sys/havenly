@@ -11,6 +11,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { getMyFamilyUid } from './familyContext';
 
 export type Conversation = {
   id: string;
@@ -36,6 +37,13 @@ export type PlaydateProposalDetails = {
 export type Message = {
   id: string;
   senderUid: string;
+  // Which family sent this — distinct from senderUid once a family has
+  // more than one member (see lib/familyMembers.ts): senderUid is the
+  // specific person who typed it, senderFamilyUid is whichever family
+  // they're part of. A message thread's "mine vs theirs" bubble alignment
+  // needs the latter — two different people in the same family should both
+  // read as "mine" to each other, not just the exact literal sender.
+  senderFamilyUid: string;
   text: string;
   createdAt: Date | null;
   type: 'text' | 'playdate_proposal';
@@ -74,7 +82,7 @@ export function isUnread(conversation: Conversation, myUid: string): boolean {
 // field, since this used to write [myUid, otherUid] unsorted and could
 // otherwise land in different order depending on who created the doc.
 export async function getOrCreateConversation(otherUid: string): Promise<string> {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) {
     throw new Error('not-signed-in');
   }
@@ -102,7 +110,7 @@ function toDateMap(value: unknown): Record<string, Date> {
 // for the array-contains + orderBy combination — not worth it for what's
 // realistically a short list per user. Returns an unsubscribe function.
 export function subscribeToConversations(callback: (conversations: Conversation[]) => void): () => void {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) {
     return () => {};
   }
@@ -135,9 +143,15 @@ export function subscribeToMessages(id: string, callback: (messages: Message[]) 
       snap.docs.map((d) => {
         const data = d.data();
         const proposal = data.proposal;
+        const senderUid = typeof data.senderUid === 'string' ? data.senderUid : '';
         return {
           id: d.id,
-          senderUid: typeof data.senderUid === 'string' ? data.senderUid : '',
+          senderUid,
+          // Falls back to senderUid for a message sent before this field
+          // existed — correct for one of those, since every sender was
+          // necessarily an account owner (senderUid == their own familyUid)
+          // back then.
+          senderFamilyUid: typeof data.senderFamilyUid === 'string' ? data.senderFamilyUid : senderUid,
           text: typeof data.text === 'string' ? data.text : '',
           createdAt: toDate(data.createdAt),
           type: data.type === 'playdate_proposal' ? 'playdate_proposal' : 'text',
@@ -158,11 +172,17 @@ export function subscribeToMessages(id: string, callback: (messages: Message[]) 
 }
 
 export async function sendMessage(id: string, text: string): Promise<void> {
-  const myUid = auth?.currentUser?.uid;
+  // senderUid stays the specific person who typed it (nice for a future
+  // "Jamie sent this" attribution, and required as-is by firestore.rules'
+  // message create rule) — myFamilyUid is only for the conversation-level
+  // participant/read-state fields, which are shared across the whole family.
+  const senderUid = auth?.currentUser?.uid;
+  const myFamilyUid = getMyFamilyUid();
   const trimmed = text.trim();
-  if (!myUid || !db || !trimmed) return;
+  if (!senderUid || !myFamilyUid || !db || !trimmed) return;
   await addDoc(collection(db, 'conversations', id, 'messages'), {
-    senderUid: myUid,
+    senderUid,
+    senderFamilyUid: myFamilyUid,
     text: trimmed,
     createdAt: serverTimestamp(),
   });
@@ -173,8 +193,9 @@ export async function sendMessage(id: string, text: string): Promise<void> {
       lastMessageAt: serverTimestamp(),
       // Sending a message counts as having read up to it yourself —
       // otherwise your own outgoing message would show up as unread for
-      // you the next time this conversation is checked.
-      readAt: { [myUid]: serverTimestamp() },
+      // you (or another family member) the next time this conversation is
+      // checked.
+      readAt: { [myFamilyUid]: serverTimestamp() },
     },
     { merge: true }
   );
@@ -186,11 +207,13 @@ export async function sendMessage(id: string, text: string): Promise<void> {
 // writes, which is what lets the Discover dashboard surface "you have a
 // pending proposal" without scanning every conversation's messages).
 export async function sendProposalMessage(id: string, proposal: PlaydateProposalDetails, note: string): Promise<void> {
-  const myUid = auth?.currentUser?.uid;
-  if (!myUid || !db) return;
+  const senderUid = auth?.currentUser?.uid;
+  const myFamilyUid = getMyFamilyUid();
+  if (!senderUid || !myFamilyUid || !db) return;
   const trimmedNote = note.trim();
   await addDoc(collection(db, 'conversations', id, 'messages'), {
-    senderUid: myUid,
+    senderUid,
+    senderFamilyUid: myFamilyUid,
     text: trimmedNote,
     type: 'playdate_proposal',
     proposal,
@@ -199,7 +222,7 @@ export async function sendProposalMessage(id: string, proposal: PlaydateProposal
   const summary = `Proposed a playdate: ${proposal.dateLabel}`;
   await setDoc(
     doc(db, 'conversations', id),
-    { lastMessage: summary, lastMessageAt: serverTimestamp(), readAt: { [myUid]: serverTimestamp() } },
+    { lastMessage: summary, lastMessageAt: serverTimestamp(), readAt: { [myFamilyUid]: serverTimestamp() } },
     { merge: true }
   );
 }
@@ -209,7 +232,7 @@ export async function sendProposalMessage(id: string, proposal: PlaydateProposal
 // ever touches the caller's own key in readAt — the other participant's
 // entry is untouched.
 export async function markConversationRead(id: string): Promise<void> {
-  const myUid = auth?.currentUser?.uid;
+  const myUid = getMyFamilyUid();
   if (!myUid || !db) return;
   await setDoc(doc(db, 'conversations', id), { readAt: { [myUid]: serverTimestamp() } }, { merge: true });
 }

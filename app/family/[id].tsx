@@ -15,7 +15,7 @@ import { colors } from '../../theme/colors';
 
 export default function FamilyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [profile, setProfile] = useState<FamilyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
@@ -40,7 +40,7 @@ export default function FamilyDetail() {
   useEffect(() => {
     if (!id || !user) return;
     let cancelled = false;
-    getFavoriteFamilyUids(user.uid).then((ids) => {
+    getFavoriteFamilyUids(familyUid ?? user.uid).then((ids) => {
       if (!cancelled) setFavorited(ids.includes(id));
     });
     return () => {

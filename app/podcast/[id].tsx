@@ -29,7 +29,7 @@ export default function PodcastDetail() {
     genres?: string;
     matchedTags?: string;
   }>();
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [description, setDescription] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export default function PodcastDetail() {
   useEffect(() => {
     if (!id || !user) return;
     let cancelled = false;
-    getFavoritePodcastIds(user.uid).then((ids) => {
+    getFavoritePodcastIds(familyUid ?? user.uid).then((ids) => {
       if (!cancelled) setFavorited(ids.includes(id));
     });
     return () => {

@@ -27,14 +27,14 @@ export default function ProductDetail() {
     description?: string;
     matchedTags?: string;
   }>();
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
     if (!url || !user) return;
     let cancelled = false;
-    getFavoriteProductUrls(user.uid).then((urls) => {
+    getFavoriteProductUrls(familyUid ?? user.uid).then((urls) => {
       if (!cancelled) setFavorited(urls.includes(url));
     });
     return () => {

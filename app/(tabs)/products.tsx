@@ -46,7 +46,7 @@ function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (ite
 }
 
 export default function Products() {
-  const { user } = useAuth();
+  const { user, familyUid } = useAuth();
   const [products, setProducts] = useState<RecommendedProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
@@ -79,10 +79,10 @@ export default function Products() {
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      getFavoriteProductUrls(user.uid).then((urls) => {
+      getFavoriteProductUrls(familyUid ?? user.uid).then((urls) => {
         if (!cancelled) setFavoriteUrls(new Set(urls));
       });
-      getFavoriteContributionIds(user.uid).then((ids) => {
+      getFavoriteContributionIds(familyUid ?? user.uid).then((ids) => {
         if (!cancelled) setFavoriteContributionIds(new Set(ids));
       });
       fetchContributions('product').then((result) => {

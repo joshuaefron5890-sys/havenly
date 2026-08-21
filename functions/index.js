@@ -1638,7 +1638,12 @@ async function geocodeZip(zip) {
     const place = Array.isArray(data?.places) ? data.places[0] : null;
     const lat = parseFloat(place?.latitude);
     const lon = parseFloat(place?.longitude);
-    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+    // state (2-letter) isn't used by any existing caller, only by
+    // getNearbySchools below (to pick which state's schools to pull) — an
+    // extra property on the returned object is harmless for callers that
+    // only destructure lat/lon.
+    const state = typeof place?.['state abbreviation'] === 'string' ? place['state abbreviation'] : '';
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon, state } : null;
   } catch {
     return null;
   }
@@ -1864,6 +1869,124 @@ exports.getNearbyEvents = onCall(async (request) => {
   return {
     events: ranked.slice(0, 60).map(({ eventDate, ...e }) => ({ ...e, eventDate: eventDate.toISOString() })),
   };
+});
+
+// --- Nearby schools ---------------------------------------------------
+//
+// Powers the "School" field when adding a child (app/onboarding/child.tsx)
+// — a picker of real nearby schools instead of a bare free-text box.
+// Source is the Urban Institute's Education Data Portal
+// (educationdata.urban.org), a free, no-API-key REST wrapper around the
+// federal government's own NCES Common Core of Data (CCD) — the same
+// "read a source we don't control, no key needed" approach already used
+// for TACA events, MedlinePlus, and the RSS blog feed above. Its schools
+// directory endpoint filters by state (fips) rather than by zip or a
+// radius, so — same tradeoff TACA's own pagination comment makes — this
+// pages through one state's worth of schools rather than the whole
+// country, then does the actual "within N miles" filtering locally with
+// the same geocodeZip/haversineMiles helpers used for events.
+//
+// Caveat worth flagging plainly: this was built against Urban Institute's
+// documented field/endpoint conventions, not verified against a live
+// response — this sandbox's network egress blocks educationdata.urban.org
+// outright, the same way it blocks most external domains (see the
+// PRODUCT_SOURCES comment elsewhere in this file for the same situation).
+// Field access below is defensive (multiple candidate names, typeof
+// guards) for exactly that reason, and the whole call is try/catched to
+// degrade to an empty list rather than a hard error if something's off.
+// Worth a real spot-check after deploy, especially for a populous state
+// where PAGE_LIMIT below might not reach every page.
+
+const STATE_FIPS = {
+  AL: '01', AK: '02', AZ: '04', AR: '05', CA: '06', CO: '08', CT: '09', DE: '10', DC: '11',
+  FL: '12', GA: '13', HI: '15', ID: '16', IL: '17', IN: '18', IA: '19', KS: '20', KY: '21',
+  LA: '22', ME: '23', MD: '24', MA: '25', MI: '26', MN: '27', MS: '28', MO: '29', MT: '30',
+  NE: '31', NV: '32', NH: '33', NJ: '34', NM: '35', NY: '36', NC: '37', ND: '38', OH: '39',
+  OK: '40', OR: '41', PA: '42', RI: '44', SC: '45', SD: '46', TN: '47', TX: '48', UT: '49',
+  VT: '50', VA: '51', WA: '53', WV: '54', WI: '55', WY: '56',
+};
+
+// CCD's school_level is a numeric code, not a label.
+const SCHOOL_LEVEL_LABELS = { 1: 'Elementary', 2: 'Middle', 3: 'High', 4: 'Other' };
+
+const SCHOOL_SEARCH_RADIUS_MILES = 20;
+// Fetched in sequence (each page's URL depends on the last), so this is a
+// wall-clock cap, not just a request-count one — kept low enough that even
+// a slow response per page stays well inside the function's timeout.
+const SCHOOL_PAGE_LIMIT = 10;
+// The most recent CCD directory year reliably populated tends to lag 1-2
+// years behind — if the newest one 404s or comes back empty, this falls
+// back to the year before rather than surfacing nothing at all.
+const SCHOOL_DIRECTORY_YEARS = [2022, 2021, 2020];
+
+async function fetchSchoolsForState(fipsCode) {
+  for (const year of SCHOOL_DIRECTORY_YEARS) {
+    const schools = [];
+    let url = `https://educationdata.urban.org/api/v1/schools/ccd/directory/${year}/?fips=${fipsCode}&per_page=5000`;
+    let pagesFetched = 0;
+    try {
+      while (url && pagesFetched < SCHOOL_PAGE_LIMIT) {
+        const res = await fetch(url);
+        if (!res.ok) break;
+        const data = await res.json();
+        const results = Array.isArray(data?.results) ? data.results : [];
+        schools.push(...results);
+        url = typeof data?.next === 'string' ? data.next : null;
+        pagesFetched += 1;
+      }
+    } catch {
+      // Whatever was collected before the failure is still usable below.
+    }
+    if (schools.length) return schools;
+  }
+  return [];
+}
+
+exports.getNearbySchools = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const requestedZip = typeof request.data?.zip === 'string' ? request.data.zip.trim() : '';
+
+  let zip = requestedZip;
+  if (!zip) {
+    const familyUid = await resolveFamilyUid(request.auth.uid);
+    const meSnap = await admin.firestore().collection('users').doc(familyUid).get();
+    zip = typeof meSnap.data()?.zipCode === 'string' ? meSnap.data().zipCode : '';
+  }
+  if (!zip) {
+    return { schools: [] };
+  }
+
+  const myLocation = await geocodeZip(zip);
+  const fipsCode = myLocation?.state ? STATE_FIPS[myLocation.state] : null;
+  if (!myLocation || !fipsCode) {
+    return { schools: [] };
+  }
+
+  const raw = await fetchSchoolsForState(fipsCode);
+
+  const schools = raw
+    .map((s) => {
+      const lat = parseFloat(s?.latitude);
+      const lon = parseFloat(s?.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      const distanceMiles = haversineMiles(myLocation, { lat, lon });
+      if (distanceMiles > SCHOOL_SEARCH_RADIUS_MILES) return null;
+      return {
+        id: typeof s?.ncessch === 'string' || typeof s?.ncessch === 'number' ? String(s.ncessch) : `${lat},${lon}`,
+        name: typeof s?.school_name === 'string' ? s.school_name : '',
+        city: typeof s?.city_location === 'string' ? s.city_location : '',
+        state: typeof s?.state_location === 'string' ? s.state_location : myLocation.state,
+        level: SCHOOL_LEVEL_LABELS[s?.school_level] ?? '',
+        distanceMiles: Math.round(distanceMiles * 10) / 10,
+      };
+    })
+    .filter((s) => s && s.name);
+
+  schools.sort((a, b) => a.distanceMiles - b.distanceMiles);
+
+  return { schools: schools.slice(0, 100) };
 });
 
 

@@ -279,7 +279,6 @@ export default function ForYou() {
       });
       fetchContributions('product').then((result) => {
         if (!cancelled) setProductContributions(result);
-        if (!cancelled) mergeContributorPhotos(result);
       });
       return () => {
         cancelled = true;
@@ -1041,8 +1040,6 @@ export default function ForYou() {
                 image={c.fields.imageUrl ? { uri: c.fields.imageUrl } : undefined}
                 icon={c.fields.imageUrl ? undefined : 'bag-outline'}
                 community
-                contributedBy={c.contributedByName}
-                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
                 onPress={() =>

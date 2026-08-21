@@ -13,7 +13,6 @@ import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
-import { fetchContributorPhotos } from '../../lib/families';
 import {
   addFavoriteContribution,
   addFavoriteProduct,
@@ -47,7 +46,6 @@ export default function Products() {
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [contributeVisible, setContributeVisible] = useState(false);
   const [favoriteContributionIds, setFavoriteContributionIds] = useState<Set<string>>(new Set());
-  const [contributorPhotos, setContributorPhotos] = useState<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -76,7 +74,6 @@ export default function Products() {
       });
       fetchContributions('product').then((result) => {
         if (!cancelled) setContributions(result);
-        if (!cancelled) fetchContributorPhotos(result).then((photos) => !cancelled && setContributorPhotos(photos));
       });
       return () => {
         cancelled = true;
@@ -193,8 +190,6 @@ export default function Products() {
                 image={c.fields.imageUrl ? { uri: c.fields.imageUrl } : undefined}
                 icon={c.fields.imageUrl ? undefined : 'bag-outline'}
                 community
-                contributedBy={c.contributedByName}
-                contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onPress={() =>

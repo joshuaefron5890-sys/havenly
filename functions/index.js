@@ -684,6 +684,7 @@ function toPublicFamily(uid, data) {
       ? data.children.map((c) => ({
           name: typeof c?.name === 'string' ? c.name : '',
           age: typeof c?.age === 'string' ? c.age : '',
+          grade: typeof c?.grade === 'string' ? c.grade : '',
           photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
         }))
       : [],

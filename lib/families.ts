@@ -4,6 +4,7 @@ import { functions } from './firebase';
 export type SuggestedFamilyChild = {
   name: string;
   age: string;
+  grade: string;
   photoUrl: string | null;
 };
 

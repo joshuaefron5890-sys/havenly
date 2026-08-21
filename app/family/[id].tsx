@@ -154,6 +154,28 @@ export default function FamilyDetail() {
           </View>
         )}
 
+        {profile.children.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>KIDS</Text>
+            {profile.children.map((child, i) => (
+              <View key={i} style={styles.kidRow}>
+                <Photo
+                  source={child.photoUrl ? { uri: child.photoUrl } : undefined}
+                  style={styles.kidPhoto}
+                  variant="person"
+                  iconSize={18}
+                />
+                <View style={styles.kidInfo}>
+                  <Text style={styles.kidName}>{child.name || 'A kid'}</Text>
+                  {child.age || child.grade ? (
+                    <Text style={styles.kidSub}>{[child.age && `Age ${child.age}`, child.grade].filter(Boolean).join(' · ')}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={styles.card}>
           <Text style={styles.cardLabel}>SHARED INTERESTS</Text>
           {profile.sharedInterests.length > 0 ? (
@@ -342,6 +364,31 @@ const styles = StyleSheet.create({
   emptyInline: {
     fontSize: 13,
     color: colors.textMuted,
+  },
+  kidRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  kidPhoto: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.accentMuted,
+  },
+  kidInfo: {
+    flex: 1,
+  },
+  kidName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  kidSub: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 1,
   },
   tags: {
     flexDirection: 'row',

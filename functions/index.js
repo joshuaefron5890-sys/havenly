@@ -2018,9 +2018,21 @@ async function fetchSchoolsForState(fipsCode) {
     let pagesFetched = 0;
     try {
       while (url && pagesFetched < SCHOOL_PAGE_LIMIT) {
-        const res = await fetch(url);
+        // A bare fetch() with no User-Agent reads as a bot to a lot of
+        // public APIs (Node's default UA very obviously isn't a browser's)
+        // and gets a flat 403 back with no other explanation — this is
+        // exactly what was happening here, confirmed via Cloud Functions
+        // logs after deploy (zip/state/fips all resolved correctly; the
+        // Urban Institute request itself was the thing being rejected).
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; HavenlyApp/1.0; +https://haven-ly.com)',
+            Accept: 'application/json',
+          },
+        });
         if (!res.ok) {
-          console.error(`getNearbySchools: fetch failed (${res.status}) for ${url}`);
+          const bodyText = await res.text().catch(() => '');
+          console.error(`getNearbySchools: fetch failed (${res.status}) for ${url} — body: ${bodyText.slice(0, 500)}`);
           break;
         }
         const data = await res.json();

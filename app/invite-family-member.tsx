@@ -208,6 +208,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
+    // The "sent" confirmation screen renders this inside `centered`, whose
+    // alignItems: 'center' makes a Pressable shrink-wrap its content by
+    // default instead of filling the row — collapsing this into a circle
+    // around "Done" (borderRadius: 999 on an unconstrained near-square).
+    // alignSelf: 'stretch' forces full width regardless of which container
+    // it's rendered in, matching how it already looked from `footer` (no
+    // alignItems override there, so children stretch by default anyway).
+    alignSelf: 'stretch',
   },
   ctaDisabled: {
     opacity: 0.6,

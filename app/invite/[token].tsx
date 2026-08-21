@@ -310,6 +310,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
+    // The invalid-invite state renders this inside `centered`, whose
+    // alignItems: 'center' makes a Pressable shrink-wrap its content
+    // instead of filling the row — collapsing it into a circle around its
+    // label (borderRadius: 999 on an unconstrained near-square). stretch
+    // forces full width regardless of which container renders it.
+    alignSelf: 'stretch',
   },
   ctaDisabled: {
     opacity: 0.6,

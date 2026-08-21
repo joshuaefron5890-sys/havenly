@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { useAuth } from '../../contexts/AuthContext';
+import { CommunityMessage, subscribeToCommunityMessages } from '../../lib/communityMessages';
 import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { Conversation, otherParticipant, subscribeToConversations } from '../../lib/messages';
 import { colors } from '../../theme/colors';
@@ -15,6 +16,12 @@ export default function MessagesInbox() {
   const { user, familyUid } = useAuth();
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [families, setFamilies] = useState<Map<string, SuggestedFamily>>(new Map());
+  const [communityMessages, setCommunityMessages] = useState<CommunityMessage[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    return subscribeToCommunityMessages(setCommunityMessages);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -58,6 +65,13 @@ export default function MessagesInbox() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <ListRow
+          title="Community"
+          subtitle={communityMessages.at(-1)?.text || 'Announcements from Haven.ly'}
+          icon="megaphone-outline"
+          community
+          onPress={() => router.push('/messages/community')}
+        />
         {conversations === null ? (
           <ActivityIndicator color={colors.accent} />
         ) : conversations.length === 0 ? (

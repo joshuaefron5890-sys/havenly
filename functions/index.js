@@ -658,6 +658,54 @@ exports.emailOnMessageSent = onDocumentCreated(
   }
 );
 
+// Kept in sync with firestore.rules' matching literal (which actually
+// enforces this — this constant alone grants nothing) and
+// lib/superAdmin.ts's copy (UI-only, decides whether to show the compose
+// bar on app/messages/community.tsx). request.auth.token.email is a
+// standard Firebase ID token claim, so this needs no custom claims setup.
+const SUPER_ADMIN_EMAILS = ['joshuaefron5890@gmail.com'];
+
+// Fires on every community announcement — fans out to literally everyone,
+// not just one family, so this is deliberately simple (individual
+// email/push sends, no batching) rather than optimized for a user count
+// this app isn't at yet. Revisit if the user base grows enough that a
+// single broadcast means hundreds+ of individual Resend/Expo calls.
+exports.notifyOnCommunityMessage = onDocumentCreated(
+  { document: 'communityMessages/{messageId}', secrets: [resendApiKey] },
+  async (event) => {
+    const message = event.data?.data();
+    const text = typeof message?.text === 'string' ? message.text.trim() : '';
+    if (!text || typeof message.postedByUid !== 'string') return;
+
+    // Belt-and-suspenders: firestore.rules is what actually stops a
+    // non-admin from writing this doc in the first place, but this
+    // trigger runs with the Admin SDK regardless of what wrote it — worth
+    // one extra check before fanning out to literally everyone, in case
+    // those rules and this list ever drift.
+    const posterRecord = await admin.auth().getUser(message.postedByUid).catch(() => null);
+    if (!posterRecord?.email || !SUPER_ADMIN_EMAILS.includes(posterRecord.email)) {
+      console.error(`notifyOnCommunityMessage: postedByUid ${message.postedByUid} is not a super admin, skipping.`);
+      return;
+    }
+
+    const usersSnap = await admin.firestore().collection('users').get();
+    const familyUids = usersSnap.docs.map((doc) => doc.id);
+    const personalUidLists = await Promise.all(familyUids.map((uid) => personalUidsForFamily(uid)));
+    const personalUids = [...new Set(personalUidLists.flat())];
+
+    const title = 'Haven.ly Community';
+    const tokenSnaps = await Promise.all(
+      personalUids.map((uid) => admin.firestore().collection('pushTokens').doc(uid).get())
+    );
+    const tokens = tokenSnaps.flatMap((snap) => (Array.isArray(snap.data()?.tokens) ? snap.data().tokens : []));
+
+    await Promise.all([
+      ...personalUids.map((uid) => sendNotificationEmail(uid, title, text)),
+      sendExpoPush(tokens, title, text, { url: '/messages/community' }),
+    ]);
+  }
+);
+
 // Smallest age gap between any of one family's kids and any of the
 // other's — used as a rough "will these two actually enjoy playing
 // together" signal. Ages are free-text from onboarding, so this only

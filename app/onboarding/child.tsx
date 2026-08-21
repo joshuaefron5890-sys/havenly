@@ -159,6 +159,7 @@ export default function Child() {
           </View>
         </View>
         <FieldInput label="Grade" placeholder="e.g. 1st grade" optional value={current.grade} onChangeText={(grade) => updateCurrent({ grade })} />
+        <FieldInput label="School" placeholder="e.g. Lincoln Elementary" optional value={current.school} onChangeText={(school) => updateCurrent({ school })} />
 
         <Text style={styles.label}>NEURODIVERGENCE · SELECT ANY</Text>
         <View style={styles.chips}>

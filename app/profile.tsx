@@ -347,7 +347,8 @@ export default function Profile() {
                 <View style={styles.personInfo}>
                   <Text style={styles.personName}>{child.name || `Child ${i + 1}`}</Text>
                   <Text style={styles.personMeta}>
-                    {[child.age && `Age ${child.age}`, child.grade].filter(Boolean).join(' · ') || 'No details yet'}
+                    {[child.age && `Age ${child.age}`, child.grade, child.school].filter(Boolean).join(' · ') ||
+                      'No details yet'}
                   </Text>
                   {child.neurodivergence.length > 0 ? <TagText items={child.neurodivergence} /> : null}
                 </View>

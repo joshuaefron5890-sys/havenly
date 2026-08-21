@@ -5,6 +5,9 @@ export type ChildProfile = {
   name: string;
   age: string;
   grade: string;
+  // Not exposed to other viewing families (unlike grade) — see
+  // functions/index.js's toPublicFamily, which never gets this field.
+  school: string;
   neurodivergence: string[];
   photoUrl: string | null;
   playStyle: string[];
@@ -15,6 +18,7 @@ export const emptyChildProfile: ChildProfile = {
   name: '',
   age: '',
   grade: '',
+  school: '',
   neurodivergence: [],
   photoUrl: null,
   playStyle: [],

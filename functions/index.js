@@ -834,20 +834,41 @@ exports.getPodcastSuggestions = onCall(async (request) => {
 
   const meSnap = await admin.firestore().collection('users').doc(request.auth.uid).get();
   const me = meSnap.data() ?? {};
+  // The two placeholder onboarding options ("Still figuring it out",
+  // "Prefer not to say" — see app/onboarding/child.tsx's
+  // NEURODIVERGENCE_OPTIONS) aren't real search terms and would just waste
+  // a search slot on a nonsense query like "Prefer not to say parenting".
+  const NON_SEARCHABLE_TAGS = new Set(['Still figuring it out', 'Prefer not to say']);
   const neurodivergence = [
     ...new Set(
-      (Array.isArray(me.children) ? me.children : []).flatMap((c) =>
-        Array.isArray(c?.neurodivergence) ? c.neurodivergence : []
-      )
+      (Array.isArray(me.children) ? me.children : [])
+        .flatMap((c) => (Array.isArray(c?.neurodivergence) ? c.neurodivergence : []))
+        .filter((tag) => !NON_SEARCHABLE_TAGS.has(tag))
     ),
   ];
   // Always searched in addition to whatever the family specifically
   // selected — a family with only "Autism" checked still sees ADHD/
   // dyslexia/anxiety-relevant shows too, and a family with no tags on file
-  // yet (skipped that onboarding step, or picked "Still figuring it out"/
-  // "Prefer not to say") still gets real coverage instead of one thin
-  // fallback search.
-  const BROAD_NEURODIVERGENCE_TERMS = ['autism', 'ADHD', 'dyslexia', 'special needs', 'anxiety'];
+  // yet (skipped that onboarding step, or picked one of the placeholder
+  // options above) still gets real coverage instead of one thin fallback
+  // search. Ambiguous bare acronyms (PDA, SPD, 2e) are spelled out in full
+  // — searched as-is they'd just as likely match something unrelated.
+  const BROAD_NEURODIVERGENCE_TERMS = [
+    'autism',
+    'ADHD',
+    'dyslexia',
+    'special needs',
+    'anxiety',
+    'dyscalculia',
+    'OCD',
+    'Tourette syndrome',
+    'pathological demand avoidance',
+    'sensory processing disorder',
+    'twice exceptional',
+    'IEP',
+    'apraxia of speech',
+    'ARFID',
+  ];
   const searchTags = [...new Set([...neurodivergence, ...BROAD_NEURODIVERGENCE_TERMS])];
 
   // One search per tag, "parenting" appended to bias toward family-relevant
@@ -911,7 +932,7 @@ exports.getPodcastSuggestions = onCall(async (request) => {
   const podcasts = [...byFeed.values()]
     .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
-    .slice(0, 15);
+    .slice(0, 24);
 
   return { podcasts };
 });

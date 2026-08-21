@@ -804,13 +804,40 @@ export default function ForYou() {
     Math.max(0, perRow - eventProposalSlots - shownEventContributions.length)
   );
 
-  const shownProductContributions = productContributions.slice(0, perRow);
-  const shownProducts = (sortedProducts ?? []).slice(0, Math.max(0, perRow - shownProductContributions.length));
+  // Favorited products/podcasts surface before community contributions,
+  // same exception as Resources below — sortedProducts/sortedPodcasts
+  // already list favorited ones first (sortFavoritedFirst), so counting
+  // how many leading entries are favorited splits it without a second
+  // filter pass.
+  let favoritedProductCount = 0;
+  while (
+    favoritedProductCount < (sortedProducts?.length ?? 0) &&
+    favoriteProductUrls.has(sortedProducts![favoritedProductCount].url)
+  ) {
+    favoritedProductCount++;
+  }
+  const shownFavoritedProducts = (sortedProducts ?? []).slice(0, Math.min(favoritedProductCount, perRow));
+  const shownProductContributions = productContributions.slice(0, Math.max(0, perRow - shownFavoritedProducts.length));
+  const shownProducts = (sortedProducts ?? []).slice(
+    shownFavoritedProducts.length,
+    shownFavoritedProducts.length + Math.max(0, perRow - shownFavoritedProducts.length - shownProductContributions.length)
+  );
 
-  const shownPodcastContributions = podcastContributions.slice(0, perRow);
-  const shownPodcasts = (sortedPodcasts ?? []).slice(0, Math.max(0, perRow - shownPodcastContributions.length));
+  let favoritedPodcastCount = 0;
+  while (
+    favoritedPodcastCount < (sortedPodcasts?.length ?? 0) &&
+    favoritePodcastIds.has(sortedPodcasts![favoritedPodcastCount].id)
+  ) {
+    favoritedPodcastCount++;
+  }
+  const shownFavoritedPodcasts = (sortedPodcasts ?? []).slice(0, Math.min(favoritedPodcastCount, perRow));
+  const shownPodcastContributions = podcastContributions.slice(0, Math.max(0, perRow - shownFavoritedPodcasts.length));
+  const shownPodcasts = (sortedPodcasts ?? []).slice(
+    shownFavoritedPodcasts.length,
+    shownFavoritedPodcasts.length + Math.max(0, perRow - shownFavoritedPodcasts.length - shownPodcastContributions.length)
+  );
 
-  // Resources are the one exception to the "community first" ordering
+  // Resources are the same exception to the "community first" ordering
   // above — a resource you've already favorited should surface before an
   // unfavorited community pick, not after. sortedArticles already lists
   // favorited ones first (sortFavoritedFirst), so counting how many of its
@@ -1031,8 +1058,33 @@ export default function ForYou() {
         />
         {productsError ? <EmptyState text={`Couldn’t load products (${productsError}).`} /> : null}
         {sortedProducts === null && !productsError ? <ActivityIndicator color={colors.accent} /> : null}
-        {shownProductContributions.length > 0 || shownProducts.length > 0 ? (
+        {shownFavoritedProducts.length > 0 || shownProductContributions.length > 0 || shownProducts.length > 0 ? (
           <View style={styles.grid}>
+            {shownFavoritedProducts.map((product) => (
+              <SquareCard
+                key={product.url}
+                title={product.title}
+                subtitle={productSubtitle(product)}
+                image={product.imageUrl ? { uri: product.imageUrl } : undefined}
+                favorited={favoriteProductUrls.has(product.url)}
+                onToggleFavorite={() => toggleProductFavorite(product)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/product/[id]',
+                    params: {
+                      id: encodeURIComponent(product.url),
+                      title: product.title,
+                      vendor: product.vendor,
+                      source: product.source,
+                      imageUrl: product.imageUrl ?? '',
+                      url: product.url,
+                      description: product.description,
+                      matchedTags: product.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
             {shownProductContributions.map((c) => (
               <SquareCard
                 key={c.id}
@@ -1092,8 +1144,34 @@ export default function ForYou() {
         />
         {podcastsError ? <EmptyState text={`Couldn’t load podcasts (${podcastsError}).`} /> : null}
         {sortedPodcasts === null && !podcastsError ? <ActivityIndicator color={colors.accent} /> : null}
-        {shownPodcastContributions.length > 0 || shownPodcasts.length > 0 ? (
+        {shownFavoritedPodcasts.length > 0 || shownPodcastContributions.length > 0 || shownPodcasts.length > 0 ? (
           <View style={styles.grid}>
+            {shownFavoritedPodcasts.map((podcast) => (
+              <SquareCard
+                key={podcast.id}
+                title={podcast.title || 'Untitled podcast'}
+                subtitle={podcastSubtitle(podcast)}
+                image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
+                favorited={favoritePodcastIds.has(podcast.id)}
+                onToggleFavorite={() => togglePodcastFavorite(podcast)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/podcast/[id]',
+                    params: {
+                      id: podcast.id,
+                      title: podcast.title,
+                      artist: podcast.artist,
+                      artworkUrl: podcast.artworkUrl ?? '',
+                      viewUrl: podcast.viewUrl ?? '',
+                      feedUrl: podcast.feedUrl ?? '',
+                      trackCount: podcast.trackCount != null ? String(podcast.trackCount) : '',
+                      genres: podcast.genres.join(','),
+                      matchedTags: podcast.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
             {shownPodcastContributions.map((c) => (
               <SquareCard
                 key={c.id}

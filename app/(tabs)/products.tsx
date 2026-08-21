@@ -116,13 +116,18 @@ export default function Products() {
     });
   }, [sorted, query, tagFilter]);
 
-  const visibleProducts = filtered?.slice(0, visibleCount);
+  // Favorited products always show in full, ahead of community picks —
+  // only the remaining (unfavorited) curated recommendations are the ones
+  // paginated by scroll, since that's the potentially-long tail.
+  const favoritedProducts = filtered?.filter((p) => favoriteUrls.has(p.url)) ?? null;
+  const restProducts = filtered?.filter((p) => !favoriteUrls.has(p.url)) ?? null;
+  const visibleRestProducts = restProducts?.slice(0, visibleCount);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
     if (distanceFromBottom < 400) {
-      setVisibleCount((prev) => Math.min(prev + PAGE_BATCH, filtered?.length ?? prev));
+      setVisibleCount((prev) => Math.min(prev + PAGE_BATCH, restProducts?.length ?? prev));
     }
   };
 
@@ -206,6 +211,31 @@ export default function Products() {
 
         {hasContent ? (
           <View style={styles.grid}>
+            {favoritedProducts?.map((product) => (
+              <SquareCard
+                key={product.url}
+                title={product.title}
+                subtitle={productSubtitle(product)}
+                image={product.imageUrl ? { uri: product.imageUrl } : undefined}
+                favorited={favoriteUrls.has(product.url)}
+                onToggleFavorite={() => toggleFavorite(product)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/product/[id]',
+                    params: {
+                      id: encodeURIComponent(product.url),
+                      title: product.title,
+                      vendor: product.vendor,
+                      source: product.source,
+                      imageUrl: product.imageUrl ?? '',
+                      url: product.url,
+                      description: product.description,
+                      matchedTags: product.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
             {filteredContributions.map((c) => (
               <SquareCard
                 key={c.id}
@@ -223,7 +253,7 @@ export default function Products() {
                 }
               />
             ))}
-            {visibleProducts?.map((product) => (
+            {visibleRestProducts?.map((product) => (
               <SquareCard
                 key={product.url}
                 title={product.title}
@@ -252,7 +282,7 @@ export default function Products() {
         ) : doneLoadingProducts ? (
           <EmptyState text="No products match that search." />
         ) : null}
-        {(visibleProducts?.length ?? 0) < (filtered?.length ?? 0) ? (
+        {(visibleRestProducts?.length ?? 0) < (restProducts?.length ?? 0) ? (
           <ActivityIndicator color={colors.accent} style={styles.loadingMore} />
         ) : null}
       </ScrollView>

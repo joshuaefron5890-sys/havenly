@@ -37,15 +37,6 @@ const ALL = 'All';
 const SCHEMA = CONTRIBUTION_SCHEMAS.podcast;
 const PAGE_BATCH = 12;
 
-function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (item: T) => string): T[] {
-  const favorited: T[] = [];
-  const rest: T[] = [];
-  for (const item of items) {
-    (favoriteIds.has(keyOf(item)) ? favorited : rest).push(item);
-  }
-  return [...favorited, ...rest];
-}
-
 export default function Podcasts() {
   const { user } = useAuth();
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
@@ -97,7 +88,7 @@ export default function Podcasts() {
     }, [user])
   );
 
-  const sorted = podcasts ? sortFavoritedFirst(podcasts, favoriteIds, (p) => p.id) : null;
+  const sorted = podcasts;
 
   const tagOptions = useMemo(() => {
     if (!sorted) return [ALL];
@@ -116,13 +107,15 @@ export default function Podcasts() {
     });
   }, [sorted, query, tagFilter]);
 
-  const visiblePodcasts = filtered?.slice(0, visibleCount);
+  const favoritedPodcasts = filtered?.filter((p) => favoriteIds.has(p.id)) ?? null;
+  const restPodcasts = filtered?.filter((p) => !favoriteIds.has(p.id)) ?? null;
+  const visibleRestPodcasts = restPodcasts?.slice(0, visibleCount);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
     if (distanceFromBottom < 400) {
-      setVisibleCount((prev) => Math.min(prev + PAGE_BATCH, filtered?.length ?? prev));
+      setVisibleCount((prev) => Math.min(prev + PAGE_BATCH, restPodcasts?.length ?? prev));
     }
   };
 
@@ -204,6 +197,32 @@ export default function Podcasts() {
 
         {hasContent ? (
           <View style={styles.grid}>
+            {favoritedPodcasts?.map((podcast) => (
+              <SquareCard
+                key={podcast.id}
+                title={podcast.title || 'Untitled podcast'}
+                subtitle={podcastSubtitle(podcast)}
+                image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
+                favorited={favoriteIds.has(podcast.id)}
+                onToggleFavorite={() => toggleFavorite(podcast)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/podcast/[id]',
+                    params: {
+                      id: podcast.id,
+                      title: podcast.title,
+                      artist: podcast.artist,
+                      artworkUrl: podcast.artworkUrl ?? '',
+                      viewUrl: podcast.viewUrl ?? '',
+                      feedUrl: podcast.feedUrl ?? '',
+                      trackCount: podcast.trackCount != null ? String(podcast.trackCount) : '',
+                      genres: podcast.genres.join(','),
+                      matchedTags: podcast.matchedTags.join(','),
+                    },
+                  })
+                }
+              />
+            ))}
             {filteredContributions.map((c) => (
               <SquareCard
                 key={c.id}
@@ -222,7 +241,7 @@ export default function Podcasts() {
                 }
               />
             ))}
-            {visiblePodcasts?.map((podcast) => (
+            {visibleRestPodcasts?.map((podcast) => (
               <SquareCard
                 key={podcast.id}
                 title={podcast.title || 'Untitled podcast'}
@@ -252,7 +271,7 @@ export default function Podcasts() {
         ) : doneLoadingPodcasts ? (
           <EmptyState text="No podcasts match that search." />
         ) : null}
-        {(visiblePodcasts?.length ?? 0) < (filtered?.length ?? 0) ? (
+        {(visibleRestPodcasts?.length ?? 0) < (restPodcasts?.length ?? 0) ? (
           <ActivityIndicator color={colors.accent} style={styles.loadingMore} />
         ) : null}
       </ScrollView>

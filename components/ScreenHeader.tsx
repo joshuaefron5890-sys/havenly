@@ -19,7 +19,7 @@ export function ScreenHeader({ eyebrow, title }: { eyebrow?: string; title?: str
             <Image source={require('../assets/logo-mark.png')} style={styles.mark} resizeMode="contain" />
             <Text style={styles.eyebrow}>{eyebrow}</Text>
             <View style={styles.clusterBadge}>
-              <Ionicons name="location-sharp" size={9} color={colors.accent} />
+              <Ionicons name="location-sharp" size={9} color={colors.surface} />
               <Text style={styles.clusterBadgeText}>{clusterName(clusterId)}</Text>
             </View>
           </View>
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: colors.accentMuted,
+    backgroundColor: colors.accent,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   clusterBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.accent,
+    color: colors.surface,
     letterSpacing: 0.3,
   },
   title: {

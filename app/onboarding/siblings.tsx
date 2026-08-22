@@ -134,8 +134,11 @@ export default function Siblings() {
         accent={total > 1 ? `sibling ${siblingIndex + 1} of ${total}.` : 'their sibling.'}
         onBack={handleBack}
         editMode={editMode}
+        hideTitle={editMode}
       />
-      <Text style={styles.caption}>Just the basics — this helps us find playdates that work for the whole family.</Text>
+      {editMode ? null : (
+        <Text style={styles.caption}>Just the basics — this helps us find playdates that work for the whole family.</Text>
+      )}
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
           label={total > 1 ? `Sibling ${siblingIndex + 1}'s photo` : "Sibling's photo"}

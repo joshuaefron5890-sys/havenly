@@ -13,6 +13,7 @@ export function WizardHeader({
   backTo,
   onBack,
   editMode,
+  hideTitle,
 }: {
   step: number;
   title: string;
@@ -29,6 +30,11 @@ export function WizardHeader({
   // Reached from Profile's "Edit" links rather than the wizard itself —
   // the step progress bar/count is meaningless there, so hide it.
   editMode?: boolean;
+  // Lets a caller drop the "About X." title too, for an edit-mode screen
+  // where that framing is redundant (e.g. Profile already made clear
+  // which sibling is being edited before navigating here). Defaults to
+  // shown, so every other caller is unaffected.
+  hideTitle?: boolean;
 }) {
   const handleBack = () => {
     if (onBack) {
@@ -59,9 +65,11 @@ export function WizardHeader({
       </View>
 
       {editMode ? null : <Text style={styles.eyebrow}>STEP {step} OF {TOTAL_STEPS}</Text>}
-      <Text style={styles.title}>
-        {title} <Text style={styles.accent}>{accent}</Text>
-      </Text>
+      {hideTitle ? null : (
+        <Text style={styles.title}>
+          {title} <Text style={styles.accent}>{accent}</Text>
+        </Text>
+      )}
     </View>
   );
 }

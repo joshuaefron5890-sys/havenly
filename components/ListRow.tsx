@@ -62,7 +62,7 @@ export function ListRow({
       <View style={styles.thumbnailWrap}>
         {!image && icon ? (
           icon === 'community-logo' ? (
-            <View style={[styles.thumbnail, styles.iconThumbnail, styles.communityIconThumbnail, styles.communityLogoThumbnail]}>
+            <View style={[styles.thumbnail, styles.iconThumbnail, styles.communityLogoThumbnail]}>
               <Image source={require('../assets/logo-mark.png')} style={styles.communityLogoImage} resizeMode="contain" />
             </View>
           ) : (
@@ -165,6 +165,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.community,
   },
   communityLogoThumbnail: {
+    // White rather than the blue communityIconThumbnail treatment — the
+    // mark itself already carries plenty of color, so a white backing
+    // reads cleaner than tinting behind it. Row background is also white
+    // (colors.surface), so a border keeps the thumbnail from disappearing.
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: 8,
   },
   communityLogoImage: {

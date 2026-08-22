@@ -22,7 +22,6 @@ import {
 import { addPlaydateToGoogleCalendar } from '../../lib/googleCalendar';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
-import { fetchRecommendedSitters, RecommendedSitter } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
@@ -130,7 +129,9 @@ export default function ProposalDetail() {
   }, [user, familyUid]);
 
   const [syncPromptProposalId, setSyncPromptProposalId] = useState<string | null>(null);
-  const [sitters, setSitters] = useState<RecommendedSitter[] | null>(null);
+  // Local/session-only — reappears next time this screen is opened, same
+  // lightweight non-persistent dismissal as AddToGoogleCalendarPrompt below.
+  const [sitterPromptDismissed, setSitterPromptDismissed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -161,25 +162,6 @@ export default function ProposalDetail() {
       cancelled = true;
     };
   }, [familyUid]);
-
-  // Only worth asking once there's an actual date to cover — cluster +
-  // specialty matched, vetted-only (see functions/index.js's
-  // getRecommendedSitters). Best-effort: no sitters yet in this cluster is
-  // a perfectly normal state early on, not an error to show.
-  useEffect(() => {
-    if (proposal?.status !== 'accepted') return;
-    let cancelled = false;
-    fetchRecommendedSitters()
-      .then((result) => {
-        if (!cancelled) setSitters(result.slice(0, 3));
-      })
-      .catch(() => {
-        if (!cancelled) setSitters([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [proposal?.status]);
 
   const respond = async (status: 'accepted' | 'declined') => {
     if (!id || responding) return;
@@ -279,6 +261,15 @@ export default function ProposalDetail() {
           />
         </View>
 
+        {otherFamily && otherFamily.sharedNeurodivergence.length > 0 && (
+          <View style={styles.sharedExperienceRow}>
+            <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
+            <Text style={styles.sharedExperienceText}>
+              Shared experience with {otherFamily.sharedNeurodivergence.join(', ')}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.card}>
           <View style={styles.row}>
             <Ionicons name="calendar" size={18} color={colors.accent} />
@@ -296,40 +287,22 @@ export default function ProposalDetail() {
           ) : null}
         </View>
 
-        {proposal.status === 'accepted' && sitters && sitters.length > 0 ? (
+        {proposal.status === 'accepted' && !sitterPromptDismissed ? (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>NEED A SITTER FOR THIS PLAYDATE?</Text>
-            {sitters.map((sitter) => (
-              <View key={sitter.uid} style={styles.sitterRow}>
-                <Photo
-                  source={sitter.photoUrl ? { uri: sitter.photoUrl } : undefined}
-                  style={styles.sitterPhoto}
-                  variant="person"
-                  iconSize={16}
-                />
-                <View style={styles.sitterInfo}>
-                  <Text style={styles.sitterName}>{sitter.name}</Text>
-                  <Text style={styles.sitterMeta} numberOfLines={1}>
-                    {sitter.specialties.slice(0, 2).join(', ') || 'General sitting'}
-                    {sitter.hourlyRate ? ` · ${sitter.hourlyRate}` : ''}
-                  </Text>
-                </View>
-                <Text style={styles.sitterContact} numberOfLines={1}>
-                  {sitter.phone || sitter.email}
-                </Text>
-              </View>
-            ))}
+            <Text style={styles.sitterPromptText}>
+              Browse vetted sitters near you, matched to your kids’ experience.
+            </Text>
+            <View style={styles.sitterPromptRow}>
+              <Pressable style={styles.sitterPromptDismiss} onPress={() => setSitterPromptDismissed(true)}>
+                <Text style={styles.sitterPromptDismissText}>Not now</Text>
+              </Pressable>
+              <Pressable style={styles.sitterPromptFind} onPress={() => router.push('/find-sitter')}>
+                <Text style={styles.sitterPromptFindText}>Find a sitter</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
-
-        {otherFamily && otherFamily.sharedNeurodivergence.length > 0 && (
-          <View style={styles.sharedExperienceRow}>
-            <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
-            <Text style={styles.sharedExperienceText}>
-              Shared experience with {otherFamily.sharedNeurodivergence.join(', ')}
-            </Text>
-          </View>
-        )}
 
         <View style={styles.card}>
           <Text style={styles.cardLabel}>COMMON INTERESTS</Text>
@@ -575,35 +548,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.accent,
   },
-  sitterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 12,
-  },
-  sitterPhoto: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  sitterInfo: {
-    flex: 1,
-  },
-  sitterName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  sitterMeta: {
-    fontSize: 12,
+  sitterPromptText: {
+    fontSize: 13,
     color: colors.textMuted,
-    marginTop: 1,
+    marginTop: 6,
+    lineHeight: 18,
   },
-  sitterContact: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.accent,
-    maxWidth: 110,
+  sitterPromptRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  sitterPromptDismiss: {
+    flex: 1,
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  sitterPromptDismissText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  sitterPromptFind: {
+    flex: 1,
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: colors.accent,
+  },
+  sitterPromptFindText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.surface,
   },
   infoRow: {
     marginBottom: 4,

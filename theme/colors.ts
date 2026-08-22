@@ -14,6 +14,7 @@ export const colors = {
   warning: '#C98A1E',
   warningMuted: '#FBEFD6',
   error: '#C0392B',
+  errorMuted: '#F7DCD8',
   info: '#3B6FA8',
   infoMuted: '#DDE9F5',
   // A lighter, softer blue specifically for the "Community" marker — kept

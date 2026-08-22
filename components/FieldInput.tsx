@@ -12,6 +12,7 @@ export function FieldInput({
   keyboardType,
   autoCapitalize,
   error,
+  multiline,
 }: {
   label: string;
   placeholder?: string;
@@ -22,6 +23,7 @@ export function FieldInput({
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   error?: string;
+  multiline?: boolean;
 }) {
   return (
     <View style={styles.wrapper}>
@@ -30,7 +32,7 @@ export function FieldInput({
         {optional ? <Text style={styles.optional}> · optional</Text> : null}
       </Text>
       <TextInput
-        style={[styles.input, error && styles.inputError]}
+        style={[styles.input, multiline && styles.inputMultiline, error && styles.inputError]}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         value={value}
@@ -38,6 +40,7 @@ export function FieldInput({
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
+        multiline={multiline}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
@@ -71,6 +74,10 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: colors.error,
+  },
+  inputMultiline: {
+    minHeight: 90,
+    textAlignVertical: 'top',
   },
   errorText: {
     fontSize: 12,

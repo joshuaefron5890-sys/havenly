@@ -22,6 +22,7 @@ import {
 import { addPlaydateToGoogleCalendar } from '../../lib/googleCalendar';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
+import { fetchRecommendedSitters, RecommendedSitter } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
@@ -129,6 +130,7 @@ export default function ProposalDetail() {
   }, [user, familyUid]);
 
   const [syncPromptProposalId, setSyncPromptProposalId] = useState<string | null>(null);
+  const [sitters, setSitters] = useState<RecommendedSitter[] | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -159,6 +161,25 @@ export default function ProposalDetail() {
       cancelled = true;
     };
   }, [familyUid]);
+
+  // Only worth asking once there's an actual date to cover — cluster +
+  // specialty matched, vetted-only (see functions/index.js's
+  // getRecommendedSitters). Best-effort: no sitters yet in this cluster is
+  // a perfectly normal state early on, not an error to show.
+  useEffect(() => {
+    if (proposal?.status !== 'accepted') return;
+    let cancelled = false;
+    fetchRecommendedSitters()
+      .then((result) => {
+        if (!cancelled) setSitters(result.slice(0, 3));
+      })
+      .catch(() => {
+        if (!cancelled) setSitters([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [proposal?.status]);
 
   const respond = async (status: 'accepted' | 'declined') => {
     if (!id || responding) return;
@@ -274,6 +295,32 @@ export default function ProposalDetail() {
             </View>
           ) : null}
         </View>
+
+        {proposal.status === 'accepted' && sitters && sitters.length > 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>NEED A SITTER FOR THIS PLAYDATE?</Text>
+            {sitters.map((sitter) => (
+              <View key={sitter.uid} style={styles.sitterRow}>
+                <Photo
+                  source={sitter.photoUrl ? { uri: sitter.photoUrl } : undefined}
+                  style={styles.sitterPhoto}
+                  variant="person"
+                  iconSize={16}
+                />
+                <View style={styles.sitterInfo}>
+                  <Text style={styles.sitterName}>{sitter.name}</Text>
+                  <Text style={styles.sitterMeta} numberOfLines={1}>
+                    {sitter.specialties.slice(0, 2).join(', ') || 'General sitting'}
+                    {sitter.hourlyRate ? ` · ${sitter.hourlyRate}` : ''}
+                  </Text>
+                </View>
+                <Text style={styles.sitterContact} numberOfLines={1}>
+                  {sitter.phone || sitter.email}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {otherFamily && otherFamily.sharedNeurodivergence.length > 0 && (
           <View style={styles.sharedExperienceRow}>
@@ -527,6 +574,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.accent,
+  },
+  sitterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+  },
+  sitterPhoto: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  sitterInfo: {
+    flex: 1,
+  },
+  sitterName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  sitterMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  sitterContact: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.accent,
+    maxWidth: 110,
   },
   infoRow: {
     marginBottom: 4,

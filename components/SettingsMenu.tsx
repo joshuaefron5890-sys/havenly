@@ -7,11 +7,13 @@ import { MAX_CONTENT_WIDTH } from './ResponsiveContainer';
 import { useAuth } from '../contexts/AuthContext';
 import { signOutUser } from '../lib/firebase';
 import { initials } from '../lib/initials';
+import { isSuperAdminEmail } from '../lib/superAdmin';
 import { colors } from '../theme/colors';
 
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
-  const { user, familyMemberInfo } = useAuth();
+  const { user, familyMemberInfo, clusterId } = useAuth();
+  const isAdmin = isSuperAdminEmail(user?.email, clusterId);
   const { width } = useWindowDimensions();
   // The Google account photo URL can fail to load (expired, blocked by
   // referrer policy, etc.) — React Native Web then renders a broken-image
@@ -34,6 +36,11 @@ export function SettingsMenu() {
   const goToProfile = () => {
     setOpen(false);
     router.push('/profile');
+  };
+
+  const goToSitterVetting = () => {
+    setOpen(false);
+    router.push('/admin/sitters');
   };
 
   const logOut = async () => {
@@ -74,6 +81,15 @@ export function SettingsMenu() {
               )}
               <Text style={styles.itemText}>Profile</Text>
             </Pressable>
+            {isAdmin ? (
+              <>
+                <View style={styles.divider} />
+                <Pressable style={styles.item} onPress={goToSitterVetting}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.text} />
+                  <Text style={styles.itemText}>Vet sitters</Text>
+                </Pressable>
+              </>
+            ) : null}
             <View style={styles.divider} />
             <Pressable style={styles.item} onPress={logOut}>
               <Ionicons name="log-out-outline" size={18} color={colors.error} />

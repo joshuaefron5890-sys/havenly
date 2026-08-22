@@ -38,6 +38,7 @@ export default function RootLayout() {
                     while still signed in, leaving the app in a broken
                     in-between state. */}
                 <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+                <Stack.Screen name="(sitter)" options={{ gestureEnabled: false }} />
               </Stack>
             </ResponsiveContainer>
           </SafeAreaProvider>

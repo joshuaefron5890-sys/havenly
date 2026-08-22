@@ -1008,6 +1008,129 @@ exports.getFamiliesByUids = onCall(async (request) => {
   return { families };
 });
 
+// Same reasoning as toPublicFamily above — a sitter's full sitters/{uid}
+// doc is only ever readable by the sitter themselves (see firestore.rules);
+// every other family sees only this subset, and only ever for a sitter
+// who's actually cleared (see getRecommendedSitters/getPendingSitters,
+// both of which call this). Contact info is included on purpose — this is
+// a directory a family is meant to actually reach out through, not a
+// booking flow (no in-app payment yet).
+function toPublicSitter(uid, data) {
+  return {
+    uid,
+    name: typeof data.name === 'string' ? data.name : '',
+    email: typeof data.email === 'string' ? data.email : '',
+    phone: typeof data.phone === 'string' ? data.phone : '',
+    bio: typeof data.bio === 'string' ? data.bio : '',
+    photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : null,
+    city: typeof data.city === 'string' ? data.city : '',
+    state: typeof data.state === 'string' ? data.state : '',
+    specialties: Array.isArray(data.specialties) ? data.specialties.filter((s) => typeof s === 'string') : [],
+    certifications: Array.isArray(data.certifications) ? data.certifications.filter((c) => typeof c === 'string') : [],
+    yearsExperience: typeof data.yearsExperience === 'string' ? data.yearsExperience : '',
+    hourlyRate: typeof data.hourlyRate === 'string' ? data.hourlyRate : '',
+  };
+}
+
+// How many of a sitter's specialties overlap with any of the family's kids'
+// neurodivergence tags — same "count pairs, not just distinct overlaps"
+// reasoning as schoolOverlapCount, just one-sided (a sitter has no
+// "children" of their own to compare both ways).
+function sitterMatchScore(me, sitterData) {
+  const myTags = new Set(
+    (Array.isArray(me.children) ? me.children : []).flatMap((c) => (Array.isArray(c?.neurodivergence) ? c.neurodivergence : []))
+  );
+  const specialties = Array.isArray(sitterData.specialties) ? sitterData.specialties : [];
+  return specialties.filter((s) => myTags.has(s)).length;
+}
+
+// Cluster + specialty-matched, vetted-only. Only 500 sitters fetched (same
+// sanity ceiling as getSuggestedFamilies) since this is a whole-collection
+// scan — cluster and vetting status are filtered in code rather than a
+// compound where() clause, avoiding a composite index for what's still a
+// small collection.
+exports.getRecommendedSitters = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const familyUid = await resolveFamilyUid(request.auth.uid);
+  const [meSnap, snap] = await Promise.all([
+    admin.firestore().collection('users').doc(familyUid).get(),
+    admin.firestore().collection('sitters').limit(500).get(),
+  ]);
+  const me = meSnap.data() ?? {};
+  const myClusterId = clusterIdOf(me);
+
+  const sitters = snap.docs
+    .filter((doc) => doc.data().backgroundCheckStatus === 'clear' && clusterIdOf(doc.data()) === myClusterId)
+    .map((doc) => ({ ...toPublicSitter(doc.id, doc.data()), matchScore: sitterMatchScore(me, doc.data()) }))
+    .sort((a, b) => b.matchScore - a.matchScore);
+
+  return { sitters };
+});
+
+// True for a cluster's own admin only — same allowlist as community
+// announcements (see CLUSTERS), resolved from the caller's own family doc
+// rather than a hardcoded email so this also works if a cluster ever has
+// more than one admin.
+async function isClusterAdmin(authUid, email) {
+  const familyUid = await resolveFamilyUid(authUid);
+  const meSnap = await admin.firestore().collection('users').doc(familyUid).get();
+  const clusterId = clusterIdOf(meSnap.data() ?? {});
+  return Boolean(email && CLUSTERS[clusterId]?.admins.includes(email));
+}
+
+// Powers the vetting queue (app/admin/sitters.tsx) — every sitter in the
+// admin's own cluster that isn't cleared yet. Includes backgroundCheckStatus
+// (toPublicSitter's subset doesn't) so the queue can tell "never checked"
+// apart from "flagged."
+exports.getPendingSitters = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const familyUid = await resolveFamilyUid(request.auth.uid);
+  const meSnap = await admin.firestore().collection('users').doc(familyUid).get();
+  const myClusterId = clusterIdOf(meSnap.data() ?? {});
+
+  const snap = await admin.firestore().collection('sitters').limit(500).get();
+  const sitters = snap.docs
+    .filter((doc) => clusterIdOf(doc.data()) === myClusterId && doc.data().backgroundCheckStatus !== 'clear')
+    .map((doc) => ({
+      ...toPublicSitter(doc.id, doc.data()),
+      backgroundCheckStatus: doc.data().backgroundCheckStatus === 'flagged' ? 'flagged' : 'pending',
+    }));
+
+  return { sitters };
+});
+
+// The only way backgroundCheckStatus ever changes — firestore.rules pins
+// that field (and vettedAt/vettedByEmail) out of a sitter's own writes, so
+// this Admin-SDK path is the sole route to actually vetting someone.
+exports.setSitterVettingStatus = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const uid = typeof request.data?.uid === 'string' ? request.data.uid : '';
+  const status = request.data?.status;
+  if (!uid || !['pending', 'clear', 'flagged'].includes(status)) {
+    throw new HttpsError('invalid-argument', 'A valid sitter uid and status are required.');
+  }
+  await admin.firestore().collection('sitters').doc(uid).set(
+    {
+      backgroundCheckStatus: status,
+      vettedAt: admin.firestore.FieldValue.serverTimestamp(),
+      vettedByEmail: request.auth.token.email ?? null,
+    },
+    { merge: true }
+  );
+});
+
 // Powers the family public-profile screen (tapped from a Discover row).
 // Runs server-side, like getSuggestedFamilies, both to keep the same
 // private fields out of reach and because it needs the CALLER's own

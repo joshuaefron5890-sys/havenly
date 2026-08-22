@@ -12,21 +12,9 @@ import { ChildProfile, emptyChildProfile, useOnboarding } from '../../contexts/O
 import { stepAfterChild } from '../../lib/onboardingFlow';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
 import { pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../../lib/photoUpload';
+import { NEURODIVERGENCE_OPTIONS } from '../../lib/neurodivergence';
 import { fetchNearbySchools, NearbySchool, schoolSubtitle } from '../../lib/schools';
 import { colors } from '../../theme/colors';
-
-const NEURODIVERGENCE_OPTIONS = [
-  'Autism',
-  'ADHD',
-  'Dyslexia',
-  'Dyspraxia',
-  'Sensory processing differences',
-  'Communication differences',
-  'Anxiety',
-  'Intellectual/developmental disability',
-  'Still figuring it out',
-  'Prefer not to say',
-];
 
 export default function Child() {
   const { edit, startIndex } = useLocalSearchParams<{ edit?: string; startIndex?: string }>();

@@ -198,5 +198,31 @@ service cloud.firestore {
         && request.resource.data.text.size() > 0;
       allow update, delete: if false;
     }
+
+    // Sitters (see functions/index.js's toPublicSitter comment) are a
+    // completely separate account type from families — self-registered,
+    // vetted by a cluster admin. A sitter can only ever read/write their
+    // OWN doc; every other family sees a public subset through
+    // getRecommendedSitters (Cloud Function, Admin SDK), same reasoning as
+    // toPublicFamily. backgroundCheckStatus/vettedAt/vettedByEmail are
+    // pinned out of every client write — setSitterVettingStatus (Admin SDK,
+    // admin-gated) is the only path that ever sets them, so self-vetting
+    // isn't possible even in principle.
+    match /sitters/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.backgroundCheckStatus == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0;
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && resource != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'email', 'phone', 'bio', 'photoUrl', 'city', 'state', 'zipCode',
+          'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
   }
 }

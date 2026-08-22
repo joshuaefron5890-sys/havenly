@@ -62,6 +62,17 @@ export async function routeSignedInUser(
   hydrateProfile: (patch: Partial<OnboardingProfile>) => void
 ): Promise<void> {
   try {
+    // Sitters (lib/sitters.ts) are a completely separate account type from
+    // families — standalone signup (app/sitter-signup.tsx), own top-level
+    // collection, never a users/{uid} doc — so this has to be checked
+    // before anything below assumes "signed in" means "a family."
+    if (db) {
+      const sitterSnap = await getDoc(doc(db, 'sitters', user.uid));
+      if (sitterSnap.exists()) {
+        router.replace('/(sitter)');
+        return;
+      }
+    }
     // An invited family member (see lib/familyMembers.ts) never has their
     // own users/{uid} doc — their family's profile lives at
     // users/{familyUid} instead — so loadOnboardingProgress(user.uid) below

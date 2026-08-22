@@ -42,6 +42,10 @@ function signIn() {
   router.push('/sign-in');
 }
 
+function becomeSitter() {
+  router.push('/sitter-signup');
+}
+
 export default function Onboarding() {
   const { user, loading } = useAuth();
   const { updateProfile } = useOnboarding();
@@ -101,6 +105,11 @@ export default function Onboarding() {
         <Pressable onPress={signIn}>
           <Text style={styles.signIn}>
             Already a member? <Text style={styles.signInAccent}>Sign in</Text>
+          </Text>
+        </Pressable>
+        <Pressable onPress={becomeSitter}>
+          <Text style={styles.signIn}>
+            Babysitter, nanny, or therapist? <Text style={styles.signInAccent}>Register as a sitter</Text>
           </Text>
         </Pressable>
       </ScrollView>
@@ -212,6 +221,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.textMuted,
     fontSize: 14,
+    marginBottom: 12,
   },
   signInAccent: {
     color: colors.accent,

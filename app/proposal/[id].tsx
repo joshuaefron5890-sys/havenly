@@ -79,7 +79,15 @@ function FamilyMini({
     </View>
   );
   if (!onPress) return content;
-  return <Pressable onPress={onPress}>{content}</Pressable>;
+  // Needs flex: 1 explicitly — as the actual flex-row child in place of the
+  // plain View above, an unstyled Pressable shrinks to hug its content
+  // instead of stretching to match its sibling, which is what made the
+  // tappable "other family" card visibly narrower than "my family"'s.
+  return (
+    <Pressable style={styles.familyCardPressable} onPress={onPress}>
+      {content}
+    </Pressable>
+  );
 }
 
 export default function ProposalDetail() {
@@ -413,6 +421,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
     alignItems: 'center',
+  },
+  familyCardPressable: {
+    flex: 1,
   },
   familyPhoto: {
     width: 56,

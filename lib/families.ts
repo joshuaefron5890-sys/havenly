@@ -16,6 +16,10 @@ export type SuggestedFamily = {
   city: string;
   state: string;
   children: SuggestedFamilyChild[];
+  // Every school any of the family's kids attend, neurodivergent child AND
+  // siblings alike (functions/index.js's publicSchoolsOf) — deduped,
+  // original casing. Powers the Families tab's school filter.
+  schools: string[];
   // Weighted match score (functions/index.js computeMatch) — not a raw
   // overlap percentage, clamped to 50-97.
   matchScore: number;
@@ -47,7 +51,10 @@ export async function fetchFamiliesByUids(uids: string[]): Promise<SuggestedFami
   return result.data.families;
 }
 
-export function familyPhoto(family: SuggestedFamily): string | null {
+export function familyPhoto(family: {
+  familyPhotoUrl: string | null;
+  children: SuggestedFamilyChild[];
+}): string | null {
   return family.familyPhotoUrl ?? family.children.find((c) => c.photoUrl)?.photoUrl ?? null;
 }
 

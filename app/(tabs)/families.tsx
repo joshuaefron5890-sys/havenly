@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
+import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
@@ -17,6 +18,7 @@ import { familyDisplayName, familyPhoto, familySubtitle, fetchSuggestedFamilies,
 import { colors } from '../../theme/colors';
 
 const PAGE_BATCH = 12;
+const ALL = 'All';
 
 export default function Families() {
   const { user, familyUid } = useAuth();
@@ -24,6 +26,7 @@ export default function Families() {
   const [error, setError] = useState<string | null>(null);
   const [favoriteUids, setFavoriteUids] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+  const [schoolFilter, setSchoolFilter] = useState(ALL);
   // The server already returns the full list (see getSuggestedFamilies) —
   // this just reveals more of what's already been fetched as the user
   // scrolls, same pattern as the Products/Podcasts tabs.
@@ -49,12 +52,26 @@ export default function Families() {
     }, [user, familyUid])
   );
 
+  // Schools actually attended by any of these families' kids (neurodivergent
+  // child or sibling — see functions/index.js's publicSchoolsOf), not a
+  // fixed list — matches whichever schools are actually in this cluster's
+  // families right now.
+  const schoolOptions = useMemo(() => {
+    if (!families) return [ALL];
+    const schools = new Set<string>();
+    families.forEach((f) => f.schools.forEach((s) => schools.add(s)));
+    return [ALL, ...[...schools].sort()];
+  }, [families]);
+
   const filtered = useMemo(() => {
     if (!families) return null;
     const q = query.trim().toLowerCase();
-    if (!q) return families;
-    return families.filter((f) => familyDisplayName(f).toLowerCase().includes(q));
-  }, [families, query]);
+    return families.filter((f) => {
+      if (schoolFilter !== ALL && !f.schools.includes(schoolFilter)) return false;
+      if (q && !familyDisplayName(f).toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [families, query, schoolFilter]);
 
   // Favorited families lead, same as every other tab this session —
   // always shown in full, unpaginated; everything else is what scrolls.
@@ -102,6 +119,9 @@ export default function Families() {
         />
 
         <SearchBar value={query} onChangeText={setQuery} placeholder="Search families" />
+        {schoolOptions.length > 2 ? (
+          <FilterChips options={schoolOptions} selected={schoolFilter} onSelect={setSchoolFilter} />
+        ) : null}
 
         {error ? <EmptyState text={`Couldn’t load families (${error}).`} /> : null}
         {families === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}

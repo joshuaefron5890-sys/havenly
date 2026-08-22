@@ -898,6 +898,27 @@ function computeMatch(me, target) {
   return { sharedInterests, sharedNeurodivergence, sharedPlayStyle, sharedAvailability, matchScore };
 }
 
+// Every school any of a family's kids attend — neurodivergent child AND
+// siblings, deduped case-insensitively but keeping original casing for
+// display. Siblings' own records otherwise never leave the server (see
+// toPublicFamily below), so this is the one derived, privacy-safe way
+// their school still surfaces to another family doing a school search.
+// Separate from schoolsOf (which lowercases everything for match-score
+// comparison) so display casing and scoring stay independent concerns.
+function publicSchoolsOf(data) {
+  const children = Array.isArray(data.children) ? data.children : [];
+  const siblings = Array.isArray(data.siblingProfiles) ? data.siblingProfiles : [];
+  const seen = new Set();
+  const schools = [];
+  for (const c of [...children, ...siblings]) {
+    const school = typeof c?.school === 'string' ? c.school.trim() : '';
+    if (!school || seen.has(school.toLowerCase())) continue;
+    seen.add(school.toLowerCase());
+    schools.push(school);
+  }
+  return schools;
+}
+
 // Shared by every endpoint that hands another family's data to a client
 // (getSuggestedFamilies, getFamiliesByUids) — the single place that decides
 // which fields of a user doc are actually safe to show someone else. User
@@ -922,6 +943,7 @@ function toPublicFamily(uid, data) {
           photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
         }))
       : [],
+    schools: publicSchoolsOf(data),
   };
 }
 

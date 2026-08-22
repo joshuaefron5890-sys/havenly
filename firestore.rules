@@ -144,6 +144,19 @@ service cloud.firestore {
             && resource.data.status in ['proposed', 'accepted']
             && request.resource.data.status == 'canceled')
         );
+      // Either family on an already-accepted playdate can add (or replace)
+      // a sitter — app/find-sitter.tsx's "Add to Playdate." Same
+      // single-field-pin reasoning as the status update above, just for
+      // `sitter` instead. Not deeply validated against the real sitter's
+      // own doc (would need an extra get() here) — same trust level
+      // already given to other denormalized snapshots like contributedByName.
+      allow update: if request.auth != null
+        && resource != null
+        && resource.data.status == 'accepted'
+        && myFamilyUid() in resource.data.participantUids
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sitter'])
+        && request.resource.data.sitter.uid is string
+        && request.resource.data.sitter.name is string;
       allow delete: if false;
     }
 

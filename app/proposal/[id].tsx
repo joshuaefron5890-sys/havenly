@@ -287,7 +287,44 @@ export default function ProposalDetail() {
           ) : null}
         </View>
 
-        {proposal.status === 'accepted' && !sitterPromptDismissed ? (
+        {proposal.status === 'accepted' && proposal.sitter ? (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>SITTER</Text>
+            <View style={styles.assignedSitterRow}>
+              <Photo
+                source={proposal.sitter.photoUrl ? { uri: proposal.sitter.photoUrl } : undefined}
+                style={styles.assignedSitterPhoto}
+                variant="person"
+                iconSize={18}
+              />
+              <View style={styles.assignedSitterInfo}>
+                <Text style={styles.assignedSitterName}>{proposal.sitter.name}</Text>
+                {proposal.sitter.specialties.length ? (
+                  <Text style={styles.assignedSitterMeta} numberOfLines={1}>
+                    {proposal.sitter.specialties.join(', ')}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            <View style={styles.contactRow}>
+              {proposal.sitter.phone ? (
+                <View style={styles.contactItem}>
+                  <Ionicons name="call-outline" size={13} color={colors.accent} />
+                  <Text style={styles.contactText}>{proposal.sitter.phone}</Text>
+                </View>
+              ) : null}
+              {proposal.sitter.email ? (
+                <View style={styles.contactItem}>
+                  <Ionicons name="mail-outline" size={13} color={colors.accent} />
+                  <Text style={styles.contactText}>{proposal.sitter.email}</Text>
+                </View>
+              ) : null}
+            </View>
+            <Pressable onPress={() => router.push(`/find-sitter?proposalId=${id}`)}>
+              <Text style={styles.changeSitterLink}>Change sitter</Text>
+            </Pressable>
+          </View>
+        ) : proposal.status === 'accepted' && !sitterPromptDismissed ? (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>NEED A SITTER FOR THIS PLAYDATE?</Text>
             <Text style={styles.sitterPromptText}>
@@ -297,7 +334,7 @@ export default function ProposalDetail() {
               <Pressable style={styles.sitterPromptDismiss} onPress={() => setSitterPromptDismissed(true)}>
                 <Text style={styles.sitterPromptDismissText}>Not now</Text>
               </Pressable>
-              <Pressable style={styles.sitterPromptFind} onPress={() => router.push('/find-sitter')}>
+              <Pressable style={styles.sitterPromptFind} onPress={() => router.push(`/find-sitter?proposalId=${id}`)}>
                 <Text style={styles.sitterPromptFindText}>Find a sitter</Text>
               </Pressable>
             </View>
@@ -582,6 +619,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.surface,
+  },
+  assignedSitterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  assignedSitterPhoto: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  assignedSitterInfo: {
+    flex: 1,
+  },
+  assignedSitterName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  assignedSitterMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    marginTop: 10,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  contactText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  changeSitterLink: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    marginTop: 12,
   },
   infoRow: {
     marginBottom: 4,

@@ -1,17 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View, Pressable } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../components/EmptyState';
 import { Photo } from '../components/Photo';
+import { showAlert } from '../lib/alert';
+import { addSitterToPlaydate } from '../lib/playdateProposals';
 import { fetchRecommendedSitters, RecommendedSitter } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
 export default function FindSitter() {
+  const { proposalId } = useLocalSearchParams<{ proposalId?: string }>();
   const [sitters, setSitters] = useState<RecommendedSitter[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [addingUid, setAddingUid] = useState<string | null>(null);
+
+  const handleAdd = async (sitter: RecommendedSitter) => {
+    if (!proposalId || addingUid) return;
+    setAddingUid(sitter.uid);
+    try {
+      await addSitterToPlaydate(proposalId, sitter);
+      router.back();
+    } catch (err: any) {
+      showAlert('Couldn’t add that sitter', err?.message ?? err?.code ?? 'Please try again.');
+      setAddingUid(null);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -120,6 +136,20 @@ export default function FindSitter() {
                 </View>
               ) : null}
             </View>
+
+            {proposalId ? (
+              <View style={styles.addRow}>
+                <Pressable
+                  style={[styles.addButton, addingUid === sitter.uid && styles.addButtonDisabled]}
+                  onPress={() => handleAdd(sitter)}
+                  disabled={addingUid !== null}
+                >
+                  <Text style={styles.addButtonText}>
+                    {addingUid === sitter.uid ? 'Adding…' : 'Add to Playdate'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         ))}
       </ScrollView>
@@ -282,5 +312,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.accent,
+  },
+  addRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 14,
+  },
+  addButton: {
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  addButtonDisabled: {
+    opacity: 0.6,
+  },
+  addButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.surface,
   },
 });

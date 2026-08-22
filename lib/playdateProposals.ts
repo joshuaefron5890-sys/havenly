@@ -14,8 +14,16 @@ import {
 import { db } from './firebase';
 import { getMyFamilyUid } from './familyContext';
 import { getOrCreateConversation, PlaydateProposalDetails, sendProposalMessage } from './messages';
+import { RecommendedSitter } from './sitters';
 
 export type ProposalStatus = 'proposed' | 'accepted' | 'declined' | 'canceled';
+
+// A small snapshot of the sitter's public info at the moment they were
+// added, not a live join — same reasoning as dateLabel/venue below already
+// being denormalized copies rather than references. Good enough for a
+// sitter's own profile changing rarely; re-adding them (or a different
+// sitter) from app/find-sitter.tsx just overwrites this.
+export type AssignedSitter = Pick<RecommendedSitter, 'uid' | 'name' | 'photoUrl' | 'phone' | 'email' | 'specialties'>;
 
 export type PlaydateProposal = {
   id: string;
@@ -25,6 +33,7 @@ export type PlaydateProposal = {
   status: ProposalStatus;
   note: string;
   createdAt: Date | null;
+  sitter: AssignedSitter | null;
 } & PlaydateProposalDetails;
 
 // dateLabel carries the full "Sat, Aug 22 · 10:00 AM–11:30 AM" range (see
@@ -93,6 +102,20 @@ function toDate(value: unknown): Date | null {
   return value instanceof Timestamp ? value.toDate() : null;
 }
 
+function parseSitter(value: unknown): AssignedSitter | null {
+  if (!value || typeof value !== 'object') return null;
+  const data = value as Record<string, unknown>;
+  if (typeof data.uid !== 'string' || typeof data.name !== 'string') return null;
+  return {
+    uid: data.uid,
+    name: data.name,
+    photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : null,
+    phone: typeof data.phone === 'string' ? data.phone : '',
+    email: typeof data.email === 'string' ? data.email : '',
+    specialties: Array.isArray(data.specialties) ? data.specialties.filter((s) => typeof s === 'string') : [],
+  };
+}
+
 function parseProposal(id: string, data: Record<string, unknown>): PlaydateProposal {
   const status = data.status;
   return {
@@ -103,12 +126,30 @@ function parseProposal(id: string, data: Record<string, unknown>): PlaydatePropo
     status: status === 'accepted' || status === 'declined' || status === 'canceled' ? status : 'proposed',
     note: typeof data.note === 'string' ? data.note : '',
     createdAt: toDate(data.createdAt),
+    sitter: parseSitter(data.sitter),
     date: typeof data.date === 'string' ? data.date : '',
     endDate: typeof data.endDate === 'string' ? data.endDate : '',
     dateLabel: typeof data.dateLabel === 'string' ? data.dateLabel : '',
     windowLabel: typeof data.windowLabel === 'string' ? data.windowLabel : '',
     venue: typeof data.venue === 'string' ? data.venue : '',
   };
+}
+
+// Either family on the playdate can add (or replace) the sitter, only once
+// it's actually accepted — enforced again server-side in firestore.rules,
+// which pins this write to only the `sitter` field (same idea as
+// respondToProposal/cancelProposal being pinned to `status`).
+export async function addSitterToPlaydate(proposalId: string, sitter: RecommendedSitter): Promise<void> {
+  if (!db) throw new Error('not-signed-in');
+  const snapshot: AssignedSitter = {
+    uid: sitter.uid,
+    name: sitter.name,
+    photoUrl: sitter.photoUrl,
+    phone: sitter.phone,
+    email: sitter.email,
+    specialties: sitter.specialties,
+  };
+  await setDoc(doc(db, 'playdateProposals', proposalId), { sitter: snapshot }, { merge: true });
 }
 
 // The single most recent pending proposal involving the signed-in user, if

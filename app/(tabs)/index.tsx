@@ -59,23 +59,33 @@ import { colors } from '../../theme/colors';
 // own, smaller cap.
 const ARTICLE_PAGE_SIZE = 3;
 const GRID_GAP = 10;
-// Every non-Highlights card grid is inset this much further than the base
-// content padding, so its cards' left edge lines up with the Highlights
-// cards above (which sit inside the white band's own extra left padding)
-// instead of the band's outer edge.
-const GRID_LEFT_INSET = 16;
+// The comfortable size range a preview card can flex within — wide enough
+// to stay legible, narrow enough that a row can fit an extra card rather
+// than leaving it just out of reach.
+const MIN_CARD_SIZE = 70;
+const MAX_CARD_SIZE = 92;
 
-// Every square-card grid collapses to exactly one row by default — how
-// many cards that is depends on the actual measured width of the grid
-// (varies by device/window), so it's computed from a live layout
-// measurement rather than a fixed guess.
-function cardsPerRow(gridWidth: number | null): number {
-  if (!gridWidth) return 4;
-  // Symmetric — the grid is inset GRID_LEFT_INSET on both sides (see
-  // styles.grid), not just the left, so both need subtracting here or
-  // perRow would overshoot the row's actual available width.
-  const availableWidth = gridWidth - GRID_LEFT_INSET * 2;
-  return Math.max(1, Math.floor((availableWidth + GRID_GAP) / (CARD_WIDTH + GRID_GAP)));
+// Every square-card grid on Home is exactly one row, sized to fill its own
+// measured width edge to edge — not a fixed CARD_WIDTH with whatever
+// slack happens to be left over after however many fit, which both wasted
+// space and made "View all" (bound by the same content padding as the
+// row, unlike the row's own former extra inset) land short of the row's
+// real right edge. Tries column counts from most to least, picking the
+// first whose resulting per-card size lands in the comfortable range —
+// biased toward more, smaller cards, so a device that can fit 5 shows 5
+// instead of capping at a fixed-width 4.
+function computeGridLayout(gridWidth: number | null): { perRow: number; cardSize: number } {
+  if (!gridWidth) return { perRow: 4, cardSize: CARD_WIDTH };
+  for (let n = 6; n >= 3; n--) {
+    const cardSize = (gridWidth - (n - 1) * GRID_GAP) / n;
+    if (cardSize >= MIN_CARD_SIZE && cardSize <= MAX_CARD_SIZE) {
+      return { perRow: n, cardSize };
+    }
+  }
+  // Neither bound fit any of 3-6 columns (a very narrow or very wide
+  // screen) — fall back to whatever's closest to the default card size.
+  const n = Math.max(1, Math.round(gridWidth / (CARD_WIDTH + GRID_GAP)));
+  return { perRow: n, cardSize: (gridWidth - (n - 1) * GRID_GAP) / n };
 }
 
 // Every section on Home now has its own dedicated tab (see
@@ -117,7 +127,7 @@ export default function ForYou() {
   // same padded content container), and is what determines how many cards
   // make up "one row" below.
   const [gridWidth, setGridWidth] = useState<number | null>(null);
-  const perRow = cardsPerRow(gridWidth);
+  const { perRow, cardSize } = computeGridLayout(gridWidth);
 
   // Shared across every section below — event/product/podcast/article
   // contributions all live in the same 'contributions' collection and
@@ -959,6 +969,7 @@ export default function ForYou() {
                   onToggleFavorite={favoriteFamilyUids.has(family.uid) ? () => toggleFamilyFavorite(family) : undefined}
                   matchScore={family.matchScore}
                   personFallback
+                  size={cardSize}
                   onPress={() => router.push(`/family/${family.uid}`)}
                 />
               );
@@ -990,6 +1001,7 @@ export default function ForYou() {
                     : undefined
                 }
                 badge="Proposed"
+                size={cardSize}
                 onPress={() => router.push(`/proposal/${proposal.id}`)}
               />
             ) : null}
@@ -1001,6 +1013,7 @@ export default function ForYou() {
                 community
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -1017,6 +1030,7 @@ export default function ForYou() {
                 image={event.imageUrl ? { uri: event.imageUrl } : undefined}
                 icon={event.imageUrl ? undefined : 'calendar-outline'}
                 softFallback={!event.imageUrl}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/event/[id]',
@@ -1062,6 +1076,7 @@ export default function ForYou() {
                 image={product.imageUrl ? { uri: product.imageUrl } : undefined}
                 favorited={favoriteProductUrls.has(product.url)}
                 onToggleFavorite={() => toggleProductFavorite(product)}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',
@@ -1088,6 +1103,7 @@ export default function ForYou() {
                 community
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -1106,6 +1122,7 @@ export default function ForYou() {
                 // Heart only shows once already favorited — see the
                 // matching comment on the family card above.
                 onToggleFavorite={favoriteProductUrls.has(product.url) ? () => toggleProductFavorite(product) : undefined}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',
@@ -1148,6 +1165,7 @@ export default function ForYou() {
                 image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
                 favorited={favoritePodcastIds.has(podcast.id)}
                 onToggleFavorite={() => togglePodcastFavorite(podcast)}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',
@@ -1176,6 +1194,7 @@ export default function ForYou() {
                 contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={favoriteContributionIds.has(c.id) ? () => toggleContributionFavorite(c.id) : undefined}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -1194,6 +1213,7 @@ export default function ForYou() {
                 // Heart only shows once already favorited — see the
                 // matching comment on the family card above.
                 onToggleFavorite={favoritePodcastIds.has(podcast.id) ? () => togglePodcastFavorite(podcast) : undefined}
+                size={cardSize}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',
@@ -1313,13 +1333,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    // Both sides, matching — previously left-only, which pushed the row
-    // 16px further from the left screen edge than the right, reading as
-    // lopsided (most visible on an actual device's real width, where the
-    // row rarely divides evenly and that asymmetry compounds with normal
-    // wrap-grid rounding slack on the right).
-    paddingLeft: GRID_LEFT_INSET,
-    paddingRight: GRID_LEFT_INSET,
+    // No extra inset — flush with SectionHeader's own edges (plain content
+    // padding, no extra padding of its own) so a section's title, its
+    // "View all" link, and its own card row all share the same left/right
+    // edges. computeGridLayout sizes each card to exactly fill this width,
+    // so the last card's right edge lands directly under "View all."
   },
   highlightsBand: {
     // A white, bordered card floating on the page's grey background —

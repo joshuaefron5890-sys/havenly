@@ -29,6 +29,7 @@ export function SquareCard({
   softFallback,
   personFallback,
   onDelete,
+  size,
 }: {
   title: string;
   subtitle?: string;
@@ -84,12 +85,20 @@ export function SquareCard({
   // or the match score (bottom-right). Only ever passed by a screen
   // that's already checked isSuperAdminEmail.
   onDelete?: () => void;
+  // Overrides the default fixed CARD_WIDTH — a single-row preview grid
+  // (Home's own sections) sizes cards to exactly fill its measured width
+  // rather than leaving leftover slack after however many fixed-width
+  // cards happen to fit (see app/(tabs)/index.tsx's computeGridLayout).
+  // Left undefined everywhere else, which keeps the default fixed size.
+  size?: number;
 }) {
+  const cardSize = size ?? CARD_WIDTH;
+  const thumbnailSize = { width: cardSize, height: cardSize };
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable style={[styles.card, { width: cardSize }]} onPress={onPress}>
       <View style={styles.thumbnailWrap}>
         {pairImages ? (
-          <View style={[styles.thumbnail, styles.pairThumbnail]}>
+          <View style={[styles.thumbnail, thumbnailSize, styles.pairThumbnail]}>
             <Photo source={pairImages[0]} style={[styles.pairAvatar, styles.pairAvatarBack]} variant="person" iconSize={20} />
             <Photo source={pairImages[1]} style={[styles.pairAvatar, styles.pairAvatarFront]} variant="person" iconSize={20} />
           </View>
@@ -99,8 +108,8 @@ export function SquareCard({
           // icon-on-color box — the per-item icon (calendar, bag, mic...)
           // still shows, as a small overlay, so the card still reads as
           // "this is an event" (etc.) at a glance despite the generic photo.
-          <View style={styles.thumbnail}>
-            <Photo source={images.communityContribution} style={styles.thumbnail} />
+          <View style={[styles.thumbnail, thumbnailSize]}>
+            <Photo source={images.communityContribution} style={[styles.thumbnail, thumbnailSize]} />
             {icon ? (
               <View style={styles.communityTypeIcon}>
                 <Ionicons name={icon} size={32} color={colors.surface} />
@@ -108,11 +117,11 @@ export function SquareCard({
             ) : null}
           </View>
         ) : !image && icon ? (
-          <View style={[styles.thumbnail, softFallback ? styles.softIconThumbnail : styles.iconThumbnail]}>
+          <View style={[styles.thumbnail, thumbnailSize, softFallback ? styles.softIconThumbnail : styles.iconThumbnail]}>
             <Ionicons name={icon} size={22} color={softFallback ? colors.textMuted : colors.surface} />
           </View>
         ) : (
-          <Photo source={image} style={styles.thumbnail} variant={personFallback ? 'person' : undefined} iconSize={28} />
+          <Photo source={image} style={[styles.thumbnail, thumbnailSize]} variant={personFallback ? 'person' : undefined} iconSize={28} />
         )}
         {community ? (
           <View style={styles.communityBadge}>

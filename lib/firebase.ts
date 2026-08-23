@@ -1,7 +1,8 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, GoogleAuthProvider, signInWithCredential, signOut, UserCredential } from 'firebase/auth';
+import { Auth, GoogleAuthProvider, signInWithCredential, signOut, UserCredential } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 import { Functions, getFunctions } from 'firebase/functions';
+import { createAuth } from './authInstance';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -19,13 +20,14 @@ let auth: Auth | undefined;
 let db: Firestore | undefined;
 let functions: Functions | undefined;
 
-// NOTE: uses plain getAuth() on every platform for now, so native builds
-// default to in-memory session persistence (signed out on app restart).
-// Swap in initializeAuth() + a React Native persistence adapter when we
-// start doing native builds; not needed for the current web-first workflow.
+// createAuth (lib/authInstance.ts / lib/authInstance.native.ts, resolved
+// per-platform by Metro) is what gives native builds a real persisted
+// session — plain getAuth() on iOS/Android would otherwise default to
+// in-memory persistence, losing the session every time the app is killed
+// from memory.
 if (firebaseConfigured) {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-  auth = getAuth(app);
+  auth = createAuth(app);
   db = getFirestore(app);
   functions = getFunctions(app);
 }

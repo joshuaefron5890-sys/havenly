@@ -15,6 +15,7 @@ import {
 import { auth, db } from './firebase';
 import { DEFAULT_CLUSTER_ID } from './clusters';
 import { getMyClusterId } from './clusterContext';
+import { contributionKey, fetchHiddenKeys } from './moderation';
 
 export type ContributionType = 'product' | 'podcast' | 'article' | 'event';
 
@@ -240,11 +241,11 @@ export async function deleteContribution(id: string): Promise<void> {
 export async function fetchContributions(type: ContributionType): Promise<Contribution[]> {
   if (!db) return [];
   const q = query(collection(db, 'contributions'), where('type', '==', type));
-  const snap = await getDocs(q);
+  const [snap, hiddenKeys] = await Promise.all([getDocs(q), fetchHiddenKeys()]);
   const myClusterId = getMyClusterId();
   const items = snap.docs
     .map((d) => parseContribution(d.id, d.data()))
-    .filter((c) => c.clusterId === myClusterId);
+    .filter((c) => c.clusterId === myClusterId && !hiddenKeys.has(contributionKey(c.id)));
   items.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   return items;
 }

@@ -28,6 +28,7 @@ export function SquareCard({
   matchScore,
   softFallback,
   personFallback,
+  onDelete,
 }: {
   title: string;
   subtitle?: string;
@@ -77,6 +78,12 @@ export function SquareCard({
   // case (no icon/community/pairImages set), since those already have
   // their own fallback treatments.
   personFallback?: boolean;
+  // A Super Admin-only "remove this from every feed" action (see
+  // lib/moderation.ts) — bottom-left corner, the one spot not already
+  // claimed by the heart (top-right), a badge/community pill (top-left),
+  // or the match score (bottom-right). Only ever passed by a screen
+  // that's already checked isSuperAdminEmail.
+  onDelete?: () => void;
 }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -142,6 +149,11 @@ export function SquareCard({
               {matchScore}%
             </Text>
           </View>
+        ) : null}
+        {onDelete ? (
+          <Pressable hitSlop={8} onPress={onDelete} style={styles.deleteButton}>
+            <Ionicons name="trash-outline" size={12} color={colors.error} />
+          </Pressable>
         ) : null}
       </View>
       <Text style={styles.title} numberOfLines={2}>
@@ -257,6 +269,24 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 4,
     paddingVertical: 2,
+  },
+  deleteButton: {
+    // Bottom-left — same solid-white-circle-with-shadow treatment as
+    // `heart` (top-right), just the one open corner.
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   matchScoreBadge: {
     position: 'absolute',

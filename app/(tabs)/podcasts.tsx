@@ -20,6 +20,7 @@ import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { fetchContributorPhotos } from '../../lib/families';
 import {
@@ -30,7 +31,9 @@ import {
   removeFavoriteContribution,
   removeFavoritePodcast,
 } from '../../lib/favorites';
+import { contributionKey, hideContent, podcastKey } from '../../lib/moderation';
 import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
+import { isSuperAdminEmail } from '../../lib/superAdmin';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -38,7 +41,8 @@ const SCHEMA = CONTRIBUTION_SCHEMAS.podcast;
 const PAGE_BATCH = 12;
 
 export default function Podcasts() {
-  const { user, familyUid } = useAuth();
+  const { user, familyUid, clusterId } = useAuth();
+  const isAdmin = isSuperAdminEmail(user?.email, clusterId);
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -161,6 +165,27 @@ export default function Podcasts() {
     }
   };
 
+  // Super Admin only — see components/SquareCard.tsx's onDelete comment.
+  const deletePodcast = async (podcast: PodcastSuggestion) => {
+    setPodcasts((prev) => prev?.filter((p) => p.id !== podcast.id) ?? prev);
+    try {
+      await hideContent(podcastKey(podcast.id), podcast.title || 'Untitled podcast');
+    } catch (err: any) {
+      showAlert('Couldn’t remove that podcast', err?.message ?? err?.code ?? 'Please try again.');
+      setPodcasts((prev) => (prev ? [...prev, podcast] : prev));
+    }
+  };
+
+  const deletePodcastContribution = async (c: Contribution) => {
+    setContributions((prev) => prev.filter((x) => x.id !== c.id));
+    try {
+      await hideContent(contributionKey(c.id), c.fields.title ?? 'Community pick');
+    } catch (err: any) {
+      showAlert('Couldn’t remove that podcast', err?.message ?? err?.code ?? 'Please try again.');
+      setContributions((prev) => [...prev, c]);
+    }
+  };
+
   const submitContribution = async (name: string, values: Record<string, string>) => {
     await createContribution('podcast', values, name);
     const result = await fetchContributions('podcast');
@@ -205,6 +230,7 @@ export default function Podcasts() {
                 image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
                 favorited={favoriteIds.has(podcast.id)}
                 onToggleFavorite={() => toggleFavorite(podcast)}
+                onDelete={isAdmin ? () => deletePodcast(podcast) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',
@@ -233,6 +259,7 @@ export default function Podcasts() {
                 contributorPhoto={contributorPhotos.get(c.contributedByUid)}
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
+                onDelete={isAdmin ? () => deletePodcastContribution(c) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -249,6 +276,7 @@ export default function Podcasts() {
                 image={podcast.artworkUrl ? { uri: podcast.artworkUrl } : undefined}
                 favorited={favoriteIds.has(podcast.id)}
                 onToggleFavorite={() => toggleFavorite(podcast)}
+                onDelete={isAdmin ? () => deletePodcast(podcast) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',

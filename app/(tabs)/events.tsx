@@ -12,16 +12,19 @@ import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import { familyPhoto, fetchFamiliesByUids } from '../../lib/families';
 import { addFavoriteContribution, getFavoriteContributionIds, removeFavoriteContribution } from '../../lib/favorites';
+import { contributionKey, eventKey, hideContent } from '../../lib/moderation';
 import {
   fetchAcceptedProposals,
   fetchPendingProposals,
   PlaydateProposal,
   proposalStartLabel,
 } from '../../lib/playdateProposals';
+import { isSuperAdminEmail } from '../../lib/superAdmin';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -38,7 +41,8 @@ const PLAYDATES_SOURCE = 'Playdates';
 const SCHEMA = CONTRIBUTION_SCHEMAS.event;
 
 export default function Events() {
-  const { user, familyUid } = useAuth();
+  const { user, familyUid, clusterId } = useAuth();
+  const isAdmin = isSuperAdminEmail(user?.email, clusterId);
   const [events, setEvents] = useState<NearbyEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<PlaydateProposal[]>([]);
@@ -188,6 +192,29 @@ export default function Events() {
     }
   };
 
+  // Super Admin only — see components/SquareCard.tsx's onDelete comment.
+  // Optimistic, with a rollback + alert on failure, same idiom as the
+  // favorite toggles above.
+  const deleteEvent = async (event: NearbyEvent) => {
+    setEvents((prev) => prev?.filter((e) => e.id !== event.id) ?? prev);
+    try {
+      await hideContent(eventKey(event.link), event.title);
+    } catch (err: any) {
+      showAlert('Couldn’t remove that event', err?.message ?? err?.code ?? 'Please try again.');
+      setEvents((prev) => (prev ? [...prev, event] : prev));
+    }
+  };
+
+  const deleteEventContribution = async (c: Contribution) => {
+    setContributions((prev) => prev.filter((x) => x.id !== c.id));
+    try {
+      await hideContent(contributionKey(c.id), c.fields.title ?? 'Community event');
+    } catch (err: any) {
+      showAlert('Couldn’t remove that event', err?.message ?? err?.code ?? 'Please try again.');
+      setContributions((prev) => [...prev, c]);
+    }
+  };
+
   const submitContribution = async (name: string, values: Record<string, string>) => {
     await createContribution('event', values, name);
     const result = await fetchContributions('event');
@@ -257,6 +284,7 @@ export default function Events() {
                 community
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
+                onDelete={isAdmin ? () => deleteEventContribution(c) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -273,6 +301,7 @@ export default function Events() {
                 image={event.imageUrl ? { uri: event.imageUrl } : undefined}
                 icon={event.imageUrl ? undefined : 'calendar-outline'}
                 softFallback={!event.imageUrl}
+                onDelete={isAdmin ? () => deleteEvent(event) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/event/[id]',

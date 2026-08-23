@@ -1131,6 +1131,77 @@ exports.setSitterVettingStatus = onCall(async (request) => {
   );
 });
 
+// Content moderation — lets a cluster admin permanently hide a bad/spam
+// item from every feed on the app, curated (TACA events, iTunes podcasts,
+// Shopify products, MedlinePlus articles, blog RSS) and community-
+// contributed alike, even though the curated ones have no Firestore doc of
+// their own to delete and would just come right back on the next fetch
+// otherwise. `key` is a type-prefixed identifier built the same way on
+// both sides — client-side when hiding (lib/moderation.ts) and server-side
+// when filtering each feed below — since these items only exist as an
+// in-memory API response, not a document either side could reference by
+// id. Docs get an auto id (not a deterministic one keyed off `key`) so
+// hiding never has to worry about a raw URL's characters being valid as a
+// Firestore doc id; membership is checked by loading the whole collection
+// into a Set, which stays cheap since moderation actions are rare.
+async function fetchHiddenKeys() {
+  const snap = await admin.firestore().collection('hiddenContent').limit(1000).get();
+  return new Set(snap.docs.map((doc) => doc.data().key).filter((k) => typeof k === 'string'));
+}
+
+exports.hideContent = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const key = typeof request.data?.key === 'string' ? request.data.key : '';
+  const title = typeof request.data?.title === 'string' ? request.data.title : '';
+  if (!key) {
+    throw new HttpsError('invalid-argument', 'A key is required.');
+  }
+  await admin.firestore().collection('hiddenContent').add({
+    key,
+    title,
+    hiddenByEmail: request.auth.token.email ?? null,
+    hiddenAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+});
+
+exports.unhideContent = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const key = typeof request.data?.key === 'string' ? request.data.key : '';
+  if (!key) {
+    throw new HttpsError('invalid-argument', 'A key is required.');
+  }
+  const snap = await admin.firestore().collection('hiddenContent').where('key', '==', key).get();
+  await Promise.all(snap.docs.map((doc) => doc.ref.delete()));
+});
+
+// Powers the "Hidden items" admin review screen — every hide is
+// reversible, so this is a real moderation queue, not a one-way delete.
+exports.getHiddenContent = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const snap = await admin.firestore().collection('hiddenContent').orderBy('hiddenAt', 'desc').limit(200).get();
+  const items = snap.docs.map((doc) => ({
+    key: doc.data().key,
+    title: doc.data().title || 'Untitled',
+    hiddenByEmail: doc.data().hiddenByEmail || '',
+  }));
+  return { items };
+});
+
 // Powers the family public-profile screen (tapped from a Discover row).
 // Runs server-side, like getSuggestedFamilies, both to keep the same
 // private fields out of reach and because it needs the CALLER's own
@@ -1544,8 +1615,10 @@ exports.getPodcastSuggestions = onCall(async (request) => {
   // incrementally as the user scrolls, see app/(tabs)/podcasts.tsx) — just
   // a sanity ceiling against a pathological case, well above what ~20
   // search terms deduped by feed would realistically ever produce.
+  const hiddenKeys = await fetchHiddenKeys();
   const podcasts = [...byFeed.values()]
     .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
+    .filter((p) => !hiddenKeys.has(`podcast:${p.id}`))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
     .slice(0, 150);
 
@@ -1708,8 +1781,10 @@ exports.getHealthResources = onCall(async (request) => {
     }
   }
 
+  const hiddenKeys = await fetchHiddenKeys();
   const resources = [...byUrl.values()]
     .map((r) => ({ ...r, matchedTags: [...r.matchedTags] }))
+    .filter((r) => !hiddenKeys.has(`article:${r.url}`))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
     .slice(0, 15);
 
@@ -1772,6 +1847,7 @@ exports.getBlogFeed = onCall(async (request) => {
     })
   );
 
+  const hiddenKeys = await fetchHiddenKeys();
   const posts = resultsPerSource
     .flat()
     .map((item) => {
@@ -1780,6 +1856,7 @@ exports.getBlogFeed = onCall(async (request) => {
       const snippet = item.description.length > 220 ? `${item.description.slice(0, 220).trim()}…` : item.description;
       return { url: item.link, title: item.title, snippet, source: item.source, publishedAt };
     })
+    .filter((p) => !hiddenKeys.has(`blog:${p.url}`))
     // Most recent first; a post with an unparseable date sorts last rather
     // than clustering at the front under an implicit "now".
     .sort((a, b) => {
@@ -1953,8 +2030,10 @@ exports.getRecommendedProducts = onCall(async (request) => {
   // the user scrolls, see app/(tabs)/products.tsx) — just a sanity ceiling
   // against a pathological case, well above what this many sources/terms
   // deduped by URL would realistically ever produce.
+  const hiddenKeys = await fetchHiddenKeys();
   const products = [...byUrl.values()]
     .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
+    .filter((p) => !hiddenKeys.has(`product:${p.url}`))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
     .slice(0, 150);
 
@@ -2248,7 +2327,10 @@ exports.getNearbyEvents = onCall(async (request) => {
   // source reads as coherent; sorting virtual events after in-person ones
   // (or grouping by distance first) fractures that into disconnected
   // date-sorted clusters instead of one chronological list.
-  const ranked = filtered.sort((a, b) => a.eventDate - b.eventDate);
+  const hiddenKeys = await fetchHiddenKeys();
+  const ranked = filtered
+    .filter((e) => !hiddenKeys.has(`event:${e.link}`))
+    .sort((a, b) => a.eventDate - b.eventDate);
 
   // With 4 merged sources, a cap this low used to mean weeks of near-term
   // recurring support-group meetings alone could fill every slot and push

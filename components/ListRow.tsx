@@ -19,6 +19,7 @@ export function ListRow({
   onPress,
   favorited,
   onToggleFavorite,
+  onDelete,
 }: {
   title: string;
   subtitle?: string;
@@ -55,6 +56,11 @@ export function ListRow({
   // stop a tap on the menu from bubbling up to its backdrop.
   favorited?: boolean;
   onToggleFavorite?: () => void;
+  // A Super Admin-only "remove this from every feed" action (see
+  // lib/moderation.ts) — only ever passed by a screen that's already
+  // checked isSuperAdminEmail, same idiom as onToggleFavorite: its own
+  // onPress keeps a tap here from also triggering the row's onPress.
+  onDelete?: () => void;
 }) {
   const Container = onPress ? Pressable : View;
   return (
@@ -122,6 +128,11 @@ export function ListRow({
           />
         </Pressable>
       ) : null}
+      {onDelete ? (
+        <Pressable hitSlop={8} onPress={onDelete} style={styles.deleteButton}>
+          <Ionicons name="trash-outline" size={18} color={colors.error} />
+        </Pressable>
+      ) : null}
       {badge ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge}</Text>
@@ -179,6 +190,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   heart: {
+    padding: 2,
+  },
+  deleteButton: {
     padding: 2,
   },
   body: {

@@ -43,6 +43,11 @@ export function SettingsMenu() {
     router.push('/admin/sitters');
   };
 
+  const goToHiddenContent = () => {
+    setOpen(false);
+    router.push('/admin/hidden');
+  };
+
   const logOut = async () => {
     setOpen(false);
     await signOutUser();
@@ -87,6 +92,10 @@ export function SettingsMenu() {
                 <Pressable style={styles.item} onPress={goToSitterVetting}>
                   <Ionicons name="shield-checkmark-outline" size={18} color={colors.text} />
                   <Text style={styles.itemText}>Vet sitters</Text>
+                </Pressable>
+                <Pressable style={styles.item} onPress={goToHiddenContent}>
+                  <Ionicons name="eye-off-outline" size={18} color={colors.text} />
+                  <Text style={styles.itemText}>Hidden items</Text>
                 </Pressable>
               </>
             ) : null}

@@ -14,6 +14,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import {
   Contribution,
   createContribution,
@@ -31,8 +32,10 @@ import {
   removeFavoriteContribution,
   removeFavoriteResource,
 } from '../../lib/favorites';
+import { articleKey, blogKey, contributionKey, hideContent } from '../../lib/moderation';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { BlogPost, blogPostSubtitle, fetchBlogFeed } from '../../lib/blogs';
+import { isSuperAdminEmail } from '../../lib/superAdmin';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -49,7 +52,8 @@ function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (ite
 }
 
 export default function Articles() {
-  const { user, familyUid } = useAuth();
+  const { user, familyUid, clusterId } = useAuth();
+  const isAdmin = isSuperAdminEmail(user?.email, clusterId);
   const [articles, setArticles] = useState<HealthResource[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [blogPosts, setBlogPosts] = useState<BlogPost[] | null>(null);
@@ -202,6 +206,37 @@ export default function Articles() {
     }
   };
 
+  // Super Admin only — see components/ListRow.tsx's onDelete comment.
+  const deleteResourceContribution = async (c: Contribution) => {
+    setContributions((prev) => prev.filter((x) => x.id !== c.id));
+    try {
+      await hideContent(contributionKey(c.id), c.fields.title ?? 'Community pick');
+    } catch (err: any) {
+      showAlert('Couldn’t remove that resource', err?.message ?? err?.code ?? 'Please try again.');
+      setContributions((prev) => [...prev, c]);
+    }
+  };
+
+  const deleteArticle = async (article: HealthResource) => {
+    setArticles((prev) => prev?.filter((a) => a.url !== article.url) ?? prev);
+    try {
+      await hideContent(articleKey(article.url), article.title);
+    } catch (err: any) {
+      showAlert('Couldn’t remove that article', err?.message ?? err?.code ?? 'Please try again.');
+      setArticles((prev) => (prev ? [...prev, article] : prev));
+    }
+  };
+
+  const deleteBlogPost = async (post: BlogPost) => {
+    setBlogPosts((prev) => prev?.filter((p) => p.url !== post.url) ?? prev);
+    try {
+      await hideContent(blogKey(post.url), post.title);
+    } catch (err: any) {
+      showAlert('Couldn’t remove that blog post', err?.message ?? err?.code ?? 'Please try again.');
+      setBlogPosts((prev) => (prev ? [...prev, post] : prev));
+    }
+  };
+
   const submitContribution = async (name: string, values: Record<string, string>) => {
     // Every Resources contribution is stored as Firestore type 'article' —
     // resourceType (in fields, not its own column) is what actually
@@ -265,6 +300,7 @@ export default function Articles() {
                 community
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
+                onDelete={isAdmin ? () => deleteResourceContribution(c) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -281,6 +317,7 @@ export default function Articles() {
                 icon="document-text-outline"
                 favorited={favoriteUrls.has(article.url)}
                 onToggleFavorite={() => toggleFavorite(article)}
+                onDelete={isAdmin ? () => deleteArticle(article) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/article/[id]',
@@ -303,6 +340,7 @@ export default function Articles() {
                 icon="blog"
                 favorited={favoriteUrls.has(post.url)}
                 onToggleFavorite={() => toggleFavorite(post)}
+                onDelete={isAdmin ? () => deleteBlogPost(post) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/article/[id]',

@@ -237,5 +237,17 @@ service cloud.firestore {
         ]);
       allow delete: if false;
     }
+
+    // Content moderation (see functions/index.js's hideContent comment) —
+    // every signed-in family reads the hidden-key list (needed client-side
+    // to filter the contributions collection, which they read directly;
+    // curated feeds are filtered server-side instead, inside the Cloud
+    // Functions that already run with the Admin SDK). Writes only ever go
+    // through hideContent/unhideContent (admin-gated, Admin SDK), never
+    // direct from a client.
+    match /hiddenContent/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
   }
 }

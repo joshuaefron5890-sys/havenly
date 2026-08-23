@@ -20,6 +20,7 @@ import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
 import { SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { showAlert } from '../../lib/alert';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import {
   addFavoriteContribution,
@@ -29,7 +30,9 @@ import {
   removeFavoriteContribution,
   removeFavoriteProduct,
 } from '../../lib/favorites';
+import { contributionKey, hideContent, productKey } from '../../lib/moderation';
 import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
+import { isSuperAdminEmail } from '../../lib/superAdmin';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -46,7 +49,8 @@ function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (ite
 }
 
 export default function Products() {
-  const { user, familyUid } = useAuth();
+  const { user, familyUid, clusterId } = useAuth();
+  const isAdmin = isSuperAdminEmail(user?.email, clusterId);
   const [products, setProducts] = useState<RecommendedProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
@@ -175,6 +179,27 @@ export default function Products() {
     }
   };
 
+  // Super Admin only — see components/SquareCard.tsx's onDelete comment.
+  const deleteProduct = async (product: RecommendedProduct) => {
+    setProducts((prev) => prev?.filter((p) => p.url !== product.url) ?? prev);
+    try {
+      await hideContent(productKey(product.url), product.title);
+    } catch (err: any) {
+      showAlert('Couldn’t remove that product', err?.message ?? err?.code ?? 'Please try again.');
+      setProducts((prev) => (prev ? [...prev, product] : prev));
+    }
+  };
+
+  const deleteProductContribution = async (c: Contribution) => {
+    setContributions((prev) => prev.filter((x) => x.id !== c.id));
+    try {
+      await hideContent(contributionKey(c.id), c.fields.title ?? 'Community pick');
+    } catch (err: any) {
+      showAlert('Couldn’t remove that product', err?.message ?? err?.code ?? 'Please try again.');
+      setContributions((prev) => [...prev, c]);
+    }
+  };
+
   const submitContribution = async (name: string, values: Record<string, string>) => {
     await createContribution('product', values, name);
     const result = await fetchContributions('product');
@@ -219,6 +244,7 @@ export default function Products() {
                 image={product.imageUrl ? { uri: product.imageUrl } : undefined}
                 favorited={favoriteUrls.has(product.url)}
                 onToggleFavorite={() => toggleFavorite(product)}
+                onDelete={isAdmin ? () => deleteProduct(product) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',
@@ -245,6 +271,7 @@ export default function Products() {
                 community
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
+                onDelete={isAdmin ? () => deleteProductContribution(c) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -261,6 +288,7 @@ export default function Products() {
                 image={product.imageUrl ? { uri: product.imageUrl } : undefined}
                 favorited={favoriteUrls.has(product.url)}
                 onToggleFavorite={() => toggleFavorite(product)}
+                onDelete={isAdmin ? () => deleteProduct(product) : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',

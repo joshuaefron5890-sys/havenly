@@ -71,7 +71,10 @@ const GRID_LEFT_INSET = 16;
 // measurement rather than a fixed guess.
 function cardsPerRow(gridWidth: number | null): number {
   if (!gridWidth) return 4;
-  const availableWidth = gridWidth - GRID_LEFT_INSET;
+  // Symmetric — the grid is inset GRID_LEFT_INSET on both sides (see
+  // styles.grid), not just the left, so both need subtracting here or
+  // perRow would overshoot the row's actual available width.
+  const availableWidth = gridWidth - GRID_LEFT_INSET * 2;
   return Math.max(1, Math.floor((availableWidth + GRID_GAP) / (CARD_WIDTH + GRID_GAP)));
 }
 
@@ -1310,7 +1313,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    // Both sides, matching — previously left-only, which pushed the row
+    // 16px further from the left screen edge than the right, reading as
+    // lopsided (most visible on an actual device's real width, where the
+    // row rarely divides evenly and that asymmetry compounds with normal
+    // wrap-grid rounding slack on the right).
     paddingLeft: GRID_LEFT_INSET,
+    paddingRight: GRID_LEFT_INSET,
   },
   highlightsBand: {
     // A white, bordered card floating on the page's grey background —

@@ -3,6 +3,16 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db, functions } from './firebase';
 import { clusterForZip } from './clusters';
 
+// Gates the two family-facing entry points (app/index.tsx's "Register as a
+// sitter" link, app/proposal/[id].tsx's "Need a sitter for this playdate?"
+// prompt/assigned-sitter card) — the feature isn't ready to launch yet, but
+// the backend (registration, vetting, matching) stays intact so this is a
+// one-line flip to bring it back rather than ripping the feature out.
+// Sitter self-registration (/sitter-signup), the sitter's own app shell
+// (/(sitter)), and the admin vetting/hidden-content screens are untouched —
+// only the two links a family would actually discover the feature through.
+export const SITTERS_ENABLED = false;
+
 // Common childcare credentials, distinct from NEURODIVERGENCE_OPTIONS
 // (lib/neurodivergence.ts) — a certification is a qualification a sitter
 // holds, not a population they have experience with, so the two are kept

@@ -7,6 +7,7 @@ import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
+import { SITTERS_ENABLED } from '../lib/sitters';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 
@@ -107,11 +108,13 @@ export default function Onboarding() {
             Already a member? <Text style={styles.signInAccent}>Sign in</Text>
           </Text>
         </Pressable>
-        <Pressable onPress={becomeSitter}>
-          <Text style={styles.signIn}>
-            Babysitter, nanny, or therapist? <Text style={styles.signInAccent}>Register as a sitter</Text>
-          </Text>
-        </Pressable>
+        {SITTERS_ENABLED ? (
+          <Pressable onPress={becomeSitter}>
+            <Text style={styles.signIn}>
+              Babysitter, nanny, or therapist? <Text style={styles.signInAccent}>Register as a sitter</Text>
+            </Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

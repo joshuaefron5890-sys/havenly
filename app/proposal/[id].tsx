@@ -22,6 +22,7 @@ import {
 import { addPlaydateToGoogleCalendar } from '../../lib/googleCalendar';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
+import { SITTERS_ENABLED } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
@@ -287,7 +288,7 @@ export default function ProposalDetail() {
           ) : null}
         </View>
 
-        {proposal.status === 'accepted' && proposal.sitter ? (
+        {SITTERS_ENABLED && proposal.status === 'accepted' && proposal.sitter ? (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>SITTER</Text>
             <View style={styles.assignedSitterRow}>
@@ -324,7 +325,7 @@ export default function ProposalDetail() {
               <Text style={styles.changeSitterLink}>Change sitter</Text>
             </Pressable>
           </View>
-        ) : proposal.status === 'accepted' && !sitterPromptDismissed ? (
+        ) : SITTERS_ENABLED && proposal.status === 'accepted' && !sitterPromptDismissed ? (
           <View style={styles.card}>
             <Text style={styles.cardLabel}>NEED A SITTER FOR THIS PLAYDATE?</Text>
             <Text style={styles.sitterPromptText}>

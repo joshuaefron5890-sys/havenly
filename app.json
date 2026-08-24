@@ -29,6 +29,7 @@
       "policy": "fingerprint"
     },
     "updates": {
+      "enabled": false,
       "url": "https://u.expo.dev/8c78da10-6b71-4419-a28b-7943ea5ae865"
     },
     "extra": {

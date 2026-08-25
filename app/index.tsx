@@ -81,7 +81,7 @@ export default function Onboarding() {
         <Photo source={images.onboardingHero} style={styles.hero} />
 
         <Text style={styles.headline}>
-          A community <Text style={styles.headlineAccent}>built for neurodivergent families.</Text>
+          A community built for <Text style={styles.headlineAccent}>neurodivergent families.</Text>
         </Text>
         <Text style={styles.subtext}>
           Haven.ly helps families with neurodivergent children connect with others in their local

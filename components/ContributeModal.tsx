@@ -260,9 +260,9 @@ export function ContributeModal({
       <DatePickerModal
         visible={datePickerKey !== null}
         onClose={() => setDatePickerKey(null)}
-        onConfirm={(label) => {
+        onConfirm={(label, iso) => {
           if (!datePickerKey) return;
-          setValues((prev) => ({ ...prev, [datePickerKey]: label }));
+          setValues((prev) => ({ ...prev, [datePickerKey]: label, [`${datePickerKey}Iso`]: iso }));
         }}
       />
       <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleImageCropConfirm} />

@@ -26,8 +26,10 @@ export type ContributionField = {
   multiline?: boolean;
   optional?: boolean;
   // 'date' renders a calendar + time picker instead of a plain text
-  // field (see components/DatePickerModal.tsx) — the value stored is
-  // still just the formatted label string, same as every other field.
+  // field (see components/DatePickerModal.tsx) — stores the formatted
+  // label under this field's own key (displayed everywhere), plus a
+  // real ISO timestamp for the same moment under "<key>Iso" (used only
+  // by parseContributedEventDate below, to filter out past events).
   // 'image' renders an upload-a-photo-or-paste-a-link picker (see
   // ContributeModal) — the value stored is still just a URL string, same
   // shape as `url` above, just displayed as a photo everywhere else.
@@ -173,6 +175,42 @@ function toDate(value: unknown): Date | null {
   return value instanceof Timestamp ? value.toDate() : null;
 }
 
+// Matches DatePickerModal's formatLabel output, e.g. "Wed, Sep 23 · 10:00 AM"
+// — used only as a fallback for a contribution made before dateIso existed
+// (see the 'date' field type comment above).
+const EVENT_DATE_LABEL_RE = /^[A-Za-z]+,\s*([A-Za-z]+)\s+(\d{1,2})\s*·\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
+
+// Resolves a community-submitted event's actual date, for filtering out
+// past events. Prefers the "<key>Iso" companion field written alongside
+// every 'date'-type field since this was added; falls back to parsing the
+// older label-only format for a contribution made before that, using the
+// current year (the label itself never carried one) — imperfect for an
+// event whose intended year has since rolled over, but strictly better
+// than never filtering those out at all. Returns null (never hidden) when
+// there's nothing to go on, e.g. an event with no date set, since that
+// field is optional.
+export function parseContributedEventDate(fields: Record<string, string>): Date | null {
+  for (const key of Object.keys(fields)) {
+    if (!key.endsWith('Iso')) continue;
+    const parsed = new Date(fields[key]);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  const label = fields.date;
+  if (typeof label !== 'string') return null;
+  const match = label.match(EVENT_DATE_LABEL_RE);
+  if (!match) return null;
+  const [, month, day, hour, minute, ampm] = match;
+  const parsed = new Date(`${month} ${day}, ${new Date().getFullYear()} ${hour}:${minute} ${ampm}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+// Start of today, local time — an event later today still counts as
+// "today," not yet past.
+function startOfToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 function parseContribution(id: string, data: Record<string, unknown>): Contribution {
   const type = data.type;
   return {
@@ -243,9 +281,15 @@ export async function fetchContributions(type: ContributionType): Promise<Contri
   const q = query(collection(db, 'contributions'), where('type', '==', type));
   const [snap, hiddenKeys] = await Promise.all([getDocs(q), fetchHiddenKeys()]);
   const myClusterId = getMyClusterId();
+  const cutoff = type === 'event' ? startOfToday() : null;
   const items = snap.docs
     .map((d) => parseContribution(d.id, d.data()))
-    .filter((c) => c.clusterId === myClusterId && !hiddenKeys.has(contributionKey(c.id)));
+    .filter((c) => c.clusterId === myClusterId && !hiddenKeys.has(contributionKey(c.id)))
+    .filter((c) => {
+      if (!cutoff) return true;
+      const eventDate = parseContributedEventDate(c.fields);
+      return !eventDate || eventDate.getTime() >= cutoff.getTime();
+    });
   items.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   return items;
 }

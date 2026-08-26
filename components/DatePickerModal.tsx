@@ -49,9 +49,11 @@ function clampMinute(text: string): string {
 
 // A fully custom calendar + time picker — no native date-picker dependency,
 // since this app's whole pipeline is verified on web this session and a
-// natively-linked picker's behavior can't be confirmed from here. Only
-// ever produces a formatted label string (same shape a contributor could
-// have typed by hand), so nothing downstream needs to know this exists.
+// natively-linked picker's behavior can't be confirmed from here. Produces
+// both the formatted display label and a real ISO timestamp for the same
+// moment — the label is what's shown everywhere, the ISO string is what
+// lets a past event actually be filtered out later (see
+// lib/contributions.ts's parseContributedEventDate).
 export function DatePickerModal({
   visible,
   onClose,
@@ -59,7 +61,7 @@ export function DatePickerModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onConfirm: (label: string) => void;
+  onConfirm: (label: string, iso: string) => void;
 }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -102,7 +104,10 @@ export function DatePickerModal({
   const handleConfirm = () => {
     if (!selectedDay) return;
     const day = new Date(viewYear, viewMonth, selectedDay);
-    onConfirm(formatLabel(day, hourText, minuteText, isPM));
+    const hour24 = (parseInt(clampHour(hourText), 10) % 12) + (isPM ? 12 : 0);
+    const minute = parseInt(clampMinute(minuteText), 10);
+    const withTime = new Date(viewYear, viewMonth, selectedDay, hour24, minute);
+    onConfirm(formatLabel(day, hourText, minuteText, isPM), withTime.toISOString());
     onClose();
   };
 

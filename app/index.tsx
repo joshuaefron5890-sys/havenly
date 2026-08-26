@@ -116,6 +116,9 @@ export default function Onboarding() {
             </Text>
           </Pressable>
         ) : null}
+        <Pressable onPress={() => router.push('/privacy')}>
+          <Text style={styles.privacyLink}>Privacy Policy</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -230,5 +233,11 @@ const styles = StyleSheet.create({
   signInAccent: {
     color: colors.accent,
     fontWeight: '600',
+  },
+  privacyLink: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: 8,
   },
 });

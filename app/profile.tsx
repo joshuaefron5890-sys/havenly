@@ -504,6 +504,10 @@ export default function Profile() {
           <Text style={styles.logoutText}>Log out</Text>
         </Pressable>
 
+        <Pressable onPress={() => router.push('/privacy')} hitSlop={8}>
+          <Text style={styles.privacyLink}>Privacy Policy</Text>
+        </Pressable>
+
         <Pressable style={styles.deleteAccountButton} onPress={deleteAccount} disabled={deleting}>
           {deleting ? (
             <ActivityIndicator color={colors.textMuted} size="small" />
@@ -775,6 +779,12 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 15,
     fontWeight: '700',
+  },
+  privacyLink: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: 13,
+    marginTop: 8,
   },
   deleteAccountButton: {
     alignItems: 'center',

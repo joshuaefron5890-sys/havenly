@@ -216,6 +216,15 @@ export default function Account() {
             {googleSubmitting ? <Text style={styles.googleStatus}>Signing up…</Text> : null}
           </>
         )}
+        {!editMode ? (
+          <Text style={styles.legal}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.legalLink} onPress={() => router.push('/privacy')}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -291,5 +300,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.textMuted,
     fontSize: 13,
+  },
+  legal: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  legalLink: {
+    color: colors.accent,
+    fontWeight: '600',
   },
 });

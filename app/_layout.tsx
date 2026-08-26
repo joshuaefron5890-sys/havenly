@@ -1,14 +1,36 @@
 import { router, Stack } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { ScrollView, Text as RNText } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ResponsiveContainer } from '../components/ResponsiveContainer';
 import { AuthProvider } from '../contexts/AuthContext';
 import { MessagesProvider } from '../contexts/MessagesContext';
 import { OnboardingProvider } from '../contexts/OnboardingContext';
+import { installFatalErrorDisplay } from '../lib/crashDiagnostics';
 import { configureForegroundNotificationHandler, subscribeToNotificationTaps } from '../lib/pushNotifications';
 import { colors } from '../theme/colors';
 
+// Runs at module load — before RootLayout ever mounts — so it can catch a
+// fatal error that happens during the earliest part of startup. See
+// lib/crashDiagnostics.ts for why this exists; TEMPORARY, remove both once
+// the current TestFlight crash is diagnosed.
+let fatalErrorText: string | null = null;
+let notifyFatalError: ((text: string) => void) | null = null;
+installFatalErrorDisplay((text) => {
+  fatalErrorText = text;
+  notifyFatalError?.(text);
+});
+
 export default function RootLayout() {
+  const [errorText, setErrorText] = useState<string | null>(fatalErrorText);
+
+  useEffect(() => {
+    notifyFatalError = setErrorText;
+    return () => {
+      notifyFatalError = null;
+    };
+  }, []);
+
   // Root-level (not per-tab) since a tap should navigate correctly no
   // matter which screen the app happens to already be on. The server
   // includes { url: '/proposal/xyz' } / { url: '/messages/xyz' } on every
@@ -22,6 +44,21 @@ export default function RootLayout() {
     });
     return () => unsubscribe?.();
   }, []);
+
+  if (errorText) {
+    return (
+      <SafeAreaProvider>
+        <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
+          <RNText selectable style={{ fontWeight: '700', fontSize: 16, marginBottom: 12, color: '#000' }}>
+            Caught a fatal error — screenshot or copy this and send it over:
+          </RNText>
+          <RNText selectable style={{ fontFamily: 'Courier', fontSize: 12, color: '#000' }}>
+            {errorText}
+          </RNText>
+        </ScrollView>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <AuthProvider>

@@ -1,7 +1,7 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, GoogleAuthProvider, signInWithCredential, signOut, UserCredential } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
-import { Functions, getFunctions } from 'firebase/functions';
+import { Functions, getFunctions, httpsCallable } from 'firebase/functions';
 import { createAuth } from './authInstance';
 
 const firebaseConfig = {
@@ -47,5 +47,17 @@ export async function signInWithGoogleIdToken(idToken: string, accessToken?: str
 
 export async function signOutUser(): Promise<void> {
   if (!auth) return;
+  await signOut(auth);
+}
+
+// Permanently deletes the signed-in user's account (see functions/index.js's
+// deleteMyAccount for exactly what that removes). Signs out locally right
+// after — the server-side deletion already invalidates the session, but
+// auth.currentUser wouldn't otherwise clear itself until the next token
+// refresh, which could leave the UI looking signed-in for a moment.
+export async function deleteMyAccount(): Promise<void> {
+  if (!functions || !auth) throw new Error('not-configured');
+  const call = httpsCallable<undefined, { success: boolean }>(functions, 'deleteMyAccount');
+  await call();
   await signOut(auth);
 }

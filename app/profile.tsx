@@ -8,8 +8,9 @@ import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
+import { showAlert, showConfirm } from '../lib/alert';
 import { FamilyMember, getFamilyMembers, PendingFamilyInvite } from '../lib/familyMembers';
-import { signOutUser } from '../lib/firebase';
+import { deleteMyAccount, signOutUser } from '../lib/firebase';
 import { getGoogleFreeBusy } from '../lib/googleCalendar';
 import { initials } from '../lib/initials';
 import { numSiblings } from '../lib/onboardingFlow';
@@ -226,8 +227,7 @@ export default function Profile() {
     router.push(`/onboarding/child?edit=1&startIndex=${newIndex}` as any);
   };
 
-  const logOut = async () => {
-    await signOutUser();
+  const goHome = () => {
     // A plain router.replace('/') can land back on the tabs' own index
     // screen instead of the true landing page, since both resolve to "/" —
     // a full reload sidesteps that ambiguity and guarantees a clean state.
@@ -235,6 +235,29 @@ export default function Profile() {
       window.location.href = '/';
     } else {
       router.replace('/');
+    }
+  };
+
+  const logOut = async () => {
+    await signOutUser();
+    goHome();
+  };
+
+  const [deleting, setDeleting] = useState(false);
+  const deleteAccount = async () => {
+    const confirmed = await showConfirm(
+      'Delete your account?',
+      'This permanently deletes your account and profile. This can’t be undone.',
+      'Delete account'
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    try {
+      await deleteMyAccount();
+      goHome();
+    } catch (err: any) {
+      setDeleting(false);
+      showAlert('Couldn’t delete your account', err?.message ?? 'Please try again.');
     }
   };
 
@@ -479,6 +502,14 @@ export default function Profile() {
         <Pressable style={styles.logoutButton} onPress={logOut}>
           <Ionicons name="log-out-outline" size={18} color={colors.error} style={styles.logoutIcon} />
           <Text style={styles.logoutText}>Log out</Text>
+        </Pressable>
+
+        <Pressable style={styles.deleteAccountButton} onPress={deleteAccount} disabled={deleting}>
+          {deleting ? (
+            <ActivityIndicator color={colors.textMuted} size="small" />
+          ) : (
+            <Text style={styles.deleteAccountText}>Delete account</Text>
+          )}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -744,5 +775,17 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 15,
     fontWeight: '700',
+  },
+  deleteAccountButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  deleteAccountText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

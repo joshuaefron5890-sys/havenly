@@ -2484,4 +2484,50 @@ exports.getNearbySchools = onCall(async (request) => {
   return { schools: schools.slice(0, 100) };
 });
 
+// App Store Review Guideline 5.1.1(v) requires any app that offers account
+// creation to also offer in-app account deletion — this is that. Scope:
+// removes this uid's own primary records (profile, sitter listing, push
+// token, family-membership link) and the Firebase Auth account itself,
+// which is what actually makes the account gone — can't sign back in, no
+// longer discoverable in getSuggestedFamilies/getRecommendedSitters/etc.,
+// all of which read from these same docs. Content shared with other people
+// (messages, playdate proposals, community contributions) is deliberately
+// left in place, the same way most consumer apps handle a deleted user's
+// existing contributions to a shared thread — scrubbing those is a much
+// larger, separate piece of work and isn't what the guideline requires.
+exports.deleteMyAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const uid = request.auth.uid;
+  const db = admin.firestore();
+
+  const memberSnap = await db.collection('familyMembers').doc(uid).get();
+  const isInvitedMember = memberSnap.exists;
+
+  const batch = db.batch();
+  batch.delete(db.collection('pushTokens').doc(uid));
+  batch.delete(db.collection('sitters').doc(uid));
+
+  if (isInvitedMember) {
+    batch.delete(db.collection('familyMembers').doc(uid));
+  } else {
+    // uid is an account owner, not an invited member — also clear anything
+    // that points back at this family, so an invited member's app doesn't
+    // end up referencing a family that no longer exists.
+    batch.delete(db.collection('users').doc(uid));
+    const [membersSnap, invitesSnap] = await Promise.all([
+      db.collection('familyMembers').where('familyUid', '==', uid).get(),
+      db.collection('familyInvites').where('familyUid', '==', uid).where('status', '==', 'pending').get(),
+    ]);
+    membersSnap.docs.forEach((doc) => batch.delete(doc.ref));
+    invitesSnap.docs.forEach((doc) => batch.delete(doc.ref));
+  }
+
+  await batch.commit();
+  await admin.auth().deleteUser(uid);
+
+  return { success: true };
+});
+
 

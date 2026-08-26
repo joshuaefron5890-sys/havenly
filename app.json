@@ -39,7 +39,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.joshuaefronsteam.havenly"
+      "bundleIdentifier": "com.joshuaefronsteam.havenly",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.joshuaefronsteam.havenly",

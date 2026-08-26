@@ -5,32 +5,32 @@
 // to need tooling (Console.app device access, a working local Xcode/
 // CocoaPods toolchain) that wasn't readily available.
 //
-// Two independent interception points, since it wasn't obvious up front
-// which one actually catches this crash:
+// Earlier attempts overrode global.ErrorUtils's handler and console.error,
+// but every crash log still showed the exact same
+// RCTExceptionsManager.reportException call chain regardless. Reading
+// react-native's own Libraries/Core/ExceptionsManager.js explains why:
+// both the uncaught-exception handler and console.error's own reporting
+// path eventually call `NativeExceptionsManager.reportException(data)` —
+// and react-native/expo's own core setup re-installs ITS OWN console.error
+// and ErrorUtils wrappers later, during expo-router/entry's own module
+// graph (after this file's index.js caller already ran), silently
+// replacing ours before this even had a chance to matter.
 //
-// 1. global.ErrorUtils's registered handler — React Native's DEFAULT
-//    implementation reports an uncaught JS error to native
-//    (RCTExceptionsManager) and lets it crash so there's a native crash
-//    report. Installing our own handler runs INSTEAD of that default one.
+// NativeExceptionsManager's default export (see
+// react-native/Libraries/Core/NativeExceptionsManager.js /
+// react-native/src/private/specs_DEPRECATED/modules/NativeExceptionsManager.js)
+// is a plain, mutable object — not frozen — and it's the one true choke
+// point every path above funnels through right before the native crash.
+// Patching its methods directly here, rather than the wrappers upstream of
+// it, means it doesn't matter which path (or in what order) actually
+// triggers — nothing downstream of this can still reach native.
 //
-// 2. console.error itself — React Native's console polyfill can ALSO
-//    route console.error calls straight to that same native reporting
-//    path in production (treating them as fatal), entirely separately
-//    from global.ErrorUtils. Every crash log so far shows the same
-//    RCTExceptionsManager reportFatal/reportException signature even
-//    with (1) installed first, which is why this exists too — capturing
-//    here, before forwarding to the original console.error, stops RN's
-//    own wrapper from ever running.
-//
-// Both installed from index.js — the actual JS entry point (package.json's
-// "main") — rather than from app/_layout.tsx, since a module-load-time
-// error/console.error call anywhere earlier in the import graph (e.g.
-// lib/firebase.ts's eager initializeApp/createAuth calls, pulled in
-// transitively the moment _layout.tsx imports AuthProvider) would already
-// have happened before _layout.tsx's own top-level code ever ran. State
-// lives here, as a shared module singleton, so index.js (which installs
-// it) and _layout.tsx (which displays it) see the same value regardless
-// of which mechanism actually caught something.
+// Installed from index.js — the actual JS entry point (package.json's
+// "main") — so this module is required (and NativeExceptionsManager's
+// methods overwritten) before anything else, including expo-router's own
+// startup, has a chance to run. State lives here as a shared module
+// singleton, so index.js (which installs it) and app/_layout.tsx (which
+// displays it) see the same value.
 //
 // Remove installFatalErrorDisplay(), its call site in index.js, and the
 // error-screen branch in app/_layout.tsx once the real bug behind this is
@@ -69,7 +69,35 @@ function stringifyArg(arg: unknown): string {
   }
 }
 
+function stackToText(stack: unknown): string {
+  if (!Array.isArray(stack)) return '(no stack)';
+  return stack
+    .map((frame: any) => `  at ${frame?.methodName ?? '?'} (${frame?.file ?? '?'}:${frame?.lineNumber ?? '?'})`)
+    .join('\n');
+}
+
 export function installFatalErrorDisplay(): void {
+  // Primary interception — see the file comment above for why this one
+  // actually matters, unlike the two below.
+  try {
+    const NativeExceptionsManager = require('react-native/Libraries/Core/NativeExceptionsManager').default;
+    if (NativeExceptionsManager) {
+      NativeExceptionsManager.reportException = (data: any) => {
+        capture(`[reportException] ${data?.message ?? '(no message)'}\n\n${stackToText(data?.stack)}`);
+      };
+      NativeExceptionsManager.reportFatalException = (message: string, stack: unknown) => {
+        capture(`[reportFatalException] ${message}\n\n${stackToText(stack)}`);
+      };
+      NativeExceptionsManager.reportSoftException = (message: string, stack: unknown) => {
+        capture(`[reportSoftException] ${message}\n\n${stackToText(stack)}`);
+      };
+    }
+  } catch (err) {
+    capture(`[crashDiagnostics] couldn't patch NativeExceptionsManager: ${String(err)}`);
+  }
+
+  // Belt-and-suspenders — harmless to keep even though neither of these
+  // turned out to be the actual mechanism.
   const globalAny = global as any;
   if (globalAny.ErrorUtils?.setGlobalHandler) {
     globalAny.ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {

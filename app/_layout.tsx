@@ -6,29 +6,20 @@ import { ResponsiveContainer } from '../components/ResponsiveContainer';
 import { AuthProvider } from '../contexts/AuthContext';
 import { MessagesProvider } from '../contexts/MessagesContext';
 import { OnboardingProvider } from '../contexts/OnboardingContext';
-import { installFatalErrorDisplay } from '../lib/crashDiagnostics';
+import { getFatalErrorText, subscribeFatalError } from '../lib/crashDiagnostics';
 import { configureForegroundNotificationHandler, subscribeToNotificationTaps } from '../lib/pushNotifications';
 import { colors } from '../theme/colors';
 
-// Runs at module load — before RootLayout ever mounts — so it can catch a
-// fatal error that happens during the earliest part of startup. See
-// lib/crashDiagnostics.ts for why this exists; TEMPORARY, remove both once
-// the current TestFlight crash is diagnosed.
-let fatalErrorText: string | null = null;
-let notifyFatalError: ((text: string) => void) | null = null;
-installFatalErrorDisplay((text) => {
-  fatalErrorText = text;
-  notifyFatalError?.(text);
-});
-
 export default function RootLayout() {
-  const [errorText, setErrorText] = useState<string | null>(fatalErrorText);
+  // The actual handler is installed in index.js, before this file (or
+  // anything it imports) ever runs — see lib/crashDiagnostics.ts. This
+  // just displays whatever it caught. TEMPORARY, remove once the current
+  // TestFlight crash is diagnosed.
+  const [errorText, setErrorText] = useState<string | null>(getFatalErrorText());
 
   useEffect(() => {
-    notifyFatalError = setErrorText;
-    return () => {
-      notifyFatalError = null;
-    };
+    subscribeFatalError(setErrorText);
+    return () => subscribeFatalError(null);
   }, []);
 
   // Root-level (not per-tab) since a tap should navigate correctly no

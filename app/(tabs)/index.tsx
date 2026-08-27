@@ -869,7 +869,19 @@ export default function ForYou() {
       <ScreenHeader eyebrow="Haven.ly" />
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View onLayout={(e) => setGridWidth((prev) => prev ?? e.nativeEvent.layout.width)} />
+        <View
+          onLayout={(e) => {
+            // Read the width synchronously, before passing it into the
+            // updater below — React can defer actually calling a
+            // setState updater to a later render pass, and by then
+            // React Native may have already recycled this synthetic
+            // event, making e.nativeEvent null. That's what was crashing
+            // in production (TypeError: Cannot read property 'layout' of
+            // null) despite never reproducing in dev.
+            const width = e.nativeEvent.layout.width;
+            setGridWidth((prev) => prev ?? width);
+          }}
+        />
 
         <SectionHero
           imageUrl="https://picsum.photos/seed/havenly-for-you/800/450"

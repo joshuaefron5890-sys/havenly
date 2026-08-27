@@ -1,5 +1,5 @@
 import { router, Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Component, ReactNode, useEffect, useState } from 'react';
 import { ScrollView, Text as RNText } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ResponsiveContainer } from '../components/ResponsiveContainer';
@@ -9,6 +9,50 @@ import { OnboardingProvider } from '../contexts/OnboardingContext';
 import { getFatalErrorText, subscribeFatalError } from '../lib/crashDiagnostics';
 import { configureForegroundNotificationHandler, subscribeToNotificationTaps } from '../lib/pushNotifications';
 import { colors } from '../theme/colors';
+
+// TEMPORARY diagnostic UI — see lib/crashDiagnostics.ts. Shared by both
+// paths that can produce an error to display: state pushed from outside
+// React (NativeExceptionsManager/console.error/ErrorUtils, captured
+// async) and FatalErrorBoundary below (a render-time throw, caught by
+// React itself). Remove alongside crashDiagnostics.ts once the real bug
+// is found and fixed.
+function ErrorScreen({ text }: { text: string }) {
+  return (
+    <SafeAreaProvider>
+      <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
+        <RNText selectable style={{ fontWeight: '700', fontSize: 16, marginBottom: 12, color: '#000' }}>
+          Caught a fatal error — screenshot or copy this and send it over:
+        </RNText>
+        <RNText selectable style={{ fontFamily: 'Courier', fontSize: 12, color: '#000' }}>
+          {text}
+        </RNText>
+      </ScrollView>
+    </SafeAreaProvider>
+  );
+}
+
+// A render-time throw (as opposed to one from an async callback or native
+// module) unmounts the whole tree by default in React when nothing above
+// it catches it — including the state-based error display in RootLayout
+// below, since that lives INSIDE the same tree that just got unmounted.
+// That's exactly what a blank white screen after installFatalErrorDisplay
+// stopped the app from hard-crashing turned out to mean: the native crash
+// was prevented, but nothing was left mounted to show why. This boundary
+// sits above everything else specifically to catch that case too.
+class FatalErrorBoundary extends Component<{ children: ReactNode }, { errorText: string | null }> {
+  state: { errorText: string | null } = { errorText: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { errorText: `[render] ${error?.message ?? String(error)}\n\n${error?.stack ?? '(no stack)'}` };
+  }
+
+  render() {
+    if (this.state.errorText) {
+      return <ErrorScreen text={this.state.errorText} />;
+    }
+    return this.props.children;
+  }
+}
 
 export default function RootLayout() {
   // The actual handler is installed in index.js, before this file (or
@@ -37,41 +81,32 @@ export default function RootLayout() {
   }, []);
 
   if (errorText) {
-    return (
-      <SafeAreaProvider>
-        <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
-          <RNText selectable style={{ fontWeight: '700', fontSize: 16, marginBottom: 12, color: '#000' }}>
-            Caught a fatal error — screenshot or copy this and send it over:
-          </RNText>
-          <RNText selectable style={{ fontFamily: 'Courier', fontSize: 12, color: '#000' }}>
-            {errorText}
-          </RNText>
-        </ScrollView>
-      </SafeAreaProvider>
-    );
+    return <ErrorScreen text={errorText} />;
   }
 
   return (
-    <AuthProvider>
-      <MessagesProvider>
-        <OnboardingProvider>
-          <SafeAreaProvider>
-            <ResponsiveContainer>
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="sign-in" />
-                <Stack.Screen name="profile" />
-                {/* No legitimate "back" from the tab root — an edge swipe
-                    here would otherwise try to pop toward sign-in/landing
-                    while still signed in, leaving the app in a broken
-                    in-between state. */}
-                <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
-                <Stack.Screen name="(sitter)" options={{ gestureEnabled: false }} />
-              </Stack>
-            </ResponsiveContainer>
-          </SafeAreaProvider>
-        </OnboardingProvider>
-      </MessagesProvider>
-    </AuthProvider>
+    <FatalErrorBoundary>
+      <AuthProvider>
+        <MessagesProvider>
+          <OnboardingProvider>
+            <SafeAreaProvider>
+              <ResponsiveContainer>
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="sign-in" />
+                  <Stack.Screen name="profile" />
+                  {/* No legitimate "back" from the tab root — an edge swipe
+                      here would otherwise try to pop toward sign-in/landing
+                      while still signed in, leaving the app in a broken
+                      in-between state. */}
+                  <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+                  <Stack.Screen name="(sitter)" options={{ gestureEnabled: false }} />
+                </Stack>
+              </ResponsiveContainer>
+            </SafeAreaProvider>
+          </OnboardingProvider>
+        </MessagesProvider>
+      </AuthProvider>
+    </FatalErrorBoundary>
   );
 }

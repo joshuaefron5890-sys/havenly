@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showConfirm } from '../../lib/alert';
 import { auth } from '../../lib/firebase';
 import { requestGoogleCalendarAuthCode } from '../../lib/googleIdentity';
 import {
@@ -13,11 +14,13 @@ import {
   dateKey,
   findSitterAvailabilityConflicts,
   freeUpcomingPeriods,
+  periodConflictKey,
   SitterAvailabilityConflict,
   upcomingDays,
 } from '../../lib/sitterAvailability';
 import {
   connectSitterGoogleCalendarBackend,
+  disconnectSitterGoogleCalendarBackend,
   fetchMySitterProfile,
   fetchSitterGoogleFreeBusy,
   saveMySitterProfile,
@@ -44,19 +47,23 @@ function formatConflict(conflict: SitterAvailabilityConflict): string {
   return `${dateLabel} · ${conflict.periodLabel}`;
 }
 
-// Adds `additions` into `base` without ever overwriting a day the sitter
-// has already made a decision about — used by the automatic calendar sync
-// below (only fill in periods they haven't touched either way), so it's
-// safe to re-run every time more days load or the calendar is rechecked.
-function mergeAdditive(base: DayAvailability, additions: DayAvailability): DayAvailability {
+// Adds `additions` into `base`, skipping any (date, period) the sitter has
+// ever hand-toggled (`manualOverrides`, keyed by periodConflictKey) — a
+// manual choice always wins over what the calendar says, whether that
+// choice was to turn a period on (harmless to skip, it's already there) or
+// off (the whole point: without this, re-running the automatic sync would
+// silently re-check anything the calendar shows as free, even a period the
+// sitter deliberately unmarked). Safe to re-run every time more days load
+// or the calendar is rechecked.
+function mergeAdditive(base: DayAvailability, additions: DayAvailability, manualOverrides: Record<string, true>): DayAvailability {
   const next: DayAvailability = { ...base };
   for (const [key, periods] of Object.entries(additions)) {
     const existing = next[key] ?? [];
     const merged = [...existing];
     for (const p of periods) {
-      if (!merged.includes(p)) merged.push(p);
+      if (!merged.includes(p) && !manualOverrides[periodConflictKey(key, p)]) merged.push(p);
     }
-    next[key] = merged;
+    if (merged.length) next[key] = merged;
   }
   return next;
 }
@@ -66,6 +73,7 @@ export default function SitterAvailability() {
   const [profile, setProfile] = useState<SitterProfile | null>(null);
   const [selected, setSelected] = useState<DayAvailability>({});
   const [overrides, setOverrides] = useState<Record<string, true>>({});
+  const [manualOverrides, setManualOverrides] = useState<Record<string, true>>({});
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -88,6 +96,7 @@ export default function SitterAvailability() {
       setProfile(result);
       setSelected(result.availability);
       setOverrides(result.availabilityConflictOverrides);
+      setManualOverrides(result.availabilityManualOverrides);
       setLoading(false);
     });
     return () => {
@@ -104,6 +113,10 @@ export default function SitterAvailability() {
       else delete copy[key];
       return copy;
     });
+    // Every hand-toggle — on or off — is remembered indefinitely so the
+    // automatic calendar sync never silently reverses it later (see
+    // mergeAdditive above).
+    setManualOverrides((prev) => ({ ...prev, [periodConflictKey(key, period)]: true }));
     setConflicts(null);
   };
 
@@ -111,8 +124,8 @@ export default function SitterAvailability() {
     setSaveError(null);
     setSavingAvailability(true);
     try {
-      await saveMySitterProfile({ availability: selected }, false);
-      setProfile((prev) => (prev ? { ...prev, availability: selected } : prev));
+      await saveMySitterProfile({ availability: selected, availabilityManualOverrides: manualOverrides }, false);
+      setProfile((prev) => (prev ? { ...prev, availability: selected, availabilityManualOverrides: manualOverrides } : prev));
     } catch (err: any) {
       setSaveError(err?.message ?? err?.code ?? 'Couldn’t save your availability. Please try again.');
     } finally {
@@ -151,6 +164,33 @@ export default function SitterAvailability() {
     }
   };
 
+  // Fully undoes handleConnectGoogle — clears the stored refresh token
+  // server-side (also revoked with Google, see the Cloud Function) so
+  // syncCalendar/conflict-checking stop running and the sitter goes back
+  // to marking availability by hand. Also turns off the separate
+  // Playdates-screen "add confirmed playdates to my calendar" toggle,
+  // since that reuses this same connection — leaving it on would just
+  // silently fail once the token is gone.
+  const handleDisconnectGoogle = async () => {
+    const confirmed = await showConfirm(
+      'Disconnect Google Calendar?',
+      'Your availability picks stay as they are — you’ll just need to mark future days manually and won’t see calendar conflicts. You can reconnect any time.',
+      'Disconnect'
+    );
+    if (!confirmed) return;
+    setGoogleError(null);
+    setConnectingGoogle(true);
+    try {
+      await disconnectSitterGoogleCalendarBackend();
+      setProfile((prev) => (prev ? { ...prev, googleCalendarConnected: false, googleCalendarSyncEnabled: false } : prev));
+      setConflicts(null);
+    } catch (err: any) {
+      setGoogleError(`Couldn’t disconnect (${err?.message ?? err?.code ?? 'unknown error'}).`);
+    } finally {
+      setConnectingGoogle(false);
+    }
+  };
+
   // Runs automatically once the calendar is connected, and again whenever
   // more days load (infinite scroll) so freshly-added days get the same
   // treatment: pre-checks every free period the sitter hasn't already
@@ -166,7 +206,7 @@ export default function SitterAvailability() {
       const rangeEnd = new Date(now.getTime() + (daysAheadCount + 1) * 24 * 60 * 60 * 1000);
       const busy = await fetchSitterGoogleFreeBusy(now.toISOString(), rangeEnd.toISOString());
       setConflicts(findSitterAvailabilityConflicts(selected, busy, daysAheadCount));
-      setSelected((prev) => mergeAdditive(prev, freeUpcomingPeriods(busy, daysAheadCount)));
+      setSelected((prev) => mergeAdditive(prev, freeUpcomingPeriods(busy, daysAheadCount), manualOverrides));
     } catch (err: any) {
       setSyncError(err?.message ?? err?.code ?? 'Couldn’t sync your calendar right now.');
     } finally {
@@ -289,11 +329,14 @@ export default function SitterAvailability() {
                   ) : (
                     <>
                       <Ionicons name="sync-outline" size={14} color={colors.textMuted} />
-                      <Text style={styles.syncStatusText}>Kept in sync automatically</Text>
+                      <Text style={styles.syncStatusText}>Auto-syncs on connect and as you scroll</Text>
                     </>
                   )}
                   <Pressable onPress={syncCalendar} disabled={syncing} hitSlop={8} style={styles.syncNowButton}>
                     <Text style={styles.syncNowText}>Sync now</Text>
+                  </Pressable>
+                  <Pressable onPress={handleDisconnectGoogle} hitSlop={8} style={styles.syncNowButton}>
+                    <Text style={styles.disconnect}>Disconnect</Text>
                   </Pressable>
                 </View>
               ) : null}
@@ -569,6 +612,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.accent,
+  },
+  disconnect: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textMuted,
   },
   calendarHint: {
     fontSize: 12,

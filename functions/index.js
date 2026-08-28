@@ -272,6 +272,46 @@ exports.getSitterGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, asyn
   return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });
 
+// Lets a sitter fully undo connectSitterGoogleCalendar — the "Disconnect"
+// action on app/(sitter)/availability.tsx, for someone who'd rather go back
+// to marking availability manually. googleCalendar (the refresh token) is
+// pinned out of every client write in firestore.rules, so clearing it has
+// to go through here rather than a direct saveMySitterProfile call. Best-
+// effort revokes the token with Google directly, in addition to deleting
+// it from Firestore, so it can't be replayed even if it somehow leaked —
+// but a revoke failure doesn't block the disconnect itself, since the
+// stored copy is being deleted either way.
+exports.disconnectSitterGoogleCalendar = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const sitterRef = admin.firestore().collection('sitters').doc(request.auth.uid);
+  const sitterSnap = await sitterRef.get();
+  const refreshToken = sitterSnap.data()?.googleCalendar?.refreshToken;
+
+  if (refreshToken) {
+    try {
+      await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(refreshToken)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+    } catch (err) {
+      console.error(`Could not revoke Google token for sitter ${request.auth.uid}`, err);
+    }
+  }
+
+  await sitterRef.set(
+    {
+      googleCalendarConnected: false,
+      googleCalendarSyncEnabled: false,
+      googleCalendar: admin.firestore.FieldValue.delete(),
+    },
+    { merge: true }
+  );
+
+  return { disconnected: true };
+});
+
 // A deterministic id (Google allows a client-supplied one on insert, must
 // match base32hex — lowercase a-v and digits, 5-1024 chars; a sha1 hex
 // digest is entirely [0-9a-f], a subset of that) rather than letting Google

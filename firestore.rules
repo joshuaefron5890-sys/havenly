@@ -256,7 +256,8 @@ service cloud.firestore {
           'name', 'email', 'phone', 'bio', 'photoUrl', 'city', 'state', 'zipCode',
           'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate',
           'certificationDocUrls', 'availability', 'googleCalendarConnected',
-          'googleCalendarSyncEnabled', 'availabilityConflictOverrides', 'updatedAt'
+          'googleCalendarSyncEnabled', 'availabilityConflictOverrides',
+          'availabilityManualOverrides', 'updatedAt'
         ]);
       allow delete: if false;
     }

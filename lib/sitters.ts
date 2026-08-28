@@ -94,12 +94,21 @@ export type SitterProfile = {
   // calendar (functions/index.js's notifyOnSitterConfirmation).
   googleCalendarSyncEnabled: boolean;
   // A sitter confirming they're still available despite a specific
-  // detected calendar conflict (see lib/availabilityWindows.ts's
-  // findAvailabilityConflicts) — keyed by conflictKey(date, windowLabel),
-  // so it's scoped to that one occurrence, not the whole recurring window.
-  // Deliberately not in RecommendedSitter — matching logic reads this
-  // server-side, a family never needs to see it directly.
+  // detected calendar conflict (see lib/sitterAvailability.ts's
+  // findSitterAvailabilityConflicts) — keyed by periodConflictKey(date,
+  // period), so it's scoped to that one occurrence. Deliberately not in
+  // RecommendedSitter — matching logic reads this server-side, a family
+  // never needs to see it directly.
   availabilityConflictOverrides: Record<string, true>;
+  // Every (date, period) the sitter has ever hand-toggled directly, keyed
+  // the same way as availabilityConflictOverrides above — protects that
+  // choice from ever being silently re-applied by the automatic calendar
+  // sync on app/(sitter)/availability.tsx (which otherwise can't tell "the
+  // sitter unchecked this" apart from "nobody's decided yet," and would
+  // re-check anything the calendar shows as free). A manual choice always
+  // wins over what the calendar says, indefinitely, not just for the
+  // session it was made in.
+  availabilityManualOverrides: Record<string, true>;
 };
 
 export const emptySitterProfile: SitterProfile = {
@@ -121,6 +130,7 @@ export const emptySitterProfile: SitterProfile = {
   googleCalendarConnected: false,
   googleCalendarSyncEnabled: false,
   availabilityConflictOverrides: {},
+  availabilityManualOverrides: {},
 };
 
 const VALID_PERIODS = new Set(AVAILABILITY_PERIODS.map((p) => p.key));
@@ -134,6 +144,14 @@ function parseDayAvailability(value: unknown): DayAvailability {
     if (valid.length) result[key] = valid;
   }
   return result;
+}
+
+function parseTrueMap(value: unknown): Record<string, true> {
+  if (typeof value !== 'object' || value === null) return {};
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([, v]) => v === true)) as Record<
+    string,
+    true
+  >;
 }
 
 function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
@@ -158,12 +176,8 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
     availability: parseDayAvailability(data.availability),
     googleCalendarConnected: data.googleCalendarConnected === true,
     googleCalendarSyncEnabled: data.googleCalendarSyncEnabled === true,
-    availabilityConflictOverrides:
-      typeof data.availabilityConflictOverrides === 'object' && data.availabilityConflictOverrides !== null
-        ? (Object.fromEntries(
-            Object.entries(data.availabilityConflictOverrides as Record<string, unknown>).filter(([, v]) => v === true)
-          ) as Record<string, true>)
-        : {},
+    availabilityConflictOverrides: parseTrueMap(data.availabilityConflictOverrides),
+    availabilityManualOverrides: parseTrueMap(data.availabilityManualOverrides),
   };
 }
 
@@ -268,4 +282,14 @@ export async function fetchSitterGoogleFreeBusy(timeMin: string, timeMax: string
   );
   const result = await call({ timeMin, timeMax });
   return result.data.busy;
+}
+
+// Undoes connectSitterGoogleCalendarBackend — clears the stored refresh
+// token server-side (it's pinned out of client writes in firestore.rules,
+// so this can't be a plain saveMySitterProfile call) and revokes it with
+// Google. Used by the "Disconnect" action on app/(sitter)/availability.tsx.
+export async function disconnectSitterGoogleCalendarBackend(): Promise<void> {
+  if (!functions) throw new Error('not-configured');
+  const call = httpsCallable(functions, 'disconnectSitterGoogleCalendar');
+  await call();
 }

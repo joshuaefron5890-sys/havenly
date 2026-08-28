@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
@@ -15,7 +15,7 @@ import {
   respondAsSitter,
 } from '../../lib/playdateProposals';
 import { totalPeriodsSelected } from '../../lib/sitterAvailability';
-import { fetchMySitterProfile, SitterProfile } from '../../lib/sitters';
+import { docExtensionLabel, fetchMySitterProfile, isImageDocUrl, SitterProfile } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<SitterProfile['backgroundCheckStatus'], string> = {
@@ -214,6 +214,28 @@ export default function SitterHome() {
             </View>
           ) : (
             <Text style={styles.empty}>Nothing added yet</Text>
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>CERTIFICATION DOCUMENTS</Text>
+          {profile.certificationDocUrls.length ? (
+            <View style={styles.docRow}>
+              {profile.certificationDocUrls.map((url) => (
+                <Pressable key={url} onPress={() => Linking.openURL(url)}>
+                  {isImageDocUrl(url) ? (
+                    <Image source={{ uri: url }} style={styles.docThumb} />
+                  ) : (
+                    <View style={[styles.docThumb, styles.docFileThumb]}>
+                      <Ionicons name="document-text-outline" size={18} color={colors.textMuted} />
+                      <Text style={styles.docFileLabel}>{docExtensionLabel(url)}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.empty}>Nothing uploaded yet — add PDFs or photos of your certifications from Edit profile.</Text>
           )}
         </View>
 
@@ -424,6 +446,27 @@ const styles = StyleSheet.create({
   },
   empty: {
     fontSize: 13,
+    color: colors.textMuted,
+  },
+  docRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  docThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: colors.border,
+  },
+  docFileThumb: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  docFileLabel: {
+    fontSize: 9,
+    fontWeight: '700',
     color: colors.textMuted,
   },
   editButton: {

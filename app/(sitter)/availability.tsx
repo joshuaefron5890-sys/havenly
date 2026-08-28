@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,6 +35,12 @@ import { images } from '../../theme/images';
 // cover an absurd range.
 const PAGE_SIZE = 21;
 const MAX_DAYS_AHEAD = 180;
+
+// How often to re-sync with a connected calendar while this screen stays
+// open, on top of the connect/scroll triggers — catches an event someone
+// adds to their actual Google Calendar mid-session that neither of those
+// two triggers would otherwise notice.
+const PERIODIC_SYNC_MS = 5 * 60 * 1000;
 
 function formatDayLabel(date: Date, index: number): string {
   if (index === 0) return 'Today';
@@ -191,13 +197,14 @@ export default function SitterAvailability() {
     }
   };
 
-  // Runs automatically once the calendar is connected, and again whenever
+  // Runs automatically once the calendar is connected, again whenever
   // more days load (infinite scroll) so freshly-added days get the same
-  // treatment: pre-checks every free period the sitter hasn't already
-  // decided on either way (mergeAdditive never overwrites an explicit
-  // choice), and flags any period they HAVE marked where the calendar
-  // shows a conflict. One shared freeBusy fetch covers both, rather than
-  // two separate round trips.
+  // treatment, and on a PERIODIC_SYNC_MS timer while this screen stays
+  // open (see the interval below). Pre-checks every free period the
+  // sitter hasn't already decided on either way (mergeAdditive never
+  // overwrites an explicit choice), and flags any period they HAVE marked
+  // where the calendar shows a conflict. One shared freeBusy fetch covers
+  // both, rather than two separate round trips.
   const syncCalendar = async () => {
     setSyncError(null);
     setSyncing(true);
@@ -220,6 +227,21 @@ export default function SitterAvailability() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.googleCalendarConnected, daysAheadCount]);
+
+  // A ref so the interval below always calls the *current* syncCalendar
+  // closure (freshest selected/manualOverrides/daysAheadCount) rather than
+  // whichever one existed when the interval was created — otherwise every
+  // periodic tick would resync against stale data and could reintroduce
+  // the very "calendar silently overwrites a manual edit" bug the sticky
+  // manualOverrides logic above exists to prevent.
+  const syncCalendarRef = useRef(syncCalendar);
+  syncCalendarRef.current = syncCalendar;
+
+  useEffect(() => {
+    if (!profile?.googleCalendarConnected) return;
+    const id = setInterval(() => syncCalendarRef.current(), PERIODIC_SYNC_MS);
+    return () => clearInterval(id);
+  }, [profile?.googleCalendarConnected]);
 
   const confirmOverride = async (key: string) => {
     const next = { ...overrides, [key]: true as const };
@@ -329,7 +351,7 @@ export default function SitterAvailability() {
                   ) : (
                     <>
                       <Ionicons name="sync-outline" size={14} color={colors.textMuted} />
-                      <Text style={styles.syncStatusText}>Auto-syncs on connect and as you scroll</Text>
+                      <Text style={styles.syncStatusText}>Auto-syncs periodically</Text>
                     </>
                   )}
                   <Pressable onPress={syncCalendar} disabled={syncing} hitSlop={8} style={styles.syncNowButton}>

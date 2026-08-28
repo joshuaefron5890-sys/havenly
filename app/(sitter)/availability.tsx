@@ -82,6 +82,7 @@ export default function SitterAvailability() {
   const [manualOverrides, setManualOverrides] = useState<Record<string, true>>({});
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
 
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -128,10 +129,17 @@ export default function SitterAvailability() {
 
   const saveAvailability = async () => {
     setSaveError(null);
+    setJustSaved(false);
     setSavingAvailability(true);
     try {
       await saveMySitterProfile({ availability: selected, availabilityManualOverrides: manualOverrides }, false);
       setProfile((prev) => (prev ? { ...prev, availability: selected, availabilityManualOverrides: manualOverrides } : prev));
+      // A successful save otherwise had zero visible confirmation — the
+      // button just stopped spinning — which reads identically to nothing
+      // having happened at all. Fades on its own; also cleared at the top
+      // of the next save attempt.
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 4000);
     } catch (err: any) {
       setSaveError(err?.message ?? err?.code ?? 'Couldn’t save your availability. Please try again.');
     } finally {
@@ -416,6 +424,12 @@ export default function SitterAvailability() {
           scroll appended more days, so it was never reliably reachable. */}
       <View style={styles.footer}>
         {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
+        {justSaved ? (
+          <View style={styles.savedRow}>
+            <Ionicons name="checkmark-circle" size={14} color={colors.positive} />
+            <Text style={styles.savedText}>Saved</Text>
+          </View>
+        ) : null}
         <Pressable
           style={[styles.saveButton, savingAvailability && styles.saveButtonDisabled]}
           onPress={saveAvailability}
@@ -473,6 +487,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  savedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 8,
+  },
+  savedText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.positive,
   },
   intro: {
     fontSize: 14,

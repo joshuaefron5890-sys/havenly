@@ -1,5 +1,6 @@
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { Platform } from 'react-native';
 import { auth, db, functions } from './firebase';
 import { clusterForZip } from './clusters';
 
@@ -77,6 +78,20 @@ export type SitterProfile = {
   // in RecommendedSitter/toPublicSitter below, since these can contain a
   // real name/cert number a family has no reason to see.
   certificationDocUrls: string[];
+  // Recurring weekly windows the sitter is generally available (same
+  // AVAILABILITY_WINDOWS vocabulary a family picks from, see
+  // lib/availabilityWindows.ts) — the base signal a future matching
+  // feature would use, refined day-by-day below when a calendar is
+  // connected.
+  availability: string[];
+  googleCalendarConnected: boolean;
+  // A sitter confirming they're still available despite a specific
+  // detected calendar conflict (see lib/availabilityWindows.ts's
+  // findAvailabilityConflicts) — keyed by conflictKey(date, windowLabel),
+  // so it's scoped to that one occurrence, not the whole recurring window.
+  // Deliberately not in RecommendedSitter — matching logic reads this
+  // server-side, a family never needs to see it directly.
+  availabilityConflictOverrides: Record<string, true>;
 };
 
 export const emptySitterProfile: SitterProfile = {
@@ -94,6 +109,9 @@ export const emptySitterProfile: SitterProfile = {
   hourlyRate: '',
   backgroundCheckStatus: 'pending',
   certificationDocUrls: [],
+  availability: [],
+  googleCalendarConnected: false,
+  availabilityConflictOverrides: {},
 };
 
 function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
@@ -115,6 +133,14 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
     certificationDocUrls: Array.isArray(data.certificationDocUrls)
       ? data.certificationDocUrls.filter((u) => typeof u === 'string')
       : [],
+    availability: Array.isArray(data.availability) ? data.availability.filter((a) => typeof a === 'string') : [],
+    googleCalendarConnected: data.googleCalendarConnected === true,
+    availabilityConflictOverrides:
+      typeof data.availabilityConflictOverrides === 'object' && data.availabilityConflictOverrides !== null
+        ? (Object.fromEntries(
+            Object.entries(data.availabilityConflictOverrides as Record<string, unknown>).filter(([, v]) => v === true)
+          ) as Record<string, true>)
+        : {},
   };
 }
 
@@ -196,4 +222,27 @@ export async function setSitterVettingStatus(uid: string, status: BackgroundChec
   if (!functions) throw new Error('not-configured');
   const call = httpsCallable<{ uid: string; status: BackgroundCheckStatus }, void>(functions, 'setSitterVettingStatus');
   await call({ uid, status });
+}
+
+// Sitter equivalents of lib/googleCalendar.ts's connectGoogleCalendarBackend/
+// getGoogleFreeBusy — same OAuth code (from
+// lib/googleIdentity.ts's requestGoogleCalendarAuthCode, called with
+// pushEvents=false since a sitter only ever needs read-only free/busy, never
+// the sensitive calendar.events write scope), just exchanged against
+// functions/index.js's sitter-scoped Cloud Functions so the refresh token
+// lands on sitters/{uid} instead of users/{uid}.
+export async function connectSitterGoogleCalendarBackend(code: string): Promise<void> {
+  if (!functions) throw new Error('not-configured');
+  const call = httpsCallable(functions, 'connectSitterGoogleCalendar');
+  await call({ code, native: Platform.OS !== 'web' });
+}
+
+export async function fetchSitterGoogleFreeBusy(timeMin: string, timeMax: string): Promise<{ start: string; end: string }[]> {
+  if (!functions) throw new Error('not-configured');
+  const call = httpsCallable<{ timeMin: string; timeMax: string }, { busy: { start: string; end: string }[] }>(
+    functions,
+    'getSitterGoogleFreeBusy'
+  );
+  const result = await call({ timeMin, timeMax });
+  return result.data.busy;
 }

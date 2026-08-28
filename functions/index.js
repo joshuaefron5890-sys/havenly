@@ -201,6 +201,77 @@ exports.getGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (req
   return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
 });
 
+// Sitter equivalent of storeGoogleCalendarRefreshToken/getGoogleFreeBusy
+// above — same OAuth token, same Google API call, just scoped to the
+// sitters collection instead of users, since a sitter's profile lives
+// there, not in users/{uid} (which represents a family, not an individual
+// sitter account). Kept as separate functions rather than teaching the
+// family versions to branch on account type, so a sitter connecting their
+// calendar can never accidentally read or write a family's users/{uid}
+// doc, and vice versa.
+exports.connectSitterGoogleCalendar = onCall({ secrets: [googleClientSecret] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const code = typeof request.data?.code === 'string' ? request.data.code : '';
+  if (!code) {
+    throw new HttpsError('invalid-argument', 'Missing authorization code.');
+  }
+  const native = request.data?.native === true;
+
+  const tokenJson = await exchangeGoogleCode(code, googleClientSecret.value(), native ? '' : 'postmessage');
+  if (!tokenJson.refresh_token) {
+    throw new HttpsError('unknown', 'Google did not return a refresh token.');
+  }
+
+  await admin
+    .firestore()
+    .collection('sitters')
+    .doc(request.auth.uid)
+    .set(
+      {
+        googleCalendarConnected: true,
+        googleCalendar: {
+          refreshToken: tokenJson.refresh_token,
+          connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+      },
+      { merge: true }
+    );
+
+  return { connected: true };
+});
+
+exports.getSitterGoogleFreeBusy = onCall({ secrets: [googleClientSecret] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const timeMin = typeof request.data?.timeMin === 'string' ? request.data.timeMin : '';
+  const timeMax = typeof request.data?.timeMax === 'string' ? request.data.timeMax : '';
+  if (!timeMin || !timeMax) {
+    throw new HttpsError('invalid-argument', 'timeMin and timeMax are required.');
+  }
+
+  const sitterSnap = await admin.firestore().collection('sitters').doc(request.auth.uid).get();
+  const refreshToken = sitterSnap.data()?.googleCalendar?.refreshToken;
+  if (!refreshToken) {
+    throw new HttpsError('failed-precondition', 'Google Calendar is not connected.');
+  }
+
+  const accessToken = await refreshGoogleAccessToken(refreshToken, googleClientSecret.value());
+  const freeBusyRes = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timeMin, timeMax, items: [{ id: 'primary' }] }),
+  });
+  const freeBusyJson = await freeBusyRes.json();
+  if (!freeBusyRes.ok) {
+    throw new HttpsError('unknown', 'Could not fetch calendar availability.');
+  }
+
+  return { busy: freeBusyJson.calendars?.primary?.busy ?? [] };
+});
+
 // A deterministic id (Google allows a client-supplied one on insert, must
 // match base32hex — lowercase a-v and digits, 5-1024 chars; a sha1 hex
 // digest is entirely [0-9a-f], a subset of that) rather than letting Google

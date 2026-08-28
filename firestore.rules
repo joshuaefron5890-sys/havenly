@@ -231,10 +231,16 @@ service cloud.firestore {
       allow update: if request.auth != null
         && request.auth.uid == uid
         && resource != null
+        // Deliberately excludes googleCalendar (holds the raw OAuth
+        // refresh token) — only functions/index.js's
+        // connectSitterGoogleCalendar (Admin SDK, bypasses this rule) ever
+        // sets that, same reasoning as backgroundCheckStatus/vettedAt
+        // being pinned out above.
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'email', 'phone', 'bio', 'photoUrl', 'city', 'state', 'zipCode',
           'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate',
-          'certificationDocUrls', 'updatedAt'
+          'certificationDocUrls', 'availability', 'googleCalendarConnected',
+          'availabilityConflictOverrides', 'updatedAt'
         ]);
       allow delete: if false;
     }

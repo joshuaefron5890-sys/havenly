@@ -48,6 +48,71 @@ export function longestPlaydateLengthHours(lengths: (string | null)[]): number {
   return hours.length ? Math.max(...hours) : DEFAULT_PLAYDATE_LENGTH_HOURS;
 }
 
+// One specific upcoming occurrence of a sitter's recurring window (e.g.
+// "After school" on a specific Tuesday) where their connected Google
+// Calendar shows a busy block overlapping it — despite them marking that
+// window generally available. `key` matches
+// SitterProfile.availabilityConflictOverrides' key shape, so the UI can
+// look up whether this particular occurrence has already been confirmed
+// as an override.
+export type AvailabilityConflict = {
+  key: string;
+  date: Date;
+  window: AvailabilityWindow;
+};
+
+export function conflictKey(date: Date, windowLabel: string): string {
+  return `${date.toISOString().slice(0, 10)}|${windowLabel}`;
+}
+
+// Checks every upcoming occurrence of the sitter's selected recurring
+// windows over the next daysAhead days against real calendar busy blocks —
+// unlike suggestedPlaydateSlots above, this doesn't compute open sub-slots
+// within a window, it just flags each whole (date, window) occurrence that
+// has ANY overlap, for the sitter to review and either accept (stop
+// counting as available then) or confirm as an override.
+export function findAvailabilityConflicts(
+  selectedLabels: string[],
+  busy: { start: string; end: string }[],
+  daysAhead = 21
+): AvailabilityConflict[] {
+  const windows = AVAILABILITY_WINDOWS.filter((w) => selectedLabels.includes(w.label));
+  if (!windows.length) return [];
+
+  const busyRanges = busy.map((b) => ({ start: new Date(b.start).getTime(), end: new Date(b.end).getTime() }));
+  const now = new Date();
+  const results: AvailabilityConflict[] = [];
+
+  for (let offset = 0; offset <= daysAhead; offset++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+    const dow = day.getDay();
+    for (const w of windows) {
+      if (!w.days.includes(dow)) continue;
+      const windowStart = new Date(
+        day.getFullYear(),
+        day.getMonth(),
+        day.getDate(),
+        Math.floor(w.startHour),
+        (w.startHour % 1) * 60
+      ).getTime();
+      const windowEnd = new Date(
+        day.getFullYear(),
+        day.getMonth(),
+        day.getDate(),
+        Math.floor(w.endHour),
+        (w.endHour % 1) * 60
+      ).getTime();
+      if (windowEnd < now.getTime()) continue;
+      const hasConflict = busyRanges.some((b) => b.start < windowEnd && b.end > windowStart);
+      if (hasConflict) {
+        results.push({ key: conflictKey(day, w.label), date: day, window: w });
+      }
+    }
+  }
+
+  return results;
+}
+
 export type SuggestedSlot = {
   start: Date;
   end: Date;

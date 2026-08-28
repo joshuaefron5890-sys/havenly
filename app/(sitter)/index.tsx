@@ -84,6 +84,20 @@ export default function SitterHome() {
           </View>
         ) : null}
 
+        <Pressable style={styles.availabilityCard} onPress={() => router.push('/availability')}>
+          <View style={styles.availabilityTextWrap}>
+            <Text style={styles.availabilityTitle}>My availability</Text>
+            <Text style={styles.availabilitySubtitle}>
+              {profile.availability.length
+                ? `${profile.availability.length} window${profile.availability.length === 1 ? '' : 's'} set${
+                    profile.googleCalendarConnected ? ' · Calendar connected' : ''
+                  }`
+                : "Set when you're free — this is what families see"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
+
         <View style={styles.card}>
           <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
           <Field label="Phone" value={profile.phone} />
@@ -208,6 +222,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text,
     lineHeight: 18,
+  },
+  availabilityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.accentMuted,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  availabilityTextWrap: {
+    flex: 1,
+  },
+  availabilityTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  availabilitySubtitle: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   card: {
     backgroundColor: colors.surface,

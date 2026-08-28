@@ -180,6 +180,19 @@ function toDate(value: unknown): Date | null {
 // (see the 'date' field type comment above).
 const EVENT_DATE_LABEL_RE = /^[A-Za-z]+,\s*([A-Za-z]+)\s+(\d{1,2})\s*·\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
 
+// formatLabel builds its month abbreviation via toLocaleDateString, whose
+// output is locale-dependent but consistently one of these for 'en-US'
+// (the app's only locale so far). Mapped by hand and fed into Date's
+// numeric constructor below rather than parsed back via `new Date(string)`
+// — that free-form string parsing is implementation-defined per spec and
+// genuinely differs between JS engines: this exact fallback path missed a
+// clearly-past event on iOS (Hermes) that correctly disappeared on web
+// (V8), because Hermes failed to parse the reconstructed string at all.
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
 // Resolves a community-submitted event's actual date, for filtering out
 // past events. Prefers the "<key>Iso" companion field written alongside
 // every 'date'-type field since this was added; falls back to parsing the
@@ -200,8 +213,10 @@ export function parseContributedEventDate(fields: Record<string, string>): Date 
   const match = label.match(EVENT_DATE_LABEL_RE);
   if (!match) return null;
   const [, month, day, hour, minute, ampm] = match;
-  const parsed = new Date(`${month} ${day}, ${new Date().getFullYear()} ${hour}:${minute} ${ampm}`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  const monthIndex = MONTH_INDEX[month.slice(0, 3).toLowerCase()];
+  if (monthIndex === undefined) return null;
+  const hour24 = (parseInt(hour, 10) % 12) + (ampm.toUpperCase() === 'PM' ? 12 : 0);
+  return new Date(new Date().getFullYear(), monthIndex, parseInt(day, 10), hour24, parseInt(minute, 10));
 }
 
 // Start of today, local time — an event later today still counts as

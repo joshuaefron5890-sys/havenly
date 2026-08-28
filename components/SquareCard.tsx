@@ -52,7 +52,7 @@ export function SquareCard({
   // still waiting on a response.
   badgeVariant?: 'accent' | 'positive' | 'warning';
   // The standardized "this was added by a family, not curated" marker —
-  // the haven logo mark plus a "Community Added" label in a white pill,
+  // the haven logo mark plus a "Member Added" label in a white pill,
   // over a shared fallback photo when the contribution has none of its
   // own. Kept visually distinct from `badge` (which uses the accent color
   // for playdate-status pills like "Proposed") on purpose.
@@ -127,7 +127,7 @@ export function SquareCard({
           <View style={styles.communityBadge}>
             <Image source={require('../assets/logo-mark.png')} style={styles.communityBadgeMark} resizeMode="contain" />
             <Text style={styles.communityBadgeText} numberOfLines={1}>
-              Community Added
+              Member Added
             </Text>
           </View>
         ) : badge ? (

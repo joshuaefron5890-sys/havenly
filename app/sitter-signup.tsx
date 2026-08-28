@@ -13,8 +13,16 @@ import { ZipCodeField } from '../components/ZipCodeField';
 import { useAuth } from '../contexts/AuthContext';
 import { auth, firebaseConfigured } from '../lib/firebase';
 import { NEURODIVERGENCE_OPTIONS } from '../lib/neurodivergence';
-import { pickAndUploadNativeDocument, pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
-import { emptySitterProfile, fetchMySitterProfile, saveMySitterProfile, SitterProfile, SITTER_CERTIFICATIONS } from '../lib/sitters';
+import { pickAndUploadDocument, pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
+import {
+  docExtensionLabel,
+  emptySitterProfile,
+  fetchMySitterProfile,
+  isImageDocUrl,
+  saveMySitterProfile,
+  SitterProfile,
+  SITTER_CERTIFICATIONS,
+} from '../lib/sitters';
 import { colors } from '../theme/colors';
 
 function friendlyError(code: string): string {
@@ -98,22 +106,17 @@ export default function SitterSignup() {
     }
   };
 
-  // Documents don't get PhotoCropperModal's circular crop — a certification
-  // card photo shouldn't be forced into that shape, so web just uploads the
-  // picked file as-is (a File is already a Blob) and native skips
-  // allowsEditing entirely (see pickAndUploadNativeDocument).
+  // A certification document is often a PDF or Word doc, not a photo —
+  // pickAndUploadDocument opens the OS's own file picker (Files/iCloud
+  // Drive/Google Drive on native, the browser's file picker on web) rather
+  // than restricting to the photo library the way the profile photo above
+  // does, and handles both platforms itself (no Platform.OS branching
+  // needed here, unlike the photo flow).
   const handleAddDocument = async () => {
     setDocError(null);
     setUploadingDoc(true);
     try {
-      const pathSuffix = `sitter-cert-${Date.now()}.jpg`;
-      const url =
-        Platform.OS === 'web'
-          ? await (async () => {
-              const file = await pickImageFile();
-              return file ? uploadPhotoBlob(file, pathSuffix) : null;
-            })()
-          : await pickAndUploadNativeDocument(pathSuffix);
+      const url = await pickAndUploadDocument('sitter-cert');
       if (url) patch({ certificationDocUrls: [...profile.certificationDocUrls, url] });
     } catch {
       setDocError('Couldn’t upload that document — check your connection and try again.');
@@ -312,13 +315,21 @@ export default function SitterSignup() {
 
         <Text style={styles.label}>CERTIFICATION DOCUMENTS · OPTIONAL</Text>
         <Text style={styles.docHelper}>
-          Photos of certification cards or credentials, reviewed privately during vetting — never shown to families.
+          PDFs, photos, or Word docs of certification cards or credentials, reviewed privately during vetting —
+          never shown to families.
         </Text>
         {profile.certificationDocUrls.length > 0 ? (
           <View style={styles.docGrid}>
             {profile.certificationDocUrls.map((url) => (
               <View key={url} style={styles.docThumbWrap}>
-                <Image source={{ uri: url }} style={styles.docThumb} />
+                {isImageDocUrl(url) ? (
+                  <Image source={{ uri: url }} style={styles.docThumb} />
+                ) : (
+                  <View style={[styles.docThumb, styles.docFileThumb]}>
+                    <Ionicons name="document-text-outline" size={22} color={colors.textMuted} />
+                    <Text style={styles.docFileLabel}>{docExtensionLabel(url)}</Text>
+                  </View>
+                )}
                 <Pressable style={styles.docRemoveButton} onPress={() => removeDocument(url)} hitSlop={8}>
                   <Ionicons name="close-circle" size={20} color={colors.error} />
                 </Pressable>
@@ -463,6 +474,17 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 10,
     backgroundColor: colors.border,
+  },
+  docFileThumb: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  docFileLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
   },
   docRemoveButton: {
     position: 'absolute',

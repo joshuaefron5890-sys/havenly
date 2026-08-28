@@ -8,7 +8,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
-import { fetchPendingSitters, PendingSitter, setSitterVettingStatus } from '../../lib/sitters';
+import { docExtensionLabel, fetchPendingSitters, isImageDocUrl, PendingSitter, setSitterVettingStatus } from '../../lib/sitters';
 import { isSuperAdminEmail } from '../../lib/superAdmin';
 import { colors } from '../../theme/colors';
 
@@ -102,7 +102,14 @@ export default function AdminSitters() {
                 <View style={styles.docRow}>
                   {sitter.certificationDocUrls.map((url) => (
                     <Pressable key={url} onPress={() => Linking.openURL(url)}>
-                      <Image source={{ uri: url }} style={styles.docThumb} />
+                      {isImageDocUrl(url) ? (
+                        <Image source={{ uri: url }} style={styles.docThumb} />
+                      ) : (
+                        <View style={[styles.docThumb, styles.docFileThumb]}>
+                          <Ionicons name="document-text-outline" size={18} color={colors.textMuted} />
+                          <Text style={styles.docFileLabel}>{docExtensionLabel(url)}</Text>
+                        </View>
+                      )}
                     </Pressable>
                   ))}
                 </View>
@@ -258,6 +265,17 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     backgroundColor: colors.border,
+  },
+  docFileThumb: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  docFileLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
   },
   actionRow: {
     flexDirection: 'row',

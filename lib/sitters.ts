@@ -26,6 +26,28 @@ export const SITTER_CERTIFICATIONS = [
   'Behavioral Therapy Experience (ABA, etc.)',
 ];
 
+// certificationDocUrls only ever stores plain download URLs (see
+// firestore.rules and lib/photoUpload.ts's pickAndUploadDocument) — no
+// separate filename/mimeType field — so these read the extension straight
+// back out of the URL's own filename to decide how to render each one
+// (an actual <Image> thumbnail vs. a generic file icon + extension label
+// for a PDF/DOCX/etc., which an <Image> can't render at all).
+const IMAGE_DOC_EXTENSIONS = ['jpg', 'jpeg', 'png', 'heic', 'gif', 'webp'];
+
+function docUrlExtension(url: string): string {
+  const withoutQuery = url.split('?')[0];
+  return withoutQuery.match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase() ?? '';
+}
+
+export function isImageDocUrl(url: string): boolean {
+  return IMAGE_DOC_EXTENSIONS.includes(docUrlExtension(url));
+}
+
+export function docExtensionLabel(url: string): string {
+  const ext = docUrlExtension(url);
+  return ext ? ext.toUpperCase() : 'FILE';
+}
+
 // 'pending' the moment someone self-registers; only a cluster admin can
 // move it to 'clear' (functions/index.js's setSitterVettingStatus) — never
 // settable by the sitter themselves, enforced in firestore.rules by pinning

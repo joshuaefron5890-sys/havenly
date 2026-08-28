@@ -47,39 +47,64 @@ export async function pickAndUploadNativePhoto(pathSuffix: string): Promise<stri
   return uploadPhotoBlob(blob, pathSuffix);
 }
 
-// Native counterpart for uploading a document photo (e.g. a certification
-// card) rather than a profile picture — same picker as
-// pickAndUploadNativePhoto, minus allowsEditing, since forcing a square
-// crop would cut off real content on a document. Resolves null if the
-// user cancels. Throws 'permission-denied' if photo library access was
-// refused.
-export async function pickAndUploadNativeDocument(pathSuffix: string): Promise<string | null> {
-  const ImagePicker = await import('expo-image-picker');
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    throw new Error('permission-denied');
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    quality: 0.8,
-  });
-  if (result.canceled || !result.assets[0]) {
-    return null;
-  }
-  const response = await fetch(result.assets[0].uri);
-  const blob = await response.blob();
-  return uploadPhotoBlob(blob, pathSuffix);
+// A certification/credential document isn't necessarily a photo — it's
+// often a PDF or a Word doc exported from a certifying org — so this uses
+// expo-document-picker's OS-level file picker (Files/iCloud Drive/Google
+// Drive on native, the browser's own file picker on web — it has its own
+// web implementation, unlike expo-image-picker) instead of restricting to
+// the photo library. `type` narrows the system picker's own file-type
+// filter; still validated again by extensionFromDocumentAsset below in
+// case a picker UI lets the filter be bypassed. Resolves null if the user
+// cancels. Throws 'not-configured' if nothing was actually picked (the
+// library's own web implementation can resolve with an empty assets list
+// rather than canceled:true in some browsers).
+const DOCUMENT_MIME_TYPES = [
+  'image/*',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+
+export async function pickAndUploadDocument(pathPrefix: string): Promise<string | null> {
+  const DocumentPicker = await import('expo-document-picker');
+  const result = await DocumentPicker.getDocumentAsync({ type: DOCUMENT_MIME_TYPES, multiple: false });
+  const asset = result.canceled ? null : result.assets?.[0];
+  if (!asset) return null;
+  // The web implementation attaches the already-in-hand File object
+  // directly (asset.file) — only native needs the uri->blob round trip.
+  const blob = asset.file ?? (await (await fetch(asset.uri)).blob());
+  const ext = extensionFromDocumentAsset(asset.name, asset.mimeType);
+  return uploadPhotoBlob(blob, `${pathPrefix}-${Date.now()}.${ext}`, asset.mimeType);
 }
 
-// Uploads an already-cropped/resized image blob (see PhotoCropperModal) to
-// Storage under users/{uid}/{pathSuffix}, resolving with its download URL.
-export async function uploadPhotoBlob(blob: Blob, pathSuffix: string): Promise<string> {
+const MIME_TYPE_EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/heic': 'heic',
+};
+
+function extensionFromDocumentAsset(name: string, mimeType?: string): string {
+  const fromName = name.match(/\.([a-zA-Z0-9]+)$/)?.[1];
+  if (fromName) return fromName.toLowerCase();
+  return (mimeType && MIME_TYPE_EXTENSIONS[mimeType]) || 'dat';
+}
+
+// Uploads an already-cropped/resized image blob (see PhotoCropperModal), or
+// any other file blob (see pickAndUploadDocument), to Storage under
+// users/{uid}/{pathSuffix}, resolving with its download URL. contentType
+// matters for a non-image file in particular — without it, Storage falls
+// back to a generic binary type and a PDF/DOCX won't open correctly when
+// viewed directly from its download URL.
+export async function uploadPhotoBlob(blob: Blob, pathSuffix: string, contentType?: string): Promise<string> {
   const uid = auth?.currentUser?.uid;
   if (!uid || !app) {
     throw new Error('not-configured');
   }
   const storage = getStorage(app);
   const fileRef = ref(storage, `users/${uid}/${pathSuffix}`);
-  await uploadBytes(fileRef, blob);
+  await uploadBytes(fileRef, blob, contentType ? { contentType } : undefined);
   return getDownloadURL(fileRef);
 }

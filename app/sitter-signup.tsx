@@ -248,16 +248,6 @@ export default function SitterSignup() {
           </Text>
         ) : null}
 
-        <AddPhotoCircle
-          label="Your photo"
-          caption="Tap to add · optional"
-          imageUri={profile.photoUrl}
-          uploading={uploadingPhoto}
-          onPress={handlePickPhoto}
-        />
-        {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
-        <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
-
         <FieldInput label="Your name" placeholder="Jordan Lee" value={profile.name} onChangeText={(name) => patch({ name })} />
 
         {editMode ? (
@@ -287,6 +277,21 @@ export default function SitterSignup() {
             />
           </>
         )}
+
+        {/* Photo comes after email/password (not first, despite being the
+            first thing visually in earlier versions of this form) — adding
+            it lazily creates the account via ensureSignedIn using whatever
+            email/password have been entered so far, which only works once
+            those fields are actually filled in. */}
+        <AddPhotoCircle
+          label="Your photo"
+          caption="Tap to add · optional"
+          imageUri={profile.photoUrl}
+          uploading={uploadingPhoto}
+          onPress={handlePickPhoto}
+        />
+        {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+        <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
 
         <FieldInput
           label="Phone"

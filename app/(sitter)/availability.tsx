@@ -99,7 +99,11 @@ export default function SitterAvailability() {
   useEffect(() => {
     let cancelled = false;
     fetchMySitterProfile().then((result) => {
-      if (cancelled || !result) return;
+      if (cancelled) return;
+      // TEMPORARY — diagnosing a report that saved availability doesn't
+      // come back after a refresh. Remove once resolved.
+      console.log('[availability] loaded profile:', result ? JSON.stringify(result.availability) : 'null (no profile doc)');
+      if (!result) return;
       setProfile(result);
       setSelected(result.availability);
       setOverrides(result.availabilityConflictOverrides);
@@ -131,8 +135,12 @@ export default function SitterAvailability() {
     setSaveError(null);
     setJustSaved(false);
     setSavingAvailability(true);
+    // TEMPORARY — diagnosing a report that saved availability doesn't come
+    // back after a refresh. Remove once resolved.
+    console.log('[availability] saving:', JSON.stringify(selected), 'uid:', auth?.currentUser?.uid);
     try {
       await saveMySitterProfile({ availability: selected, availabilityManualOverrides: manualOverrides }, false);
+      console.log('[availability] save resolved without error');
       setProfile((prev) => (prev ? { ...prev, availability: selected, availabilityManualOverrides: manualOverrides } : prev));
       // A successful save otherwise had zero visible confirmation — the
       // button just stopped spinning — which reads identically to nothing

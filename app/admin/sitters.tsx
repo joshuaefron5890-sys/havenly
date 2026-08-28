@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
@@ -96,6 +96,18 @@ export default function AdminSitters() {
             {sitter.specialties.length ? <Field label="Experience with" value={sitter.specialties.join(', ')} /> : null}
             {sitter.certifications.length ? <Field label="Credentials" value={sitter.certifications.join(', ')} /> : null}
             {sitter.bio ? <Field label="About" value={sitter.bio} /> : null}
+            {sitter.certificationDocUrls.length ? (
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>CERTIFICATION DOCUMENTS</Text>
+                <View style={styles.docRow}>
+                  {sitter.certificationDocUrls.map((url) => (
+                    <Pressable key={url} onPress={() => Linking.openURL(url)}>
+                      <Image source={{ uri: url }} style={styles.docThumb} />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.actionRow}>
               <Pressable
@@ -235,6 +247,17 @@ const styles = StyleSheet.create({
   fieldValue: {
     fontSize: 13,
     color: colors.text,
+  },
+  docRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  docThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: colors.border,
   },
   actionRow: {
     flexDirection: 'row',

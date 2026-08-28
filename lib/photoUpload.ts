@@ -47,6 +47,30 @@ export async function pickAndUploadNativePhoto(pathSuffix: string): Promise<stri
   return uploadPhotoBlob(blob, pathSuffix);
 }
 
+// Native counterpart for uploading a document photo (e.g. a certification
+// card) rather than a profile picture — same picker as
+// pickAndUploadNativePhoto, minus allowsEditing, since forcing a square
+// crop would cut off real content on a document. Resolves null if the
+// user cancels. Throws 'permission-denied' if photo library access was
+// refused.
+export async function pickAndUploadNativeDocument(pathSuffix: string): Promise<string | null> {
+  const ImagePicker = await import('expo-image-picker');
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error('permission-denied');
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    quality: 0.8,
+  });
+  if (result.canceled || !result.assets[0]) {
+    return null;
+  }
+  const response = await fetch(result.assets[0].uri);
+  const blob = await response.blob();
+  return uploadPhotoBlob(blob, pathSuffix);
+}
+
 // Uploads an already-cropped/resized image blob (see PhotoCropperModal) to
 // Storage under users/{uid}/{pathSuffix}, resolving with its download URL.
 export async function uploadPhotoBlob(blob: Blob, pathSuffix: string): Promise<string> {

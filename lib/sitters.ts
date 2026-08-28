@@ -49,6 +49,12 @@ export type SitterProfile = {
   yearsExperience: string;
   hourlyRate: string;
   backgroundCheckStatus: BackgroundCheckStatus;
+  // Photos of certification cards/credentials, uploaded to back up the
+  // `certifications` checkboxes above — reviewed privately by an admin
+  // during vetting (app/admin/sitters.tsx) and deliberately never included
+  // in RecommendedSitter/toPublicSitter below, since these can contain a
+  // real name/cert number a family has no reason to see.
+  certificationDocUrls: string[];
 };
 
 export const emptySitterProfile: SitterProfile = {
@@ -65,6 +71,7 @@ export const emptySitterProfile: SitterProfile = {
   yearsExperience: '',
   hourlyRate: '',
   backgroundCheckStatus: 'pending',
+  certificationDocUrls: [],
 };
 
 function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
@@ -83,6 +90,9 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
     yearsExperience: typeof data.yearsExperience === 'string' ? data.yearsExperience : '',
     hourlyRate: typeof data.hourlyRate === 'string' ? data.hourlyRate : '',
     backgroundCheckStatus: status === 'clear' || status === 'flagged' ? status : 'pending',
+    certificationDocUrls: Array.isArray(data.certificationDocUrls)
+      ? data.certificationDocUrls.filter((u) => typeof u === 'string')
+      : [],
   };
 }
 
@@ -145,7 +155,10 @@ export async function fetchRecommendedSitters(): Promise<RecommendedSitter[]> {
   return result.data.sitters;
 }
 
-export type PendingSitter = RecommendedSitter & { backgroundCheckStatus: BackgroundCheckStatus };
+export type PendingSitter = RecommendedSitter & {
+  backgroundCheckStatus: BackgroundCheckStatus;
+  certificationDocUrls: string[];
+};
 
 // Admin-only (see functions/index.js's admin check) — every sitter in the
 // admin's own cluster that isn't 'clear' yet, for the vetting queue

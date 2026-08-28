@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../components/AddPhotoCircle';
@@ -13,7 +13,7 @@ import { ZipCodeField } from '../components/ZipCodeField';
 import { useAuth } from '../contexts/AuthContext';
 import { auth, firebaseConfigured } from '../lib/firebase';
 import { NEURODIVERGENCE_OPTIONS } from '../lib/neurodivergence';
-import { pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
+import { pickAndUploadNativeDocument, pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
 import { emptySitterProfile, fetchMySitterProfile, saveMySitterProfile, SitterProfile, SITTER_CERTIFICATIONS } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
@@ -41,6 +41,8 @@ export default function SitterSignup() {
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -94,6 +96,34 @@ export default function SitterSignup() {
     } finally {
       setUploadingPhoto(false);
     }
+  };
+
+  // Documents don't get PhotoCropperModal's circular crop — a certification
+  // card photo shouldn't be forced into that shape, so web just uploads the
+  // picked file as-is (a File is already a Blob) and native skips
+  // allowsEditing entirely (see pickAndUploadNativeDocument).
+  const handleAddDocument = async () => {
+    setDocError(null);
+    setUploadingDoc(true);
+    try {
+      const pathSuffix = `sitter-cert-${Date.now()}.jpg`;
+      const url =
+        Platform.OS === 'web'
+          ? await (async () => {
+              const file = await pickImageFile();
+              return file ? uploadPhotoBlob(file, pathSuffix) : null;
+            })()
+          : await pickAndUploadNativeDocument(pathSuffix);
+      if (url) patch({ certificationDocUrls: [...profile.certificationDocUrls, url] });
+    } catch {
+      setDocError('Couldn’t upload that document — check your connection and try again.');
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const removeDocument = (url: string) => {
+    patch({ certificationDocUrls: profile.certificationDocUrls.filter((u) => u !== url) });
   };
 
   const handleSubmit = async () => {
@@ -280,6 +310,34 @@ export default function SitterSignup() {
           ))}
         </View>
 
+        <Text style={styles.label}>CERTIFICATION DOCUMENTS · OPTIONAL</Text>
+        <Text style={styles.docHelper}>
+          Photos of certification cards or credentials, reviewed privately during vetting — never shown to families.
+        </Text>
+        {profile.certificationDocUrls.length > 0 ? (
+          <View style={styles.docGrid}>
+            {profile.certificationDocUrls.map((url) => (
+              <View key={url} style={styles.docThumbWrap}>
+                <Image source={{ uri: url }} style={styles.docThumb} />
+                <Pressable style={styles.docRemoveButton} onPress={() => removeDocument(url)} hitSlop={8}>
+                  <Ionicons name="close-circle" size={20} color={colors.error} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : null}
+        {docError ? <Text style={styles.photoError}>{docError}</Text> : null}
+        <Pressable style={styles.addDocButton} onPress={handleAddDocument} disabled={uploadingDoc}>
+          {uploadingDoc ? (
+            <ActivityIndicator color={colors.accent} size="small" />
+          ) : (
+            <>
+              <Ionicons name="document-attach-outline" size={18} color={colors.accent} />
+              <Text style={styles.addDocText}>Add document</Text>
+            </>
+          )}
+        </Pressable>
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
@@ -383,6 +441,51 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 20,
+  },
+  docHelper: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: -4,
+    marginBottom: 10,
+  },
+  docGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 10,
+  },
+  docThumbWrap: {
+    width: 72,
+    height: 72,
+  },
+  docThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    backgroundColor: colors.border,
+  },
+  docRemoveButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+  },
+  addDocButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  addDocText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
   },
   error: {
     fontSize: 13,

@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Every upload in the app (family/child photos, community-contribution
+    // images, sitter profile photos, sitter certification documents) goes
+    // to users/{uid}/... (see lib/photoUpload.ts's uploadPhotoBlob) —
+    // regardless of whether the uid in question is a family or a sitter
+    // account. Read is any signed-in user, matching how these URLs are
+    // already handled: Storage download URLs carry their own unguessable
+    // token, and the app itself controls who's ever handed one (e.g.
+    // certificationDocUrls is only ever returned to a cluster admin, never
+    // to a family — see functions/index.js's getPendingSitters vs.
+    // toPublicSitter). Write is restricted to the owning account, same as
+    // every other per-user collection in firestore.rules.
+    match /users/{uid}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

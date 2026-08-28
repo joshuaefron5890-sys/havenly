@@ -233,7 +233,8 @@ service cloud.firestore {
         && resource != null
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'email', 'phone', 'bio', 'photoUrl', 'city', 'state', 'zipCode',
-          'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate', 'updatedAt'
+          'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate',
+          'certificationDocUrls', 'updatedAt'
         ]);
       allow delete: if false;
     }

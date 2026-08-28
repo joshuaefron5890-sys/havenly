@@ -1101,6 +1101,9 @@ exports.getPendingSitters = onCall(async (request) => {
     .map((doc) => ({
       ...toPublicSitter(doc.id, doc.data()),
       backgroundCheckStatus: doc.data().backgroundCheckStatus === 'flagged' ? 'flagged' : 'pending',
+      certificationDocUrls: Array.isArray(doc.data().certificationDocUrls)
+        ? doc.data().certificationDocUrls.filter((u) => typeof u === 'string')
+        : [],
     }));
 
   return { sitters };

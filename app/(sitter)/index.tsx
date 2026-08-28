@@ -14,6 +14,7 @@ import {
   proposalStartLabel,
   respondAsSitter,
 } from '../../lib/playdateProposals';
+import { totalPeriodsSelected } from '../../lib/sitterAvailability';
 import { fetchMySitterProfile, SitterProfile } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
@@ -120,11 +121,12 @@ export default function SitterHome() {
           <View style={styles.availabilityTextWrap}>
             <Text style={styles.availabilityTitle}>My availability</Text>
             <Text style={styles.availabilitySubtitle}>
-              {profile.availability.length
-                ? `${profile.availability.length} window${profile.availability.length === 1 ? '' : 's'} set${
-                    profile.googleCalendarConnected ? ' · Calendar connected' : ''
-                  }`
-                : "Set when you're free — this is what families see"}
+              {(() => {
+                const count = totalPeriodsSelected(profile.availability);
+                return count
+                  ? `${count} slot${count === 1 ? '' : 's'} set${profile.googleCalendarConnected ? ' · Calendar connected' : ''}`
+                  : "Set when you're free — this is what families see";
+              })()}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />

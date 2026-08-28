@@ -3,6 +3,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { auth, db, functions } from './firebase';
 import { clusterForZip } from './clusters';
+import { AVAILABILITY_PERIODS, AvailabilityPeriod, DayAvailability } from './sitterAvailability';
 
 // Gates the two family-facing entry points (app/index.tsx's "Register as a
 // sitter" link, app/proposal/[id].tsx's "Need a sitter for this playdate?"
@@ -78,12 +79,12 @@ export type SitterProfile = {
   // in RecommendedSitter/toPublicSitter below, since these can contain a
   // real name/cert number a family has no reason to see.
   certificationDocUrls: string[];
-  // Recurring weekly windows the sitter is generally available (same
-  // AVAILABILITY_WINDOWS vocabulary a family picks from, see
-  // lib/availabilityWindows.ts) — the base signal a future matching
-  // feature would use, refined day-by-day below when a calendar is
-  // connected.
-  availability: string[];
+  // Day-specific availability — which morning/afternoon/evening periods
+  // the sitter has marked themselves free for on each upcoming date (see
+  // lib/sitterAvailability.ts). Deliberately not the family's recurring
+  // weekly-window model, since a sitter's real availability varies day to
+  // day rather than following a fixed weekly pattern.
+  availability: DayAvailability;
   googleCalendarConnected: boolean;
   // Whether the sitter opted into the broader calendar.events (write)
   // scope on connect, same toggle/reasoning as a family's own
@@ -116,11 +117,24 @@ export const emptySitterProfile: SitterProfile = {
   hourlyRate: '',
   backgroundCheckStatus: 'pending',
   certificationDocUrls: [],
-  availability: [],
+  availability: {},
   googleCalendarConnected: false,
   googleCalendarSyncEnabled: false,
   availabilityConflictOverrides: {},
 };
+
+const VALID_PERIODS = new Set(AVAILABILITY_PERIODS.map((p) => p.key));
+
+function parseDayAvailability(value: unknown): DayAvailability {
+  if (typeof value !== 'object' || value === null) return {};
+  const result: DayAvailability = {};
+  for (const [key, periods] of Object.entries(value as Record<string, unknown>)) {
+    if (!Array.isArray(periods)) continue;
+    const valid = periods.filter((p): p is AvailabilityPeriod => typeof p === 'string' && VALID_PERIODS.has(p as AvailabilityPeriod));
+    if (valid.length) result[key] = valid;
+  }
+  return result;
+}
 
 function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
   const status = data.backgroundCheckStatus;
@@ -141,7 +155,7 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
     certificationDocUrls: Array.isArray(data.certificationDocUrls)
       ? data.certificationDocUrls.filter((u) => typeof u === 'string')
       : [],
-    availability: Array.isArray(data.availability) ? data.availability.filter((a) => typeof a === 'string') : [],
+    availability: parseDayAvailability(data.availability),
     googleCalendarConnected: data.googleCalendarConnected === true,
     googleCalendarSyncEnabled: data.googleCalendarSyncEnabled === true,
     availabilityConflictOverrides:

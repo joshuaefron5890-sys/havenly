@@ -1333,7 +1333,7 @@ exports.getPendingSitters = onCall(async (request) => {
 // The only way backgroundCheckStatus ever changes — firestore.rules pins
 // that field (and vettedAt/vettedByEmail) out of a sitter's own writes, so
 // this Admin-SDK path is the sole route to actually vetting someone.
-exports.setSitterVettingStatus = onCall(async (request) => {
+exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
@@ -1345,7 +1345,12 @@ exports.setSitterVettingStatus = onCall(async (request) => {
   if (!uid || !['pending', 'clear', 'flagged'].includes(status)) {
     throw new HttpsError('invalid-argument', 'A valid sitter uid and status are required.');
   }
-  await admin.firestore().collection('sitters').doc(uid).set(
+
+  const sitterRef = admin.firestore().collection('sitters').doc(uid);
+  const beforeSnap = await sitterRef.get();
+  const wasAlreadyClear = beforeSnap.data()?.backgroundCheckStatus === 'clear';
+
+  await sitterRef.set(
     {
       backgroundCheckStatus: status,
       vettedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -1353,6 +1358,27 @@ exports.setSitterVettingStatus = onCall(async (request) => {
     },
     { merge: true }
   );
+
+  // Only on a genuine pending/flagged -> clear transition, not every time
+  // an admin re-saves an already-cleared sitter (e.g. re-vetting a
+  // different field on the same record) — same "only email on the actual
+  // transition" reasoning as pushOnPlaydateResponded elsewhere in this
+  // file. Best-effort: a sitter's approval already happened in Firestore
+  // regardless of whether this email send succeeds.
+  if (status === 'clear' && !wasAlreadyClear) {
+    const firstName = (typeof beforeSnap.data()?.name === 'string' ? beforeSnap.data().name : '').trim().split(' ')[0];
+    await sendNotificationEmail(
+      uid,
+      'You’re approved on Haven.ly',
+      [
+        firstName ? `Hi ${firstName},` : 'Hi,',
+        '',
+        'Your background check cleared and your sitter profile is now live — families nearby can find and reach out to you.',
+        '',
+        `View your profile: ${APP_BASE_URL}/sitter-signup?edit=1`,
+      ].join('\n')
+    );
+  }
 });
 
 // Content moderation — lets a cluster admin permanently hide a bad/spam

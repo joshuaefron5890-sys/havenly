@@ -7,13 +7,10 @@ import { AVAILABILITY_PERIODS, AvailabilityPeriod, DayAvailability } from './sit
 
 // Gates the two family-facing entry points (app/index.tsx's "Register as a
 // sitter" link, app/proposal/[id].tsx's "Need a sitter for this playdate?"
-// prompt/assigned-sitter card) — the feature isn't ready to launch yet, but
-// the backend (registration, vetting, matching) stays intact so this is a
-// one-line flip to bring it back rather than ripping the feature out.
-// Sitter self-registration (/sitter-signup), the sitter's own app shell
-// (/(sitter)), and the admin vetting/hidden-content screens are untouched —
-// only the two links a family would actually discover the feature through.
-export const SITTERS_ENABLED = false;
+// prompt/assigned-sitter card). Re-enabled now that sitters have a real
+// availability picker (lib/sitterAvailability.ts) for getRecommendedSitters
+// to actually match against, rather than just vetting/cluster/specialty.
+export const SITTERS_ENABLED = true;
 
 // Common childcare credentials, distinct from NEURODIVERGENCE_OPTIONS
 // (lib/neurodivergence.ts) — a certification is a qualification a sitter
@@ -241,14 +238,29 @@ export type RecommendedSitter = {
   // How many of the sitter's specialties overlap with any of the caller's
   // kids' neurodivergence tags — not a percentage, just a sort key.
   matchScore: number;
+  // Only meaningful when fetchRecommendedSitters was called with a slot —
+  // whether the sitter has that exact (date, period) marked in their own
+  // availability (lib/sitterAvailability.ts). False both when they marked
+  // themselves unavailable AND when they simply haven't decided either way
+  // yet — this is a "did they say yes," not a live calendar check.
+  availableForSlot: boolean;
 };
 
-// Cluster + specialty-matched, vetted-only — see functions/index.js's
-// getRecommendedSitters for the actual scoring.
-export async function fetchRecommendedSitters(): Promise<RecommendedSitter[]> {
+// Cluster + specialty-matched, vetted-only, and — when a slot is given —
+// sorted to put sitters who've actually marked themselves available for
+// that exact date/period first (see functions/index.js's
+// getRecommendedSitters for the scoring/sort). `slot` is computed
+// client-side from the proposal's local date (see app/find-sitter.tsx)
+// rather than passing a raw timestamp, so "morning/afternoon/evening" is
+// classified in the viewer's own timezone — the same one a sitter used
+// when they marked their own availability — instead of the server's.
+export async function fetchRecommendedSitters(slot?: { dateKey: string; period: AvailabilityPeriod }): Promise<RecommendedSitter[]> {
   if (!functions) throw new Error('not-configured');
-  const call = httpsCallable<undefined, { sitters: RecommendedSitter[] }>(functions, 'getRecommendedSitters');
-  const result = await call();
+  const call = httpsCallable<{ dateKey?: string; period?: AvailabilityPeriod } | undefined, { sitters: RecommendedSitter[] }>(
+    functions,
+    'getRecommendedSitters'
+  );
+  const result = await call(slot);
   return result.data.sitters;
 }
 

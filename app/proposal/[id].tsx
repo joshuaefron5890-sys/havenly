@@ -335,7 +335,7 @@ export default function ProposalDetail() {
                 </View>
               ) : null}
             </View>
-            <Pressable onPress={() => router.push(`/find-sitter?proposalId=${id}`)}>
+            <Pressable onPress={() => router.push(`/find-sitter?proposalId=${id}&date=${encodeURIComponent(proposal.date)}`)}>
               <Text style={styles.changeSitterLink}>Change sitter</Text>
             </Pressable>
           </View>
@@ -343,13 +343,16 @@ export default function ProposalDetail() {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>NEED A SITTER FOR THIS PLAYDATE?</Text>
             <Text style={styles.sitterPromptText}>
-              Browse vetted sitters near you, matched to your kids’ experience.
+              Browse vetted sitters near you with open slots for this playdate, matched to your kids’ experience.
             </Text>
             <View style={styles.sitterPromptRow}>
               <Pressable style={styles.sitterPromptDismiss} onPress={() => setSitterPromptDismissed(true)}>
                 <Text style={styles.sitterPromptDismissText}>Not now</Text>
               </Pressable>
-              <Pressable style={styles.sitterPromptFind} onPress={() => router.push(`/find-sitter?proposalId=${id}`)}>
+              <Pressable
+                style={styles.sitterPromptFind}
+                onPress={() => router.push(`/find-sitter?proposalId=${id}&date=${encodeURIComponent(proposal.date)}`)}
+              >
                 <Text style={styles.sitterPromptFindText}>Find a sitter</Text>
               </Pressable>
             </View>

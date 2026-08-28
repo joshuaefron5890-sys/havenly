@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View, Pressable } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,14 +8,28 @@ import { EmptyState } from '../components/EmptyState';
 import { Photo } from '../components/Photo';
 import { showAlert } from '../lib/alert';
 import { addSitterToPlaydate } from '../lib/playdateProposals';
+import { AVAILABILITY_PERIODS, dateKey } from '../lib/sitterAvailability';
 import { fetchRecommendedSitters, RecommendedSitter } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
 export default function FindSitter() {
-  const { proposalId } = useLocalSearchParams<{ proposalId?: string }>();
+  const { proposalId, date } = useLocalSearchParams<{ proposalId?: string; date?: string }>();
   const [sitters, setSitters] = useState<RecommendedSitter[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addingUid, setAddingUid] = useState<string | null>(null);
+
+  // Computed in the viewer's own local time (not the server's) so
+  // "morning/afternoon/evening" lines up with how a sitter classified
+  // that same slot when they marked their own availability — see
+  // lib/sitters.ts's fetchRecommendedSitters.
+  const slot = useMemo(() => {
+    if (!date) return undefined;
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return undefined;
+    const hour = parsed.getHours();
+    const period = AVAILABILITY_PERIODS.find((p) => hour >= p.startHour && hour < p.endHour);
+    return period ? { dateKey: dateKey(parsed), period: period.key } : undefined;
+  }, [date]);
 
   const handleAdd = async (sitter: RecommendedSitter) => {
     if (!proposalId || addingUid) return;
@@ -32,7 +46,7 @@ export default function FindSitter() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      fetchRecommendedSitters()
+      fetchRecommendedSitters(slot)
         .then((result) => {
           if (!cancelled) setSitters(result);
         })
@@ -42,7 +56,8 @@ export default function FindSitter() {
       return () => {
         cancelled = true;
       };
-    }, [])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [slot?.dateKey, slot?.period])
   );
 
   return (
@@ -56,7 +71,9 @@ export default function FindSitter() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Vetted sitters near you, sorted by how much of their experience matches your kids’.
+          {slot
+            ? 'Vetted sitters near you with open slots for this playdate sort first, matched to your kids’ experience.'
+            : 'Vetted sitters near you, sorted by how much of their experience matches your kids’.'}
         </Text>
 
         {error ? <EmptyState text={`Couldn’t load sitters (${error}).`} /> : null}
@@ -67,6 +84,18 @@ export default function FindSitter() {
 
         {sitters?.map((sitter) => (
           <View key={sitter.uid} style={styles.card}>
+            {slot ? (
+              <View style={[styles.availabilityBadge, sitter.availableForSlot && styles.availabilityBadgeAvailable]}>
+                <Ionicons
+                  name={sitter.availableForSlot ? 'checkmark-circle' : 'help-circle-outline'}
+                  size={14}
+                  color={sitter.availableForSlot ? colors.positive : colors.textMuted}
+                />
+                <Text style={[styles.availabilityBadgeText, sitter.availableForSlot && styles.availabilityBadgeTextAvailable]}>
+                  {sitter.availableForSlot ? 'Open for this playdate' : 'Hasn’t confirmed availability'}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.cardHeader}>
               <Photo
                 source={sitter.photoUrl ? { uri: sitter.photoUrl } : undefined}
@@ -209,6 +238,28 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 14,
+  },
+  availabilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    backgroundColor: colors.background,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 12,
+  },
+  availabilityBadgeAvailable: {
+    backgroundColor: colors.positiveMuted,
+  },
+  availabilityBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  availabilityBadgeTextAvailable: {
+    color: colors.positive,
   },
   cardHeader: {
     flexDirection: 'row',

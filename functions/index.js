@@ -1239,15 +1239,37 @@ function sitterMatchScore(me, sitterData) {
   return specialties.filter((s) => myTags.has(s)).length;
 }
 
+// Whether a sitter's own self-reported availability (SitterProfile.
+// availability, keyed by 'YYYY-MM-DD' -> ['morning'|'afternoon'|'evening'])
+// includes the given (dateKey, period) — the same day/period vocabulary
+// lib/sitterAvailability.ts uses client-side, deliberately re-implemented
+// here rather than imported, since Cloud Functions and the Expo app are
+// separate bundles with no shared package between them (same reasoning as
+// every other bit of duplicated domain logic in this file).
+function sitterAvailableForSlot(sitterData, dateKey, period) {
+  const periods = sitterData.availability?.[dateKey];
+  return Array.isArray(periods) && periods.includes(period);
+}
+
 // Cluster + specialty-matched, vetted-only. Only 500 sitters fetched (same
 // sanity ceiling as getSuggestedFamilies) since this is a whole-collection
 // scan — cluster and vetting status are filtered in code rather than a
 // compound where() clause, avoiding a composite index for what's still a
 // small collection.
+//
+// dateKey/period are optional — when app/find-sitter.tsx is opened for a
+// specific playdate, it computes them client-side (in the viewer's own
+// timezone, the same one a sitter used to mark their own availability) and
+// passes them through so sitters who've actually said yes for that exact
+// slot sort first. Without them (or for a sitter who hasn't marked
+// anything either way) this just falls back to matchScore, same as before.
 exports.getRecommendedSitters = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
   }
+  const dateKey = typeof request.data?.dateKey === 'string' ? request.data.dateKey : null;
+  const period = typeof request.data?.period === 'string' ? request.data.period : null;
+
   const familyUid = await resolveFamilyUid(request.auth.uid);
   const [meSnap, snap] = await Promise.all([
     admin.firestore().collection('users').doc(familyUid).get(),
@@ -1258,8 +1280,12 @@ exports.getRecommendedSitters = onCall(async (request) => {
 
   const sitters = snap.docs
     .filter((doc) => doc.data().backgroundCheckStatus === 'clear' && clusterIdOf(doc.data()) === myClusterId)
-    .map((doc) => ({ ...toPublicSitter(doc.id, doc.data()), matchScore: sitterMatchScore(me, doc.data()) }))
-    .sort((a, b) => b.matchScore - a.matchScore);
+    .map((doc) => ({
+      ...toPublicSitter(doc.id, doc.data()),
+      matchScore: sitterMatchScore(me, doc.data()),
+      availableForSlot: dateKey && period ? sitterAvailableForSlot(doc.data(), dateKey, period) : false,
+    }))
+    .sort((a, b) => Number(b.availableForSlot) - Number(a.availableForSlot) || b.matchScore - a.matchScore);
 
   return { sitters };
 });

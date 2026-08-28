@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { auth } from '../../lib/firebase';
@@ -26,7 +26,12 @@ import {
 import { colors } from '../../theme/colors';
 import { images } from '../../theme/images';
 
-const DAYS_AHEAD = 21;
+// Starting window, and how many more days to add each time the sitter
+// scrolls near the bottom — capped at MAX_DAYS_AHEAD (~6 months) so the
+// list can't grow unbounded and so a Google freeBusy query never has to
+// cover an absurd range.
+const PAGE_SIZE = 21;
+const MAX_DAYS_AHEAD = 180;
 
 function formatDayLabel(date: Date, index: number): string {
   if (index === 0) return 'Today';
@@ -73,7 +78,11 @@ export default function SitterAvailability() {
   const [prefilling, setPrefilling] = useState(false);
   const [prefillError, setPrefillError] = useState<string | null>(null);
 
-  const days = useMemo(() => upcomingDays(DAYS_AHEAD), []);
+  const [daysAheadCount, setDaysAheadCount] = useState(PAGE_SIZE);
+  const days = useMemo(() => upcomingDays(daysAheadCount), [daysAheadCount]);
+  const loadMoreDays = () => {
+    setDaysAheadCount((prev) => (prev >= MAX_DAYS_AHEAD ? prev : Math.min(prev + PAGE_SIZE, MAX_DAYS_AHEAD)));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -175,9 +184,9 @@ export default function SitterAvailability() {
     setCheckingConflicts(true);
     try {
       const now = new Date();
-      const rangeEnd = new Date(now.getTime() + (DAYS_AHEAD + 1) * 24 * 60 * 60 * 1000);
+      const rangeEnd = new Date(now.getTime() + (daysAheadCount + 1) * 24 * 60 * 60 * 1000);
       const busy = await fetchSitterGoogleFreeBusy(now.toISOString(), rangeEnd.toISOString());
-      setConflicts(findSitterAvailabilityConflicts(selected, busy, DAYS_AHEAD));
+      setConflicts(findSitterAvailabilityConflicts(selected, busy, daysAheadCount));
     } catch (err: any) {
       setConflictsError(err?.message ?? err?.code ?? 'Couldn’t check your calendar right now.');
     } finally {
@@ -197,9 +206,9 @@ export default function SitterAvailability() {
     setPrefilling(true);
     try {
       const now = new Date();
-      const rangeEnd = new Date(now.getTime() + (DAYS_AHEAD + 1) * 24 * 60 * 60 * 1000);
+      const rangeEnd = new Date(now.getTime() + (daysAheadCount + 1) * 24 * 60 * 60 * 1000);
       const busy = await fetchSitterGoogleFreeBusy(now.toISOString(), rangeEnd.toISOString());
-      const free = freeUpcomingPeriods(busy, DAYS_AHEAD);
+      const free = freeUpcomingPeriods(busy, daysAheadCount);
       setSelected((prev) => mergeAdditive(prev, free));
       setConflicts(null);
     } catch (err: any) {
@@ -244,13 +253,43 @@ export default function SitterAvailability() {
         <Text style={styles.headerTitle}>My availability</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>
-          Mark morning, afternoon, or evening for each day you're free over the next few weeks — this is what
-          families see when they're looking for a match.
-        </Text>
+      <FlatList
+        contentContainerStyle={styles.content}
+        data={days}
+        keyExtractor={(day) => dateKey(day)}
+        onEndReached={loadMoreDays}
+        onEndReachedThreshold={0.6}
+        renderItem={({ item: day, index }) => {
+          const key = dateKey(day);
+          const periodsForDay = selected[key] ?? [];
+          return (
+            <View style={styles.dayRow}>
+              <Text style={styles.dayLabel}>{formatDayLabel(day, index)}</Text>
+              <View style={styles.periodChips}>
+                {AVAILABILITY_PERIODS.map((period) => {
+                  const isSelected = periodsForDay.includes(period.key);
+                  return (
+                    <Pressable
+                      key={period.key}
+                      style={[styles.periodChip, isSelected && styles.periodChipSelected]}
+                      onPress={() => togglePeriod(key, period.key)}
+                    >
+                      <Text style={[styles.periodChipText, isSelected && styles.periodChipTextSelected]}>{period.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        }}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.intro}>
+              Mark morning, afternoon, or evening for each day you're free. We use this to match you to families
+              nearby who are looking for help on a playdate — the more you mark, the more matches you'll show up in.
+            </Text>
 
-        <View style={styles.calendarCard}>
+            <View style={styles.calendarCard}>
           <View style={styles.cardTopRow}>
             <Text style={styles.calendarName}>Google Calendar</Text>
             {connectingGoogle ? (
@@ -340,42 +379,31 @@ export default function SitterAvailability() {
           </View>
         ) : null}
 
-        <Text style={styles.label}>NEXT {DAYS_AHEAD} DAYS</Text>
-        <View style={styles.dayList}>
-          {days.map((day, index) => {
-            const key = dateKey(day);
-            const periodsForDay = selected[key] ?? [];
-            return (
-              <View key={key} style={styles.dayRow}>
-                <Text style={styles.dayLabel}>{formatDayLabel(day, index)}</Text>
-                <View style={styles.periodChips}>
-                  {AVAILABILITY_PERIODS.map((period) => {
-                    const isSelected = periodsForDay.includes(period.key);
-                    return (
-                      <Pressable
-                        key={period.key}
-                        style={[styles.periodChip, isSelected && styles.periodChipSelected]}
-                        onPress={() => togglePeriod(key, period.key)}
-                      >
-                        <Text style={[styles.periodChipText, isSelected && styles.periodChipTextSelected]}>{period.label}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+            <Text style={styles.label}>AVAILABILITY</Text>
+          </>
+        }
+        ListFooterComponent={
+          <>
+            {daysAheadCount < MAX_DAYS_AHEAD ? (
+              <View style={styles.loadMoreRow}>
+                <ActivityIndicator color={colors.textMuted} size="small" />
               </View>
-            );
-          })}
-        </View>
-
-        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-        <Pressable style={[styles.saveButton, savingAvailability && styles.saveButtonDisabled]} onPress={saveAvailability} disabled={savingAvailability}>
-          {savingAvailability ? (
-            <ActivityIndicator color={colors.surface} size="small" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save availability</Text>
-          )}
-        </Pressable>
-      </ScrollView>
+            ) : null}
+            {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
+            <Pressable
+              style={[styles.saveButton, savingAvailability && styles.saveButtonDisabled]}
+              onPress={saveAvailability}
+              disabled={savingAvailability}
+            >
+              {savingAvailability ? (
+                <ActivityIndicator color={colors.surface} size="small" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save availability</Text>
+              )}
+            </Pressable>
+          </>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -433,19 +461,20 @@ const styles = StyleSheet.create({
     color: colors.error,
     marginTop: 10,
   },
-  dayList: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-  },
   dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  loadMoreRow: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
   dayLabel: {
     fontSize: 13,

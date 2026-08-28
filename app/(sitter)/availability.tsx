@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { auth } from '../../lib/firebase';
@@ -45,10 +45,9 @@ function formatConflict(conflict: SitterAvailabilityConflict): string {
 }
 
 // Adds `additions` into `base` without ever overwriting a day the sitter
-// has already made a decision about — used both by the calendar "Prefill"
-// action (only fill in periods they haven't touched) and, more narrowly,
-// nowhere else, but kept general since both call sites want the same
-// "never clobber an explicit choice" guarantee.
+// has already made a decision about — used by the automatic calendar sync
+// below (only fill in periods they haven't touched either way), so it's
+// safe to re-run every time more days load or the calendar is rechecked.
 function mergeAdditive(base: DayAvailability, additions: DayAvailability): DayAvailability {
   const next: DayAvailability = { ...base };
   for (const [key, periods] of Object.entries(additions)) {
@@ -72,11 +71,9 @@ export default function SitterAvailability() {
 
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
-  const [checkingConflicts, setCheckingConflicts] = useState(false);
-  const [conflictsError, setConflictsError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<SitterAvailabilityConflict[] | null>(null);
-  const [prefilling, setPrefilling] = useState(false);
-  const [prefillError, setPrefillError] = useState<string | null>(null);
 
   const [daysAheadCount, setDaysAheadCount] = useState(PAGE_SIZE);
   const days = useMemo(() => upcomingDays(daysAheadCount), [daysAheadCount]);
@@ -97,15 +94,6 @@ export default function SitterAvailability() {
       cancelled = true;
     };
   }, []);
-
-  // Runs once availability is known to be connected — either from the
-  // loaded profile, or right after a fresh Connect below.
-  useEffect(() => {
-    if (profile?.googleCalendarConnected) {
-      checkForConflicts();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.googleCalendarConnected]);
 
   const togglePeriod = (key: string, period: AvailabilityPeriod) => {
     setSelected((prev) => {
@@ -132,11 +120,15 @@ export default function SitterAvailability() {
     }
   };
 
-  // wantsSync passed explicitly (not read from state) for the same reason
-  // as app/onboarding/calendar.tsx's identical handler: the sync toggle's
-  // onValueChange calls this before its own state update has committed, so
-  // relying on the closure's current value would use the stale one.
-  const handleConnectGoogle = async (wantsSync: boolean) => {
+  // This screen only ever requests the read-only calendar.freebusy scope —
+  // the broader calendar.events write scope (needed to add a confirmed
+  // playdate to the sitter's own calendar) is opted into separately from
+  // the Playdates screen, right where that capability is actually used, so
+  // reconnecting here can never silently downgrade an already-granted
+  // write scope back to read-only: this always preserves whatever
+  // googleCalendarSyncEnabled is currently set to rather than offering to
+  // change it.
+  const handleConnectGoogle = async () => {
     setGoogleError(null);
     if (!auth?.currentUser) {
       setGoogleError('Your sign-in session has expired — log out and back in, then try again.');
@@ -144,15 +136,10 @@ export default function SitterAvailability() {
     }
     setConnectingGoogle(true);
     try {
-      // wantsSync controls calendar.freebusy (read-only, no warning) vs.
-      // calendar.events (read/write — needed so a confirmed playdate can
-      // be added to the sitter's own calendar, but triggers Google's
-      // "unverified app" warning). Off by default, same reasoning as the
-      // family flow's own toggle.
-      const code = await requestGoogleCalendarAuthCode(wantsSync);
+      const code = await requestGoogleCalendarAuthCode(profile?.googleCalendarSyncEnabled ?? false);
       await connectSitterGoogleCalendarBackend(code);
-      await saveMySitterProfile({ googleCalendarConnected: true, googleCalendarSyncEnabled: wantsSync }, false);
-      setProfile((prev) => (prev ? { ...prev, googleCalendarConnected: true, googleCalendarSyncEnabled: wantsSync } : prev));
+      await saveMySitterProfile({ googleCalendarConnected: true }, false);
+      setProfile((prev) => (prev ? { ...prev, googleCalendarConnected: true } : prev));
     } catch (err: any) {
       if (err?.message?.includes('closed')) {
         setGoogleError('Google reported the popup closed early — this can be a false alarm, please try again.');
@@ -164,59 +151,35 @@ export default function SitterAvailability() {
     }
   };
 
-  // Turning sync off needs no new Google permission — it just stops the
-  // backend from attempting writes — so it saves immediately. Turning it
-  // on needs the broader scope, which only a real consent grant can
-  // provide, so it runs the full Connect flow forced to write access; the
-  // toggle only actually reflects the change once that succeeds (handled
-  // inside handleConnectGoogle above).
-  const handleToggleSync = (value: boolean) => {
-    if (!value) {
-      saveMySitterProfile({ googleCalendarSyncEnabled: false }, false).catch(() => {});
-      setProfile((prev) => (prev ? { ...prev, googleCalendarSyncEnabled: false } : prev));
-      return;
-    }
-    handleConnectGoogle(true);
-  };
-
-  const checkForConflicts = async () => {
-    setConflictsError(null);
-    setCheckingConflicts(true);
+  // Runs automatically once the calendar is connected, and again whenever
+  // more days load (infinite scroll) so freshly-added days get the same
+  // treatment: pre-checks every free period the sitter hasn't already
+  // decided on either way (mergeAdditive never overwrites an explicit
+  // choice), and flags any period they HAVE marked where the calendar
+  // shows a conflict. One shared freeBusy fetch covers both, rather than
+  // two separate round trips.
+  const syncCalendar = async () => {
+    setSyncError(null);
+    setSyncing(true);
     try {
       const now = new Date();
       const rangeEnd = new Date(now.getTime() + (daysAheadCount + 1) * 24 * 60 * 60 * 1000);
       const busy = await fetchSitterGoogleFreeBusy(now.toISOString(), rangeEnd.toISOString());
       setConflicts(findSitterAvailabilityConflicts(selected, busy, daysAheadCount));
+      setSelected((prev) => mergeAdditive(prev, freeUpcomingPeriods(busy, daysAheadCount)));
     } catch (err: any) {
-      setConflictsError(err?.message ?? err?.code ?? 'Couldn’t check your calendar right now.');
+      setSyncError(err?.message ?? err?.code ?? 'Couldn’t sync your calendar right now.');
     } finally {
-      setCheckingConflicts(false);
+      setSyncing(false);
     }
   };
 
-  // Pulls real free/busy from the connected calendar and pre-checks any
-  // period that's entirely free and not already decided one way or the
-  // other — a quick starting point the sitter can then hand-adjust, rather
-  // than ticking all ~63 boxes themselves. Never unchecks or overwrites a
-  // period they've already touched (mergeAdditive), and never suggests one
-  // the calendar shows busy — those surface as conflicts instead, only for
-  // periods the sitter has actually marked.
-  const handlePrefill = async () => {
-    setPrefillError(null);
-    setPrefilling(true);
-    try {
-      const now = new Date();
-      const rangeEnd = new Date(now.getTime() + (daysAheadCount + 1) * 24 * 60 * 60 * 1000);
-      const busy = await fetchSitterGoogleFreeBusy(now.toISOString(), rangeEnd.toISOString());
-      const free = freeUpcomingPeriods(busy, daysAheadCount);
-      setSelected((prev) => mergeAdditive(prev, free));
-      setConflicts(null);
-    } catch (err: any) {
-      setPrefillError(err?.message ?? err?.code ?? 'Couldn’t read your calendar right now.');
-    } finally {
-      setPrefilling(false);
+  useEffect(() => {
+    if (profile?.googleCalendarConnected) {
+      syncCalendar();
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.googleCalendarConnected, daysAheadCount]);
 
   const confirmOverride = async (key: string) => {
     const next = { ...overrides, [key]: true as const };
@@ -274,6 +237,7 @@ export default function SitterAvailability() {
                       style={[styles.periodChip, isSelected && styles.periodChipSelected]}
                       onPress={() => togglePeriod(key, period.key)}
                     >
+                      {isSelected ? <Ionicons name="checkmark" size={13} color={colors.surface} style={styles.periodChipIcon} /> : null}
                       <Text style={[styles.periodChipText, isSelected && styles.periodChipTextSelected]}>{period.label}</Text>
                     </Pressable>
                   );
@@ -283,104 +247,95 @@ export default function SitterAvailability() {
           );
         }}
         ListHeaderComponent={
-          <>
+          <View>
             <Text style={styles.intro}>
               Mark morning, afternoon, or evening for each day you're free. We use this to match you to families
               nearby who are looking for help on a playdate — the more you mark, the more matches you'll show up in.
             </Text>
 
             <View style={styles.calendarCard}>
-          <View style={styles.cardTopRow}>
-            <Text style={styles.calendarName}>Google Calendar</Text>
-            {connectingGoogle ? (
-              <ActivityIndicator color={colors.accent} />
-            ) : (
-              <View style={styles.calendarActions}>
-                {profile?.googleCalendarConnected && (
-                  <View style={styles.connectedBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
-                    <Text style={styles.connectedText}>Connected</Text>
+              <View style={styles.cardTopRow}>
+                <Text style={styles.calendarName}>Google Calendar</Text>
+                {connectingGoogle ? (
+                  <ActivityIndicator color={colors.accent} />
+                ) : (
+                  <View style={styles.calendarActions}>
+                    {profile?.googleCalendarConnected && (
+                      <View style={styles.connectedBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color={colors.positive} />
+                        <Text style={styles.connectedText}>Connected</Text>
+                      </View>
+                    )}
+                    <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
+                      <Image source={images.googleLogo} style={styles.brandIcon} />
+                      <Text style={styles.connect}>{profile?.googleCalendarConnected ? 'Reconnect' : 'Connect'}</Text>
+                    </Pressable>
                   </View>
                 )}
-                <Pressable style={styles.connectBadge} onPress={() => handleConnectGoogle(profile?.googleCalendarSyncEnabled ?? false)}>
-                  <Image source={images.googleLogo} style={styles.brandIcon} />
-                  <Text style={styles.connect}>{profile?.googleCalendarConnected ? 'Reconnect' : 'Connect'}</Text>
-                </Pressable>
               </View>
-            )}
-          </View>
-          <Text style={styles.calendarHint}>
-            Connect it and we'll pre-fill your open periods below, then flag anywhere your calendar conflicts with
-            what you mark. We only ever see Free/Busy, never event details.
-          </Text>
-          {googleError ? <Text style={styles.error}>{googleError}</Text> : null}
+              <Text style={styles.calendarHint}>
+                Connect it and we'll automatically fill in your open periods below, then flag anywhere your
+                calendar conflicts with what you mark. We only ever see Free/Busy, never event details.
+              </Text>
+              {googleError ? <Text style={styles.error}>{googleError}</Text> : null}
 
-          {profile?.googleCalendarConnected ? (
-            <>
-              <Pressable style={styles.prefillButton} onPress={handlePrefill} disabled={prefilling}>
-                {prefilling ? (
-                  <ActivityIndicator color={colors.accent} size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
-                    <Text style={styles.prefillButtonText}>Prefill open periods from calendar</Text>
-                  </>
-                )}
-              </Pressable>
-              {prefillError ? <Text style={styles.error}>{prefillError}</Text> : null}
-
-              <View style={styles.syncRow}>
-                <View style={styles.syncTextWrap}>
-                  <Text style={styles.syncLabel}>Add confirmed playdates to this calendar</Text>
-                  <Text style={styles.syncHint}>
-                    {profile.googleCalendarSyncEnabled
-                      ? 'On — a confirmed playdate gets added automatically.'
-                      : 'Off — needs an extra Google permission; you may see an "unverified app" warning on connect, choose Advanced → Go to Haven.ly (unsafe) to continue.'}
-                  </Text>
+              {profile?.googleCalendarConnected ? (
+                <View style={styles.syncStatusRow}>
+                  {syncing ? (
+                    <>
+                      <ActivityIndicator color={colors.textMuted} size="small" />
+                      <Text style={styles.syncStatusText}>Syncing with your calendar…</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="sync-outline" size={14} color={colors.textMuted} />
+                      <Text style={styles.syncStatusText}>Kept in sync automatically</Text>
+                    </>
+                  )}
+                  <Pressable onPress={syncCalendar} disabled={syncing} hitSlop={8} style={styles.syncNowButton}>
+                    <Text style={styles.syncNowText}>Sync now</Text>
+                  </Pressable>
                 </View>
-                <Switch value={profile.googleCalendarSyncEnabled} onValueChange={handleToggleSync} disabled={connectingGoogle} />
-              </View>
-            </>
-          ) : null}
-        </View>
-
-        {profile?.googleCalendarConnected ? (
-          <View style={styles.conflictsSection}>
-            <View style={styles.conflictsHeader}>
-              <Text style={styles.label}>CALENDAR CONFLICTS</Text>
-              <Pressable onPress={checkForConflicts} disabled={checkingConflicts} hitSlop={8}>
-                {checkingConflicts ? (
-                  <ActivityIndicator color={colors.accent} size="small" />
-                ) : (
-                  <Text style={styles.recheckText}>Recheck</Text>
-                )}
-              </Pressable>
+              ) : null}
+              {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
             </View>
-            {conflictsError ? <Text style={styles.error}>{conflictsError}</Text> : null}
-            {conflicts !== null && unconfirmedConflicts.length === 0 ? (
-              <Text style={styles.noConflicts}>No conflicts — your calendar is clear for everything you marked.</Text>
-            ) : null}
-            {unconfirmedConflicts.map((conflict) => (
-              <View key={conflict.key} style={styles.conflictRow}>
-                <View style={styles.conflictTextWrap}>
-                  <Text style={styles.conflictLabel}>{formatConflict(conflict)}</Text>
-                  <Text style={styles.conflictHint}>Your calendar shows you busy during this period.</Text>
-                </View>
-                <View style={styles.conflictActions}>
-                  <Pressable style={styles.rejectButton} onPress={() => removeConflictPeriod(conflict)}>
-                    <Text style={styles.rejectButtonText}>Remove</Text>
-                  </Pressable>
-                  <Pressable style={styles.confirmButton} onPress={() => confirmOverride(conflict.key)}>
-                    <Text style={styles.confirmButtonText}>Confirm anyway</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
 
+            {profile?.googleCalendarConnected && unconfirmedConflicts.length > 0 ? (
+              <View style={styles.conflictsSection}>
+                <Text style={styles.label}>CALENDAR CONFLICTS</Text>
+                {unconfirmedConflicts.map((conflict) => (
+                  <View key={conflict.key} style={styles.conflictRow}>
+                    <View style={styles.conflictTextWrap}>
+                      <Text style={styles.conflictLabel}>{formatConflict(conflict)}</Text>
+                      <Text style={styles.conflictHint}>Your calendar shows you busy during this period.</Text>
+                    </View>
+                    <View style={styles.conflictActions}>
+                      <Pressable style={styles.rejectButton} onPress={() => removeConflictPeriod(conflict)}>
+                        <Text style={styles.rejectButtonText}>Remove</Text>
+                      </Pressable>
+                      <Pressable style={styles.confirmButton} onPress={() => confirmOverride(conflict.key)}>
+                        <Text style={styles.confirmButtonText}>Confirm anyway</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendSwatch, styles.legendSwatchAvailable]}>
+                  <Ionicons name="checkmark" size={11} color={colors.surface} />
+                </View>
+                <Text style={styles.legendText}>Available</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendSwatch, styles.legendSwatchUnset]} />
+                <Text style={styles.legendText}>Not marked</Text>
+              </View>
+            </View>
             <Text style={styles.label}>AVAILABILITY</Text>
-          </>
+          </View>
         }
         ListFooterComponent={
           <>
@@ -489,15 +444,21 @@ const styles = StyleSheet.create({
   },
   periodChip: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 999,
     paddingVertical: 8,
-    alignItems: 'center',
   },
   periodChipSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.positive,
+    borderColor: colors.positive,
+  },
+  periodChipIcon: {
+    marginRight: -2,
   },
   periodChipText: {
     fontSize: 12,
@@ -506,6 +467,35 @@ const styles = StyleSheet.create({
   },
   periodChipTextSelected: {
     color: colors.surface,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 20,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendSwatch: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legendSwatchAvailable: {
+    backgroundColor: colors.positive,
+  },
+  legendSwatchUnset: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  legendText: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   saveButton: {
     backgroundColor: colors.accent,
@@ -575,60 +565,31 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: 10,
   },
-  prefillButton: {
+  syncStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.accentMuted,
-    borderRadius: 999,
-    paddingVertical: 12,
-    marginTop: 14,
-  },
-  prefillButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    gap: 6,
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  syncTextWrap: {
+  syncStatusText: {
     flex: 1,
-  },
-  syncLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  syncHint: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
-    lineHeight: 15,
+  },
+  syncNowButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  syncNowText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accent,
   },
   conflictsSection: {
     marginTop: 8,
-  },
-  conflictsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  recheckText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.accent,
-  },
-  noConflicts: {
-    fontSize: 13,
-    color: colors.positive,
   },
   conflictRow: {
     flexDirection: 'row',

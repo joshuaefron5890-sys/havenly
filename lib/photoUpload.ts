@@ -1,3 +1,4 @@
+import * as DocumentPicker from 'expo-document-picker';
 import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 import { app, auth } from './firebase';
 
@@ -55,9 +56,16 @@ export async function pickAndUploadNativePhoto(pathSuffix: string): Promise<stri
 // the photo library. `type` narrows the system picker's own file-type
 // filter; still validated again by extensionFromDocumentAsset below in
 // case a picker UI lets the filter be bypassed. Resolves null if the user
-// cancels. Throws 'not-configured' if nothing was actually picked (the
-// library's own web implementation can resolve with an empty assets list
-// rather than canceled:true in some browsers).
+// cancels.
+//
+// Imported statically above rather than via await import(...) (the
+// pattern every other picker in this file uses) — expo export --platform
+// web silently failed to split this specific dynamic import into its own
+// loadable chunk (no "DocumentPicker-*.js" ever showed up among the
+// exported web bundles, unlike expo-image-picker's own dynamic import,
+// which does), so calling it at runtime threw "Requiring unknown module"
+// instead of ever reaching this function's body. A static import sidesteps
+// Metro's chunk-splitting for this module entirely.
 const DOCUMENT_MIME_TYPES = [
   'image/*',
   'application/pdf',
@@ -66,7 +74,6 @@ const DOCUMENT_MIME_TYPES = [
 ];
 
 export async function pickAndUploadDocument(pathPrefix: string): Promise<string | null> {
-  const DocumentPicker = await import('expo-document-picker');
   const result = await DocumentPicker.getDocumentAsync({ type: DOCUMENT_MIME_TYPES, multiple: false });
   const asset = result.canceled ? null : result.assets?.[0];
   if (!asset) return null;

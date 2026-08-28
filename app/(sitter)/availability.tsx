@@ -338,27 +338,31 @@ export default function SitterAvailability() {
           </View>
         }
         ListFooterComponent={
-          <>
-            {daysAheadCount < MAX_DAYS_AHEAD ? (
-              <View style={styles.loadMoreRow}>
-                <ActivityIndicator color={colors.textMuted} size="small" />
-              </View>
-            ) : null}
-            {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-            <Pressable
-              style={[styles.saveButton, savingAvailability && styles.saveButtonDisabled]}
-              onPress={saveAvailability}
-              disabled={savingAvailability}
-            >
-              {savingAvailability ? (
-                <ActivityIndicator color={colors.surface} size="small" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save availability</Text>
-              )}
-            </Pressable>
-          </>
+          daysAheadCount < MAX_DAYS_AHEAD ? (
+            <View style={styles.loadMoreRow}>
+              <ActivityIndicator color={colors.textMuted} size="small" />
+            </View>
+          ) : null
         }
       />
+
+      {/* Fixed below the list rather than as its footer — as a
+          ListFooterComponent it kept sliding down every time infinite
+          scroll appended more days, so it was never reliably reachable. */}
+      <View style={styles.footer}>
+        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
+        <Pressable
+          style={[styles.saveButton, savingAvailability && styles.saveButtonDisabled]}
+          onPress={saveAvailability}
+          disabled={savingAvailability}
+        >
+          {savingAvailability ? (
+            <ActivityIndicator color={colors.surface} size="small" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save availability</Text>
+          )}
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -395,7 +399,15 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 20,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   intro: {
     fontSize: 14,
@@ -502,7 +514,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 20,
   },
   saveButtonDisabled: {
     opacity: 0.6,

@@ -1,5 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { auth, db, functions } from './firebase';
 import { clusterForZip } from './clusters';
@@ -199,13 +199,25 @@ export async function fetchMySitterProfile(): Promise<SitterProfile | null> {
 export async function saveMySitterProfile(patch: Partial<SitterProfile>, isNew: boolean): Promise<void> {
   const uid = auth?.currentUser?.uid;
   if (!uid || !db) throw new Error('not-signed-in');
-  await setDoc(
-    doc(db, 'sitters', uid),
-    isNew
-      ? { ...patch, clusterId: clusterForZip(patch.zipCode ?? ''), backgroundCheckStatus: 'pending', createdAt: serverTimestamp() }
-      : { ...patch, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
+  const sitterRef = doc(db, 'sitters', uid);
+  if (isNew) {
+    await setDoc(
+      sitterRef,
+      { ...patch, clusterId: clusterForZip(patch.zipCode ?? ''), backgroundCheckStatus: 'pending', createdAt: serverTimestamp() },
+      { merge: true }
+    );
+    return;
+  }
+  // updateDoc rather than setDoc(..., {merge: true}) — merge:true
+  // recursively deep-merges nested map fields (availability,
+  // availabilityConflictOverrides, availabilityManualOverrides), so
+  // removing a key locally (e.g. unmarking a day) just stops sending that
+  // key, and merge:true never deletes a key that's merely absent — the
+  // old value silently survives. updateDoc replaces each named top-level
+  // field wholesale with exactly what's passed, which is what every
+  // caller here actually intends: "this is the complete new value for
+  // this field," not a partial nested patch.
+  await updateDoc(sitterRef, { ...patch, updatedAt: serverTimestamp() });
 }
 
 // The safe subset of a sitter's profile a family is ever shown — mirrors

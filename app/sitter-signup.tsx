@@ -75,6 +75,38 @@ export default function SitterSignup() {
     }));
   };
 
+  // Photo/document upload both need auth.currentUser to be set (see
+  // uploadPhotoBlob), but on a brand-new (non-edit) signup the account
+  // isn't created until handleSubmit's final "Submit for review" — and the
+  // photo field sits at the very top of this single-page form, well before
+  // that. Rather than restructure the whole form around deferred uploads,
+  // this lazily creates the account the first time someone tries to upload
+  // anything, using whatever email/password they've already filled in
+  // above it on the page. handleSubmit below then skips re-creating the
+  // account if this already did.
+  const ensureSignedIn = async (): Promise<void> => {
+    if (editMode || auth?.currentUser) return;
+    if (!firebaseConfigured || !auth) {
+      throw new Error('Sign-up isn’t configured yet — the app is missing its backend credentials.');
+    }
+    if (!profile.email.trim() || !password) {
+      throw new Error('Add your email and password above first, then try uploading again.');
+    }
+    if (password.length < 6) {
+      throw new Error('Password should be at least 6 characters.');
+    }
+    await createUserWithEmailAndPassword(auth, profile.email.trim(), password);
+  };
+
+  // Firebase auth errors carry a `.code` (mapped via friendlyError); the
+  // plain Errors ensureSignedIn throws above carry a human-readable
+  // `.message` directly — anything else falls back to the generic message.
+  const uploadErrorMessage = (err: any, fallback: string): string => {
+    if (err?.code) return friendlyError(err.code);
+    if (err instanceof Error && err.message) return err.message;
+    return fallback;
+  };
+
   const handlePickPhoto = async () => {
     setPhotoError(null);
     if (Platform.OS === 'web') {
@@ -84,10 +116,11 @@ export default function SitterSignup() {
     }
     setUploadingPhoto(true);
     try {
+      await ensureSignedIn();
       const url = await pickAndUploadNativePhoto('sitter-photo.jpg');
       if (url) patch({ photoUrl: url });
-    } catch {
-      setPhotoError('Couldn’t upload that photo — check your photo library permission and try again.');
+    } catch (err) {
+      setPhotoError(uploadErrorMessage(err, 'Couldn’t upload that photo — check your photo library permission and try again.'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -97,10 +130,11 @@ export default function SitterSignup() {
     setPickedPhoto(null);
     setUploadingPhoto(true);
     try {
+      await ensureSignedIn();
       const url = await uploadPhotoBlob(blob, 'sitter-photo.jpg');
       patch({ photoUrl: url });
-    } catch {
-      setPhotoError('Couldn’t upload that photo — check your connection and try again.');
+    } catch (err) {
+      setPhotoError(uploadErrorMessage(err, 'Couldn’t upload that photo — check your connection and try again.'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -116,10 +150,11 @@ export default function SitterSignup() {
     setDocError(null);
     setUploadingDoc(true);
     try {
+      await ensureSignedIn();
       const url = await pickAndUploadDocument('sitter-cert');
       if (url) patch({ certificationDocUrls: [...profile.certificationDocUrls, url] });
-    } catch {
-      setDocError('Couldn’t upload that document — check your connection and try again.');
+    } catch (err) {
+      setDocError(uploadErrorMessage(err, 'Couldn’t upload that document — check your connection and try again.'));
     } finally {
       setUploadingDoc(false);
     }
@@ -168,8 +203,17 @@ export default function SitterSignup() {
 
     setSubmitting(true);
     try {
-      const credential = await createUserWithEmailAndPassword(auth, profile.email.trim(), password);
-      await updateProfile(credential.user, { displayName: profile.name.trim() });
+      // ensureSignedIn (called from an earlier photo/document upload) may
+      // have already created the account — re-calling
+      // createUserWithEmailAndPassword here would throw
+      // auth/email-already-in-use, so only create it if that didn't
+      // already happen.
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: profile.name.trim() });
+      } else {
+        const credential = await createUserWithEmailAndPassword(auth, profile.email.trim(), password);
+        await updateProfile(credential.user, { displayName: profile.name.trim() });
+      }
       await saveMySitterProfile(profile, true);
       router.replace('/(sitter)');
     } catch (err: any) {

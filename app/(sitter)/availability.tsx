@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../components/Chip';
@@ -80,7 +80,11 @@ export default function SitterAvailability() {
     }
   };
 
-  const handleConnectGoogle = async () => {
+  // wantsSync passed explicitly (not read from state) for the same reason
+  // as app/onboarding/calendar.tsx's identical handler: the sync toggle's
+  // onValueChange calls this before its own state update has committed, so
+  // relying on the closure's current value would use the stale one.
+  const handleConnectGoogle = async (wantsSync: boolean) => {
     setGoogleError(null);
     if (!auth?.currentUser) {
       setGoogleError('Your sign-in session has expired — log out and back in, then try again.');
@@ -88,13 +92,15 @@ export default function SitterAvailability() {
     }
     setConnectingGoogle(true);
     try {
-      // false: a sitter only ever needs read-only free/busy, never the
-      // sensitive calendar.events scope families use to push playdates —
-      // skips the "unverified app" warning entirely for this flow.
-      const code = await requestGoogleCalendarAuthCode(false);
+      // wantsSync controls calendar.freebusy (read-only, no warning) vs.
+      // calendar.events (read/write — needed so a confirmed playdate can
+      // be added to the sitter's own calendar, but triggers Google's
+      // "unverified app" warning). Off by default, same reasoning as the
+      // family flow's own toggle.
+      const code = await requestGoogleCalendarAuthCode(wantsSync);
       await connectSitterGoogleCalendarBackend(code);
-      await saveMySitterProfile({ googleCalendarConnected: true }, false);
-      setProfile((prev) => (prev ? { ...prev, googleCalendarConnected: true } : prev));
+      await saveMySitterProfile({ googleCalendarConnected: true, googleCalendarSyncEnabled: wantsSync }, false);
+      setProfile((prev) => (prev ? { ...prev, googleCalendarConnected: true, googleCalendarSyncEnabled: wantsSync } : prev));
     } catch (err: any) {
       if (err?.message?.includes('closed')) {
         setGoogleError('Google reported the popup closed early — this can be a false alarm, please try again.');
@@ -104,6 +110,21 @@ export default function SitterAvailability() {
     } finally {
       setConnectingGoogle(false);
     }
+  };
+
+  // Turning sync off needs no new Google permission — it just stops the
+  // backend from attempting writes — so it saves immediately. Turning it
+  // on needs the broader scope, which only a real consent grant can
+  // provide, so it runs the full Connect flow forced to write access; the
+  // toggle only actually reflects the change once that succeeds (handled
+  // inside handleConnectGoogle above).
+  const handleToggleSync = (value: boolean) => {
+    if (!value) {
+      saveMySitterProfile({ googleCalendarSyncEnabled: false }, false).catch(() => {});
+      setProfile((prev) => (prev ? { ...prev, googleCalendarSyncEnabled: false } : prev));
+      return;
+    }
+    handleConnectGoogle(true);
   };
 
   const checkForConflicts = async () => {
@@ -191,7 +212,7 @@ export default function SitterAvailability() {
                     <Text style={styles.connectedText}>Connected</Text>
                   </View>
                 )}
-                <Pressable style={styles.connectBadge} onPress={handleConnectGoogle}>
+                <Pressable style={styles.connectBadge} onPress={() => handleConnectGoogle(profile?.googleCalendarSyncEnabled ?? false)}>
                   <Image source={images.googleLogo} style={styles.brandIcon} />
                   <Text style={styles.connect}>{profile?.googleCalendarConnected ? 'Reconnect' : 'Connect'}</Text>
                 </Pressable>
@@ -203,6 +224,20 @@ export default function SitterAvailability() {
             ever see Free/Busy, never event details.
           </Text>
           {googleError ? <Text style={styles.error}>{googleError}</Text> : null}
+
+          {profile?.googleCalendarConnected ? (
+            <View style={styles.syncRow}>
+              <View style={styles.syncTextWrap}>
+                <Text style={styles.syncLabel}>Add confirmed playdates to this calendar</Text>
+                <Text style={styles.syncHint}>
+                  {profile.googleCalendarSyncEnabled
+                    ? 'On — a confirmed playdate gets added automatically.'
+                    : 'Off — needs an extra Google permission; you may see an "unverified app" warning on connect, choose Advanced → Go to Haven.ly (unsafe) to continue.'}
+                </Text>
+              </View>
+              <Switch value={profile.googleCalendarSyncEnabled} onValueChange={handleToggleSync} disabled={connectingGoogle} />
+            </View>
+          ) : null}
         </View>
 
         {profile?.googleCalendarConnected ? (
@@ -365,6 +400,29 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 17,
     marginTop: 10,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  syncTextWrap: {
+    flex: 1,
+  },
+  syncLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  syncHint: {
+    fontSize: 11,
+    color: colors.textMuted,
+    lineHeight: 15,
   },
   conflictsSection: {
     marginTop: 8,

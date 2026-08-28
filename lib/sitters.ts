@@ -85,6 +85,13 @@ export type SitterProfile = {
   // connected.
   availability: string[];
   googleCalendarConnected: boolean;
+  // Whether the sitter opted into the broader calendar.events (write)
+  // scope on connect, same toggle/reasoning as a family's own
+  // googleCalendarSyncEnabled (app/onboarding/calendar.tsx) — off by
+  // default so most sitters never hit Google's "unverified app" warning,
+  // only those who actually want a confirmed playdate added to their own
+  // calendar (functions/index.js's notifyOnSitterConfirmation).
+  googleCalendarSyncEnabled: boolean;
   // A sitter confirming they're still available despite a specific
   // detected calendar conflict (see lib/availabilityWindows.ts's
   // findAvailabilityConflicts) — keyed by conflictKey(date, windowLabel),
@@ -111,6 +118,7 @@ export const emptySitterProfile: SitterProfile = {
   certificationDocUrls: [],
   availability: [],
   googleCalendarConnected: false,
+  googleCalendarSyncEnabled: false,
   availabilityConflictOverrides: {},
 };
 
@@ -135,6 +143,7 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
       : [],
     availability: Array.isArray(data.availability) ? data.availability.filter((a) => typeof a === 'string') : [],
     googleCalendarConnected: data.googleCalendarConnected === true,
+    googleCalendarSyncEnabled: data.googleCalendarSyncEnabled === true,
     availabilityConflictOverrides:
       typeof data.availabilityConflictOverrides === 'object' && data.availabilityConflictOverrides !== null
         ? (Object.fromEntries(

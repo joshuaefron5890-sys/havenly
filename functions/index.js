@@ -732,6 +732,90 @@ exports.pushOnPlaydateResponded = onDocumentUpdated('playdateProposals/{proposal
   });
 });
 
+// Fires when the assigned sitter confirms or declines their own assignment
+// (lib/playdateProposals.ts's respondAsSitter — firestore.rules pins that
+// write to the sitter's own uid). Notifies both families and the sitter
+// either way; on confirm, also puts the playdate on the sitter's own
+// Google Calendar if they opted into the write scope (the sync toggle in
+// app/(sitter)/availability.tsx's Connect flow) — same
+// googleCalendarSyncEnabled gate createPlaydateCalendarEvents uses for
+// families, just read off sitters/{uid} instead of users/{uid}.
+//
+// pushTokensForFamily/sendNotificationEmail work unmodified for a sitter
+// uid too: personalUidsForFamily(sitterUid) queries familyMembers for a
+// (nonexistent) family and falls back to just [sitterUid], landing on
+// pushTokens/{sitterUid} exactly as intended; sendNotificationEmail reads
+// the email straight off Firebase Auth, which every sitter has same as
+// any family member.
+exports.notifyOnSitterConfirmation = onDocumentUpdated(
+  { document: 'playdateProposals/{proposalId}', secrets: [resendApiKey, googleClientSecret] },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    const beforeStatus = before?.sitter?.confirmationStatus;
+    const afterStatus = after?.sitter?.confirmationStatus;
+    if (!after?.sitter || beforeStatus !== 'pending') return;
+    if (afterStatus !== 'confirmed' && afterStatus !== 'declined') return;
+
+    const sitterUid = after.sitter.uid;
+    if (typeof sitterUid !== 'string' || !sitterUid) return;
+
+    const dateLabel = typeof after.dateLabel === 'string' ? after.dateLabel : '';
+    const sitterName = typeof after.sitter.name === 'string' ? after.sitter.name : 'Your sitter';
+    const verb = afterStatus === 'confirmed' ? 'confirmed' : 'declined';
+    const proposalUrl = `${APP_BASE_URL}/proposal/${event.params.proposalId}`;
+    const familyUids = [after.fromUid, after.toUid].filter((uid) => typeof uid === 'string' && uid);
+
+    const familyTitle = `${sitterName} ${verb} the playdate`;
+    const familyText = [
+      `${sitterName} ${verb} their sitter assignment for your playdate on Haven.ly${dateLabel ? `: ${dateLabel}` : '.'}`,
+      '',
+      `View details: ${proposalUrl}`,
+    ].join('\n');
+    const sitterTitle = afterStatus === 'confirmed' ? 'Playdate confirmed' : 'Playdate declined';
+    const sitterText = [
+      `You ${verb} this playdate on Haven.ly${dateLabel ? `: ${dateLabel}` : '.'}`,
+      '',
+      `View details: ${proposalUrl}`,
+    ].join('\n');
+
+    await Promise.all([
+      ...familyUids.flatMap((uid) => [
+        sendNotificationEmail(uid, familyTitle, familyText),
+        pushTokensForFamily(uid).then((tokens) =>
+          sendExpoPush(tokens, familyTitle, dateLabel || 'Tap to view.', { url: `/proposal/${event.params.proposalId}` })
+        ),
+      ]),
+      sendNotificationEmail(sitterUid, sitterTitle, sitterText),
+      pushTokensForFamily(sitterUid).then((tokens) =>
+        sendExpoPush(tokens, sitterTitle, dateLabel || 'Tap to view.', { url: `/proposal/${event.params.proposalId}` })
+      ),
+    ]);
+
+    if (afterStatus !== 'confirmed') return;
+
+    try {
+      const sitterSnap = await admin.firestore().collection('sitters').doc(sitterUid).get();
+      const sitterData = sitterSnap.data();
+      if (!sitterData?.googleCalendarSyncEnabled || !sitterData?.googleCalendar?.refreshToken) {
+        console.log(`Skipping calendar event for sitter ${sitterUid}: no eligible Google connection (sync enabled).`);
+        return;
+      }
+      const { startIso, endIso, venue } = derivePlaydateEventFields(after);
+      if (!startIso || !endIso) return;
+      await createGoogleCalendarEvent(sitterData.googleCalendar.refreshToken, googleClientSecret.value(), {
+        eventId: googleEventIdFor(event.params.proposalId, sitterUid),
+        summary: 'Haven.ly playdate (sitting)',
+        location: venue,
+        startIso,
+        endIso,
+      });
+    } catch (err) {
+      console.error(`Could not create playdate calendar event for sitter ${sitterUid}`, err);
+    }
+  }
+);
+
 // Fires on every new message — skips a playdate-proposal message (the
 // trigger above already emails that one) and an empty/system message.
 // Recipient is derived from the parent conversation's participantUids,

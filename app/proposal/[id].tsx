@@ -32,6 +32,12 @@ const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
   canceled: 'Canceled',
 };
 
+const SITTER_CONFIRM_LABEL: Record<NonNullable<PlaydateProposal['sitter']>['confirmationStatus'], string> = {
+  pending: 'Awaiting confirmation',
+  confirmed: 'Confirmed',
+  declined: 'Declined',
+};
+
 // A compact "who's coming" card — used for both sides of the playdate, side
 // by side. Takes either a SuggestedFamily (the signed-in user's own family,
 // via getFamiliesByUids) or a FamilyProfile (the other family, via
@@ -305,6 +311,14 @@ export default function ProposalDetail() {
                     {proposal.sitter.specialties.join(', ')}
                   </Text>
                 ) : null}
+              </View>
+              <View
+                style={[
+                  styles.sitterConfirmPill,
+                  styles[`sitterConfirmPill_${proposal.sitter.confirmationStatus}`],
+                ]}
+              >
+                <Text style={styles.sitterConfirmPillText}>{SITTER_CONFIRM_LABEL[proposal.sitter.confirmationStatus]}</Text>
               </View>
             </View>
             <View style={styles.contactRow}>
@@ -644,6 +658,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 1,
+  },
+  sitterConfirmPill: {
+    backgroundColor: colors.warningMuted,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  sitterConfirmPill_pending: {
+    backgroundColor: colors.warningMuted,
+  },
+  sitterConfirmPill_confirmed: {
+    backgroundColor: colors.positiveMuted,
+  },
+  sitterConfirmPill_declined: {
+    backgroundColor: colors.errorMuted,
+  },
+  sitterConfirmPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text,
   },
   contactRow: {
     flexDirection: 'row',

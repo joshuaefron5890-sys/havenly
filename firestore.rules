@@ -114,9 +114,14 @@ service cloud.firestore {
     // without a collection-group query across every conversation, and so
     // accept/decline status has one place to live.
     match /playdateProposals/{proposalId} {
+      // Either family, or — once assigned — the sitter themselves (their
+      // own auth uid, never a family uid, so this checks request.auth.uid
+      // directly rather than myFamilyUid()) reviewing a playdate they've
+      // been asked to confirm.
       allow read: if request.auth != null
         && resource != null
-        && myFamilyUid() in resource.data.participantUids;
+        && (myFamilyUid() in resource.data.participantUids
+          || (resource.data.sitter != null && resource.data.sitter.uid == request.auth.uid));
       allow create: if request.auth != null
         && request.resource.data.fromUid == myFamilyUid()
         && myFamilyUid() in request.resource.data.participantUids
@@ -157,6 +162,17 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sitter'])
         && request.resource.data.sitter.uid is string
         && request.resource.data.sitter.name is string;
+      // The assigned sitter confirming or declining their own assignment —
+      // request.resource.data.sitter.uid == resource.data.sitter.uid stops
+      // them from reassigning the slot to themselves under a different
+      // identity or otherwise touching anything but their own status.
+      allow update: if request.auth != null
+        && resource != null
+        && resource.data.sitter != null
+        && resource.data.sitter.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sitter'])
+        && request.resource.data.sitter.uid == resource.data.sitter.uid
+        && request.resource.data.sitter.confirmationStatus in ['confirmed', 'declined'];
       allow delete: if false;
     }
 
@@ -240,7 +256,7 @@ service cloud.firestore {
           'name', 'email', 'phone', 'bio', 'photoUrl', 'city', 'state', 'zipCode',
           'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate',
           'certificationDocUrls', 'availability', 'googleCalendarConnected',
-          'availabilityConflictOverrides', 'updatedAt'
+          'googleCalendarSyncEnabled', 'availabilityConflictOverrides', 'updatedAt'
         ]);
       allow delete: if false;
     }

@@ -5,8 +5,16 @@ import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, 
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
+import { showAlert } from '../../lib/alert';
+import { auth, signOutUser } from '../../lib/firebase';
+import {
+  fetchSitterConfirmedPlaydates,
+  fetchSitterPlaydateRequests,
+  PlaydateProposal,
+  proposalStartLabel,
+  respondAsSitter,
+} from '../../lib/playdateProposals';
 import { fetchMySitterProfile, SitterProfile } from '../../lib/sitters';
-import { signOutUser } from '../../lib/firebase';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<SitterProfile['backgroundCheckStatus'], string> = {
@@ -23,6 +31,16 @@ const STATUS_COLORS: Record<SitterProfile['backgroundCheckStatus'], { bg: string
 
 export default function SitterHome() {
   const [profile, setProfile] = useState<SitterProfile | null>(null);
+  const [requests, setRequests] = useState<PlaydateProposal[]>([]);
+  const [confirmed, setConfirmed] = useState<PlaydateProposal[]>([]);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  const loadPlaydates = useCallback(() => {
+    const uid = auth?.currentUser?.uid;
+    if (!uid) return;
+    fetchSitterPlaydateRequests(uid).then(setRequests);
+    fetchSitterConfirmedPlaydates(uid).then(setConfirmed);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -30,11 +48,25 @@ export default function SitterHome() {
       fetchMySitterProfile().then((result) => {
         if (!cancelled) setProfile(result);
       });
+      loadPlaydates();
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [loadPlaydates])
   );
+
+  const respond = async (proposalId: string, status: 'confirmed' | 'declined') => {
+    if (respondingId) return;
+    setRespondingId(proposalId);
+    try {
+      await respondAsSitter(proposalId, status);
+      loadPlaydates();
+    } catch (err: any) {
+      showAlert('Couldn’t save your response', err?.message ?? err?.code ?? 'Please try again.');
+    } finally {
+      setRespondingId(null);
+    }
+  };
 
   const logOut = async () => {
     await signOutUser();
@@ -97,6 +129,53 @@ export default function SitterHome() {
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </Pressable>
+
+        {requests.length ? (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>PLAYDATE REQUESTS</Text>
+            {requests.map((proposal) => (
+              <View key={proposal.id} style={styles.playdateRow}>
+                <View style={styles.playdateInfo}>
+                  <Text style={styles.playdateDate}>{proposalStartLabel(proposal)}</Text>
+                  {proposal.venue ? <Text style={styles.playdateVenue}>{proposal.venue}</Text> : null}
+                </View>
+                <View style={styles.playdateActions}>
+                  <Pressable
+                    style={[styles.declineChip, respondingId === proposal.id && styles.chipDisabled]}
+                    onPress={() => respond(proposal.id, 'declined')}
+                    disabled={!!respondingId}
+                  >
+                    <Text style={styles.declineChipText}>Decline</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.confirmChip, respondingId === proposal.id && styles.chipDisabled]}
+                    onPress={() => respond(proposal.id, 'confirmed')}
+                    disabled={!!respondingId}
+                  >
+                    <Text style={styles.confirmChipText}>Confirm</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {confirmed.length ? (
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>CONFIRMED PLAYDATES</Text>
+            {confirmed.map((proposal) => (
+              <View key={proposal.id} style={styles.playdateRow}>
+                <View style={styles.playdateInfo}>
+                  <Text style={styles.playdateDate}>{proposalStartLabel(proposal)}</Text>
+                  {proposal.venue ? <Text style={styles.playdateVenue}>{proposal.venue}</Text> : null}
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: colors.positiveMuted }]}>
+                  <Text style={[styles.statusPillText, { color: colors.positive }]}>Confirmed</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
@@ -250,6 +329,59 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
+  },
+  playdateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingTop: 12,
+    marginTop: 2,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  playdateInfo: {
+    flex: 1,
+  },
+  playdateDate: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  playdateVenue: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  playdateActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  declineChip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  declineChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  confirmChip: {
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  confirmChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.surface,
+  },
+  chipDisabled: {
+    opacity: 0.6,
   },
   cardLabel: {
     fontSize: 11,

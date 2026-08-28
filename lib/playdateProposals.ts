@@ -23,7 +23,17 @@ export type ProposalStatus = 'proposed' | 'accepted' | 'declined' | 'canceled';
 // being denormalized copies rather than references. Good enough for a
 // sitter's own profile changing rarely; re-adding them (or a different
 // sitter) from app/find-sitter.tsx just overwrites this.
-export type AssignedSitter = Pick<RecommendedSitter, 'uid' | 'name' | 'photoUrl' | 'phone' | 'email' | 'specialties'>;
+export type SitterConfirmationStatus = 'pending' | 'confirmed' | 'declined';
+
+export type AssignedSitter = Pick<RecommendedSitter, 'uid' | 'name' | 'photoUrl' | 'phone' | 'email' | 'specialties'> & {
+  // Set to 'pending' the moment a family assigns a sitter; only the sitter
+  // themselves can move it to 'confirmed'/'declined' (firestore.rules pins
+  // this update to their own uid) — surfaced to both families on the
+  // proposal detail screen, and drives functions/index.js's
+  // notifyOnSitterConfirmation trigger (notifications + optional Google
+  // Calendar event on confirm).
+  confirmationStatus: SitterConfirmationStatus;
+};
 
 export type PlaydateProposal = {
   id: string;
@@ -106,6 +116,7 @@ function parseSitter(value: unknown): AssignedSitter | null {
   if (!value || typeof value !== 'object') return null;
   const data = value as Record<string, unknown>;
   if (typeof data.uid !== 'string' || typeof data.name !== 'string') return null;
+  const confirmationStatus = data.confirmationStatus;
   return {
     uid: data.uid,
     name: data.name,
@@ -113,6 +124,8 @@ function parseSitter(value: unknown): AssignedSitter | null {
     phone: typeof data.phone === 'string' ? data.phone : '',
     email: typeof data.email === 'string' ? data.email : '',
     specialties: Array.isArray(data.specialties) ? data.specialties.filter((s) => typeof s === 'string') : [],
+    confirmationStatus:
+      confirmationStatus === 'confirmed' || confirmationStatus === 'declined' ? confirmationStatus : 'pending',
   };
 }
 
@@ -148,8 +161,22 @@ export async function addSitterToPlaydate(proposalId: string, sitter: Recommende
     phone: sitter.phone,
     email: sitter.email,
     specialties: sitter.specialties,
+    confirmationStatus: 'pending',
   };
   await setDoc(doc(db, 'playdateProposals', proposalId), { sitter: snapshot }, { merge: true });
+}
+
+// Only the assigned sitter can respond, via a dot-path update so
+// firestore.rules can pin the diff to just `sitter` — enforced again
+// server-side (functions/index.js's notifyOnSitterConfirmation reacts to
+// the resulting transition).
+export async function respondAsSitter(proposalId: string, status: 'confirmed' | 'declined'): Promise<void> {
+  if (!db) throw new Error('not-signed-in');
+  await setDoc(
+    doc(db, 'playdateProposals', proposalId),
+    { sitter: { confirmationStatus: status } },
+    { merge: true }
+  );
 }
 
 // The single most recent pending proposal involving the signed-in user, if
@@ -223,6 +250,34 @@ export function subscribeToMyProposals(callback: (proposals: PlaydateProposal[])
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => parseProposal(d.id, d.data())));
   });
+}
+
+// Every playdate the signed-in sitter has been assigned to and hasn't yet
+// responded to — powers app/(sitter)/index.tsx's "Playdate requests"
+// section. Only accepted proposals ever carry a `sitter` at all (see
+// addSitterToPlaydate), so no extra status filter is needed beyond that.
+export async function fetchSitterPlaydateRequests(uid: string): Promise<PlaydateProposal[]> {
+  if (!db) return [];
+  const q = query(collection(db, 'playdateProposals'), where('sitter.uid', '==', uid));
+  const snap = await getDocs(q);
+  const proposals = snap.docs
+    .map((d) => parseProposal(d.id, d.data()))
+    .filter((p) => p.sitter?.confirmationStatus === 'pending');
+  proposals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return proposals;
+}
+
+// Every playdate the signed-in sitter has confirmed — powers
+// app/(sitter)/index.tsx's "Confirmed playdates" section.
+export async function fetchSitterConfirmedPlaydates(uid: string): Promise<PlaydateProposal[]> {
+  if (!db) return [];
+  const q = query(collection(db, 'playdateProposals'), where('sitter.uid', '==', uid));
+  const snap = await getDocs(q);
+  const proposals = snap.docs
+    .map((d) => parseProposal(d.id, d.data()))
+    .filter((p) => p.sitter?.confirmationStatus === 'confirmed');
+  proposals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return proposals;
 }
 
 // Live view of a single proposal by id — backs the standalone

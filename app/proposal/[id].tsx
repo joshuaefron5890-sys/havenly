@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddToGoogleCalendarPrompt } from '../../components/AddToGoogleCalendarPrompt';
@@ -24,6 +24,9 @@ import { loadOnboardingProgress } from '../../lib/onboardingProgress';
 import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
 import { SITTERS_ENABLED } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
+
+const SITTER_PROMO_IMAGE =
+  'https://images.unsplash.com/photo-1585541993027-55373d67ea86?q=80&w=1658&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
   proposed: 'Waiting for a response',
@@ -337,7 +340,12 @@ export default function ProposalDetail() {
             </Pressable>
           </View>
         ) : SITTERS_ENABLED && proposal.status === 'accepted' ? (
-          <View style={styles.sitterPromo}>
+          <ImageBackground
+            source={{ uri: SITTER_PROMO_IMAGE }}
+            style={styles.sitterPromo}
+            imageStyle={styles.sitterPromoImage}
+          >
+            <View style={styles.sitterPromoScrim} />
             <View style={styles.sitterPromoIcon}>
               <Ionicons name="heart" size={22} color={colors.accent} />
             </View>
@@ -352,7 +360,7 @@ export default function ProposalDetail() {
             >
               <Text style={styles.sitterPromoButtonText}>Find Help</Text>
             </Pressable>
-          </View>
+          </ImageBackground>
         ) : null}
 
         <View style={styles.card}>
@@ -601,11 +609,22 @@ const styles = StyleSheet.create({
   },
   sitterPromo: {
     alignItems: 'center',
-    backgroundColor: colors.accentMuted,
     borderRadius: 20,
-    paddingVertical: 24,
+    paddingVertical: 28,
     paddingHorizontal: 20,
     marginBottom: 12,
+    overflow: 'hidden',
+  },
+  sitterPromoImage: {
+    borderRadius: 20,
+  },
+  sitterPromoScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(24, 24, 27, 0.55)',
   },
   sitterPromoIcon: {
     width: 48,
@@ -619,12 +638,12 @@ const styles = StyleSheet.create({
   sitterPromoTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.surface,
     textAlign: 'center',
   },
   sitterPromoText: {
     fontSize: 13,
-    color: colors.text,
+    color: colors.surface,
     textAlign: 'center',
     lineHeight: 19,
     marginTop: 8,

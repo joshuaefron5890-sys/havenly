@@ -1481,17 +1481,25 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
   // regardless of whether this email send succeeds.
   if (status === 'clear' && !wasAlreadyClear) {
     const firstName = (typeof beforeSnap.data()?.name === 'string' ? beforeSnap.data().name : '').trim().split(' ')[0];
-    await sendNotificationEmail(
-      uid,
-      'You’re approved on Haven.ly',
-      [
-        firstName ? `Hi ${firstName},` : 'Hi,',
-        '',
-        'Your background check cleared and your sitter profile is now live — families nearby can find and reach out to you.',
-        '',
-        `View your profile: ${APP_BASE_URL}/sitter-signup?edit=1`,
-      ].join('\n')
-    );
+    const title = 'You’re approved on Haven.ly';
+    await Promise.all([
+      sendNotificationEmail(
+        uid,
+        title,
+        [
+          firstName ? `Hi ${firstName},` : 'Hi,',
+          '',
+          'Your background check cleared and your sitter profile is now live — families nearby can find and reach out to you.',
+          '',
+          `View your profile: ${APP_BASE_URL}/sitter-signup?edit=1`,
+        ].join('\n')
+      ),
+      // pushTokensForFamily(uid) works unmodified for a sitter uid too —
+      // see notifyOnSitterConfirmation's own comment on why.
+      pushTokensForFamily(uid).then((tokens) =>
+        sendExpoPush(tokens, title, 'Your profile is now live for families to find.', { url: '/sitter-signup?edit=1' })
+      ),
+    ]);
   }
 });
 

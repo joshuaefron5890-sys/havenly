@@ -48,7 +48,12 @@ export default function FindSitter() {
       let cancelled = false;
       fetchRecommendedSitters(slot)
         .then((result) => {
-          if (!cancelled) setSitters(result);
+          // When we know the exact slot, only show sitters who've actually
+          // marked themselves available for it — otherwise "availableForSlot"
+          // means nothing (every sitter comes back false with no slot to
+          // check against), so the filter only applies when there's a real
+          // slot to filter by.
+          if (!cancelled) setSitters(slot ? result.filter((s) => s.availableForSlot) : result);
         })
         .catch((err: any) => {
           if (!cancelled) setError(err?.message ?? err?.code ?? 'unknown error');
@@ -66,34 +71,34 @@ export default function FindSitter() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Find a sitter</Text>
+        <Text style={styles.headerTitle}>Find Help</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
           {slot
-            ? 'Experienced sitters near you with open slots for this playdate sort first, matched to your kids’ experience.'
+            ? 'Experienced sitters near you who’ve confirmed they’re free for this playdate, matched to your kids’ experience.'
             : 'Experienced sitters near you, sorted by how much of their experience matches your kids’.'}
         </Text>
 
         {error ? <EmptyState text={`Couldn’t load sitters (${error}).`} /> : null}
         {sitters === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
         {sitters?.length === 0 ? (
-          <EmptyState text="No experienced sitters in your area yet — check back soon." />
+          <EmptyState
+            text={
+              slot
+                ? 'No sitters have confirmed availability for this playdate yet — check back soon.'
+                : 'No experienced sitters in your area yet — check back soon.'
+            }
+          />
         ) : null}
 
         {sitters?.map((sitter) => (
           <View key={sitter.uid} style={styles.card}>
             {slot ? (
-              <View style={[styles.availabilityBadge, sitter.availableForSlot && styles.availabilityBadgeAvailable]}>
-                <Ionicons
-                  name={sitter.availableForSlot ? 'checkmark-circle' : 'help-circle-outline'}
-                  size={14}
-                  color={sitter.availableForSlot ? colors.positive : colors.textMuted}
-                />
-                <Text style={[styles.availabilityBadgeText, sitter.availableForSlot && styles.availabilityBadgeTextAvailable]}>
-                  {sitter.availableForSlot ? 'Open for this playdate' : 'Hasn’t confirmed availability'}
-                </Text>
+              <View style={[styles.availabilityBadge, styles.availabilityBadgeAvailable]}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.positive} />
+                <Text style={[styles.availabilityBadgeText, styles.availabilityBadgeTextAvailable]}>Open for this playdate</Text>
               </View>
             ) : null}
             <View style={styles.cardHeader}>

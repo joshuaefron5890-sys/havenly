@@ -112,6 +112,20 @@ function toDate(value: unknown): Date | null {
   return value instanceof Timestamp ? value.toDate() : null;
 }
 
+// A playdate is still "upcoming" as long as it hasn't ended yet — checked
+// against endDate (falling back to date, for an older proposal saved
+// before endDate existed) rather than just the start time, so a playdate
+// that's already underway doesn't disappear from Home mid-event. An
+// unparseable/missing date is treated as still upcoming rather than
+// silently dropped — better to show a proposal with bad data than hide it.
+function hasNotEnded(proposal: Pick<PlaydateProposal, 'date' | 'endDate'>): boolean {
+  const raw = proposal.endDate || proposal.date;
+  if (!raw) return true;
+  const end = new Date(raw);
+  if (Number.isNaN(end.getTime())) return true;
+  return end.getTime() >= Date.now();
+}
+
 function parseSitter(value: unknown): AssignedSitter | null {
   if (!value || typeof value !== 'object') return null;
   const data = value as Record<string, unknown>;
@@ -187,7 +201,9 @@ export async function respondAsSitter(proposalId: string, status: 'confirmed' | 
 // Only filters by participantUids array-contains here — adding a second
 // where() on status would need a Firestore composite index, so "proposed"
 // is filtered client-side instead (same array-contains-only pattern used by
-// subscribeToConversations).
+// subscribeToConversations). Also excludes anything already over
+// (hasNotEnded) — a proposal for a date that's passed is stale, not
+// something to surface as the latest one to act on.
 export async function fetchLatestProposal(): Promise<PlaydateProposal | null> {
   const myUid = getMyFamilyUid();
   if (!myUid || !db) return null;
@@ -195,15 +211,15 @@ export async function fetchLatestProposal(): Promise<PlaydateProposal | null> {
   const snap = await getDocs(q);
   const proposals = snap.docs
     .map((d) => parseProposal(d.id, d.data()))
-    .filter((p) => p.status === 'proposed');
+    .filter((p) => p.status === 'proposed' && hasNotEnded(p));
   if (!proposals.length) return null;
   proposals.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   return proposals[0];
 }
 
-// Every still-pending proposal involving the signed-in user, soonest
-// first — powers the Home dashboard's "For You" highlights (second
-// priority, right after confirmed playdates). Same shape as
+// Every still-pending, not-yet-past proposal involving the signed-in
+// user, soonest first — powers the Home dashboard's "For You" highlights
+// (second priority, right after confirmed playdates). Same shape as
 // fetchAcceptedProposals; kept separate from fetchLatestProposal since
 // that one only needs the single most recent for the Events section's
 // badge card, not the full list.
@@ -214,16 +230,16 @@ export async function fetchPendingProposals(): Promise<PlaydateProposal[]> {
   const snap = await getDocs(q);
   const proposals = snap.docs
     .map((d) => parseProposal(d.id, d.data()))
-    .filter((p) => p.status === 'proposed');
+    .filter((p) => p.status === 'proposed' && hasNotEnded(p));
   proposals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   return proposals;
 }
 
-// Every accepted (confirmed) playdate involving the signed-in user,
-// soonest first — powers the Home dashboard's "For You" highlights,
-// where a confirmed playdate is the single highest-priority thing to
-// surface. Same array-contains-only + client-side status filter as
-// fetchLatestProposal, for the same composite-index reason.
+// Every accepted (confirmed), not-yet-past playdate involving the
+// signed-in user, soonest first — powers the Home dashboard's "For You"
+// highlights, where a confirmed playdate is the single highest-priority
+// thing to surface. Same array-contains-only + client-side status filter
+// as fetchLatestProposal, for the same composite-index reason.
 export async function fetchAcceptedProposals(): Promise<PlaydateProposal[]> {
   const myUid = getMyFamilyUid();
   if (!myUid || !db) return [];
@@ -231,7 +247,7 @@ export async function fetchAcceptedProposals(): Promise<PlaydateProposal[]> {
   const snap = await getDocs(q);
   const proposals = snap.docs
     .map((d) => parseProposal(d.id, d.data()))
-    .filter((p) => p.status === 'accepted');
+    .filter((p) => p.status === 'accepted' && hasNotEnded(p));
   proposals.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   return proposals;
 }

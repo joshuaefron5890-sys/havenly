@@ -167,7 +167,7 @@ export default function ContributionDetail() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.communityBadge}>
           <Ionicons name="people" size={14} color={colors.community} />
-          <Text style={styles.communityBadgeText}>Community contributed</Text>
+          <Text style={styles.communityBadgeText}>Member added</Text>
         </View>
 
         <Text style={styles.title}>{title}</Text>

@@ -5,8 +5,10 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Switch, Vi
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
+import { Photo } from '../../components/Photo';
 import { showAlert } from '../../lib/alert';
 import { auth } from '../../lib/firebase';
+import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { requestGoogleCalendarAuthCode } from '../../lib/googleIdentity';
 import {
   fetchSitterConfirmedPlaydates,
@@ -19,22 +21,77 @@ import { connectSitterGoogleCalendarBackend, fetchMySitterProfile, saveMySitterP
 import { colors } from '../../theme/colors';
 import { images } from '../../theme/images';
 
+// A compact, non-interactive version of app/proposal/[id].tsx's FamilyMini —
+// no match score (meaningless for a sitter, who isn't being matched against
+// either family) and no tap-through to a family's public profile (that
+// screen assumes family auth context the same way /proposal/[id] used to,
+// per app/find-sitter.tsx's own notifyOnSitterConfirmation comment — not
+// worth risking the same class of bug here for a nice-to-have).
+function FamilyBlock({ family, fallbackLabel }: { family: SuggestedFamily | undefined; fallbackLabel: string }) {
+  const kids = (family?.children ?? []).filter((c) => c.name);
+  return (
+    <View style={styles.familyBlock}>
+      <Photo
+        source={family && familyPhoto(family) ? { uri: familyPhoto(family)! } : undefined}
+        style={styles.familyPhoto}
+        variant="person"
+        iconSize={18}
+      />
+      <View style={styles.familyTextWrap}>
+        <Text style={styles.familyName} numberOfLines={1}>
+          {family ? familyDisplayName(family) : fallbackLabel}
+        </Text>
+        {family?.city ? (
+          <Text style={styles.familyLocation} numberOfLines={1}>
+            {family.city}, {family.state}
+          </Text>
+        ) : null}
+        {kids.length ? (
+          <Text style={styles.familyKids} numberOfLines={2}>
+            {kids.map((k) => (k.age ? `${k.name}, ${k.age}` : k.name)).join(' · ')}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export default function SitterPlaydates() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<SitterProfile | null>(null);
   const [requests, setRequests] = useState<PlaydateProposal[]>([]);
   const [confirmed, setConfirmed] = useState<PlaydateProposal[]>([]);
+  const [families, setFamilies] = useState<Map<string, SuggestedFamily>>(new Map());
   const [respondingId, setRespondingId] = useState<string | null>(null);
 
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
+  // Batched into one call per load rather than one per card — same
+  // reasoning as lib/families.ts's own fetchContributorPhotos.
+  const loadFamilies = async (proposals: PlaydateProposal[]) => {
+    const uids = [...new Set(proposals.flatMap((p) => [p.fromUid, p.toUid]).filter(Boolean))];
+    if (!uids.length) return;
+    const result = await fetchFamiliesByUids(uids);
+    setFamilies((prev) => {
+      const next = new Map(prev);
+      result.forEach((f) => next.set(f.uid, f));
+      return next;
+    });
+  };
+
   const load = useCallback(() => {
     const uid = auth?.currentUser?.uid;
     if (!uid) return;
     fetchMySitterProfile().then(setProfile);
-    fetchSitterPlaydateRequests(uid).then(setRequests);
-    fetchSitterConfirmedPlaydates(uid).then(setConfirmed);
+    fetchSitterPlaydateRequests(uid).then((result) => {
+      setRequests(result);
+      loadFamilies(result);
+    });
+    fetchSitterConfirmedPlaydates(uid).then((result) => {
+      setConfirmed(result);
+      loadFamilies(result);
+    });
   }, []);
 
   useFocusEffect(
@@ -51,6 +108,7 @@ export default function SitterPlaydates() {
         setProfile(profileResult);
         setRequests(requestsResult);
         setConfirmed(confirmedResult);
+        loadFamilies([...requestsResult, ...confirmedResult]);
         setLoading(false);
       });
       return () => {
@@ -152,51 +210,82 @@ export default function SitterPlaydates() {
 
         <Text style={styles.label}>PLAYDATE REQUESTS</Text>
         {requests.length ? (
-          <View style={styles.card}>
-            {requests.map((proposal, i) => (
-              <View key={proposal.id} style={[styles.playdateRow, i === 0 && styles.playdateRowFirst]}>
-                <View style={styles.playdateInfo}>
-                  <Text style={styles.playdateDate}>{proposalStartLabel(proposal)}</Text>
-                  {proposal.venue ? <Text style={styles.playdateVenue}>{proposal.venue}</Text> : null}
-                </View>
-                <View style={styles.playdateActions}>
-                  <Pressable
-                    style={[styles.declineChip, respondingId === proposal.id && styles.chipDisabled]}
-                    onPress={() => respond(proposal.id, 'declined')}
-                    disabled={!!respondingId}
-                  >
-                    <Text style={styles.declineChipText}>Decline</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.confirmChip, respondingId === proposal.id && styles.chipDisabled]}
-                    onPress={() => respond(proposal.id, 'confirmed')}
-                    disabled={!!respondingId}
-                  >
-                    <Text style={styles.confirmChipText}>Confirm</Text>
-                  </Pressable>
-                </View>
+          requests.map((proposal) => (
+            <View key={proposal.id} style={styles.playdateCard}>
+              <View style={styles.playdateHeaderRow}>
+                <Ionicons name="calendar-outline" size={16} color={colors.accent} />
+                <Text style={styles.playdateDate}>{proposalStartLabel(proposal)}</Text>
               </View>
-            ))}
-          </View>
+              {proposal.venue ? (
+                <View style={styles.playdateDetailRow}>
+                  <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                  <Text style={styles.playdateDetailText}>{proposal.venue}</Text>
+                </View>
+              ) : null}
+              {proposal.note ? (
+                <View style={styles.playdateDetailRow}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textMuted} />
+                  <Text style={styles.playdateDetailText}>{proposal.note}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.familiesRow}>
+                <FamilyBlock family={families.get(proposal.fromUid)} fallbackLabel="A family" />
+                <FamilyBlock family={families.get(proposal.toUid)} fallbackLabel="A family" />
+              </View>
+
+              <View style={styles.playdateActions}>
+                <Pressable
+                  style={[styles.declineChip, respondingId === proposal.id && styles.chipDisabled]}
+                  onPress={() => respond(proposal.id, 'declined')}
+                  disabled={!!respondingId}
+                >
+                  <Text style={styles.declineChipText}>Decline</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.confirmChip, respondingId === proposal.id && styles.chipDisabled]}
+                  onPress={() => respond(proposal.id, 'confirmed')}
+                  disabled={!!respondingId}
+                >
+                  <Text style={styles.confirmChipText}>Confirm</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))
         ) : (
           <EmptyState text="No pending requests right now." />
         )}
 
         <Text style={styles.label}>CONFIRMED PLAYDATES</Text>
         {confirmed.length ? (
-          <View style={styles.card}>
-            {confirmed.map((proposal, i) => (
-              <View key={proposal.id} style={[styles.playdateRow, i === 0 && styles.playdateRowFirst]}>
-                <View style={styles.playdateInfo}>
-                  <Text style={styles.playdateDate}>{proposalStartLabel(proposal)}</Text>
-                  {proposal.venue ? <Text style={styles.playdateVenue}>{proposal.venue}</Text> : null}
-                </View>
+          confirmed.map((proposal) => (
+            <View key={proposal.id} style={styles.playdateCard}>
+              <View style={styles.playdateHeaderRow}>
+                <Ionicons name="calendar-outline" size={16} color={colors.accent} />
+                <Text style={styles.playdateDate}>{proposalStartLabel(proposal)}</Text>
                 <View style={[styles.statusPill, { backgroundColor: colors.positiveMuted }]}>
                   <Text style={[styles.statusPillText, { color: colors.positive }]}>Confirmed</Text>
                 </View>
               </View>
-            ))}
-          </View>
+              {proposal.venue ? (
+                <View style={styles.playdateDetailRow}>
+                  <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                  <Text style={styles.playdateDetailText}>{proposal.venue}</Text>
+                </View>
+              ) : null}
+              {proposal.note ? (
+                <View style={styles.playdateDetailRow}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textMuted} />
+                  <Text style={styles.playdateDetailText}>{proposal.note}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.familiesRow}>
+                <FamilyBlock family={families.get(proposal.fromUid)} fallbackLabel="A family" />
+                <FamilyBlock family={families.get(proposal.toUid)} fallbackLabel="A family" />
+              </View>
+            </View>
+          ))
         ) : (
           <EmptyState text="Nothing confirmed yet." />
         )}
@@ -298,64 +387,98 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
-  card: {
+  playdateCard: {
     backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 20,
+    marginBottom: 14,
   },
-  playdateRow: {
+  playdateHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    paddingTop: 12,
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  playdateRowFirst: {
-    paddingTop: 0,
-    marginTop: 0,
-    borderTopWidth: 0,
-  },
-  playdateInfo: {
-    flex: 1,
+    gap: 8,
   },
   playdateDate: {
-    fontSize: 14,
+    flex: 1,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text,
   },
-  playdateVenue: {
-    fontSize: 12,
+  playdateDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 8,
+  },
+  playdateDetailText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 18,
+  },
+  familiesRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  familyBlock: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  familyPhoto: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  familyTextWrap: {
+    flex: 1,
+  },
+  familyName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  familyLocation: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  familyKids: {
+    fontSize: 11,
     color: colors.textMuted,
     marginTop: 2,
   },
   playdateActions: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 14,
   },
   declineChip: {
+    flex: 1,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 10,
   },
   declineChipText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.textMuted,
   },
   confirmChip: {
+    flex: 1,
+    alignItems: 'center',
     backgroundColor: colors.accent,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 10,
   },
   confirmChipText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.surface,
   },

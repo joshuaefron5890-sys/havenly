@@ -31,12 +31,31 @@ export default function FindSitter() {
     return period ? { dateKey: dateKey(parsed), period: period.key } : undefined;
   }, [date]);
 
+  // Falls back to the proposal (or home) rather than silently no-opping
+  // when there's no prior screen in the navigation stack to go back to —
+  // e.g. this screen was reached via a direct link or a page refresh.
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else if (proposalId) {
+      router.replace(`/proposal/${proposalId}`);
+    } else {
+      router.replace('/');
+    }
+  };
+
   const handleAdd = async (sitter: RecommendedSitter) => {
     if (!proposalId || addingUid) return;
     setAddingUid(sitter.uid);
     try {
       await addSitterToPlaydate(proposalId, sitter);
-      router.back();
+      // router.back() alone silently no-ops if this screen was reached
+      // without a prior entry in the navigation stack (e.g. a direct link
+      // or a page refresh) — the write still succeeds, but the button was
+      // previously left stuck on "Adding…" forever with no error, since
+      // addingUid was only ever reset in the catch branch.
+      goBack();
+      setAddingUid(null);
     } catch (err: any) {
       showAlert('Couldn’t add them to the playdate', err?.message ?? err?.code ?? 'Please try again.');
       setAddingUid(null);
@@ -68,7 +87,7 @@ export default function FindSitter() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={styles.back} onPress={goBack}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Find Help</Text>

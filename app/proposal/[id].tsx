@@ -136,9 +136,6 @@ export default function ProposalDetail() {
   }, [user, familyUid]);
 
   const [syncPromptProposalId, setSyncPromptProposalId] = useState<string | null>(null);
-  // Local/session-only — reappears next time this screen is opened, same
-  // lightweight non-persistent dismissal as AddToGoogleCalendarPrompt below.
-  const [sitterPromptDismissed, setSitterPromptDismissed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -339,23 +336,22 @@ export default function ProposalDetail() {
               <Text style={styles.changeSitterLink}>Change sitter</Text>
             </Pressable>
           </View>
-        ) : SITTERS_ENABLED && proposal.status === 'accepted' && !sitterPromptDismissed ? (
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>NEED A SITTER FOR THIS PLAYDATE?</Text>
-            <Text style={styles.sitterPromptText}>
-              Browse vetted sitters near you with open slots for this playdate, matched to your kids’ experience.
-            </Text>
-            <View style={styles.sitterPromptRow}>
-              <Pressable style={styles.sitterPromptDismiss} onPress={() => setSitterPromptDismissed(true)}>
-                <Text style={styles.sitterPromptDismissText}>Not now</Text>
-              </Pressable>
-              <Pressable
-                style={styles.sitterPromptFind}
-                onPress={() => router.push(`/find-sitter?proposalId=${id}&date=${encodeURIComponent(proposal.date)}`)}
-              >
-                <Text style={styles.sitterPromptFindText}>Find a sitter</Text>
-              </Pressable>
+        ) : SITTERS_ENABLED && proposal.status === 'accepted' ? (
+          <View style={styles.sitterPromo}>
+            <View style={styles.sitterPromoIcon}>
+              <Ionicons name="heart" size={22} color={colors.accent} />
             </View>
+            <Text style={styles.sitterPromoTitle}>Want to actually enjoy this one?</Text>
+            <Text style={styles.sitterPromoText}>
+              Bring in a vetted local sitter with an open slot for this exact time, so you can relax and connect
+              with the other parents instead of watching the kids.
+            </Text>
+            <Pressable
+              style={styles.sitterPromoButton}
+              onPress={() => router.push(`/find-sitter?proposalId=${id}&date=${encodeURIComponent(proposal.date)}`)}
+            >
+              <Text style={styles.sitterPromoButtonText}>Find Help</Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -603,38 +599,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.accent,
   },
-  sitterPromptText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  sitterPromptRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  sitterPromptDismiss: {
-    flex: 1,
-    borderRadius: 999,
-    paddingVertical: 12,
+  sitterPromo: {
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.accentMuted,
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    marginBottom: 12,
   },
-  sitterPromptDismissText: {
-    fontSize: 13,
+  sitterPromoIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  sitterPromoTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.textMuted,
+    color: colors.text,
+    textAlign: 'center',
   },
-  sitterPromptFind: {
-    flex: 1,
+  sitterPromoText: {
+    fontSize: 13,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginTop: 8,
+    marginBottom: 18,
+  },
+  sitterPromoButton: {
+    alignSelf: 'stretch',
     borderRadius: 999,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     backgroundColor: colors.accent,
   },
-  sitterPromptFindText: {
-    fontSize: 13,
+  sitterPromoButtonText: {
+    fontSize: 15,
     fontWeight: '700',
     color: colors.surface,
   },

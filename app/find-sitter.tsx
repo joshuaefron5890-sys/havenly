@@ -1,22 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View, Pressable } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../components/EmptyState';
 import { Photo } from '../components/Photo';
 import { showAlert } from '../lib/alert';
-import { addSitterToPlaydate } from '../lib/playdateProposals';
+import { addSitterToPlaydate, PlaydateProposal, subscribeToProposal } from '../lib/playdateProposals';
 import { AVAILABILITY_PERIODS, dateKey } from '../lib/sitterAvailability';
 import { fetchRecommendedSitters, RecommendedSitter } from '../lib/sitters';
 import { colors } from '../theme/colors';
+
+const SITTER_STATUS_LABEL: Record<'pending' | 'confirmed' | 'declined', string> = {
+  pending: 'Pending confirmation',
+  confirmed: 'Confirmed',
+  declined: 'Declined',
+};
 
 export default function FindSitter() {
   const { proposalId, date } = useLocalSearchParams<{ proposalId?: string; date?: string }>();
   const [sitters, setSitters] = useState<RecommendedSitter[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addingUid, setAddingUid] = useState<string | null>(null);
+  // Live so this screen reflects reality if the currently-assigned sitter's
+  // status changes (or someone cancels/reassigns from another tab) while
+  // it's open — cheap single-document subscription, same as
+  // app/proposal/[id].tsx's own use of subscribeToProposal.
+  const [proposal, setProposal] = useState<PlaydateProposal | null>(null);
+
+  useEffect(() => {
+    if (!proposalId) return;
+    return subscribeToProposal(proposalId, setProposal);
+  }, [proposalId]);
 
   // Computed in the viewer's own local time (not the server's) so
   // "morning/afternoon/evening" lines up with how a sitter classified
@@ -65,14 +81,18 @@ export default function FindSitter() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      const assignedUid = proposal?.sitter?.uid;
       fetchRecommendedSitters(slot)
         .then((result) => {
           // When we know the exact slot, only show sitters who've actually
           // marked themselves available for it — otherwise "availableForSlot"
           // means nothing (every sitter comes back false with no slot to
           // check against), so the filter only applies when there's a real
-          // slot to filter by.
-          if (!cancelled) setSitters(slot ? result.filter((s) => s.availableForSlot) : result);
+          // slot to filter by. The currently-assigned sitter is always kept
+          // regardless, so their pending/confirmed/declined status never
+          // silently disappears just because their availability record
+          // doesn't happen to line up.
+          if (!cancelled) setSitters(slot ? result.filter((s) => s.availableForSlot || s.uid === assignedUid) : result);
         })
         .catch((err: any) => {
           if (!cancelled) setError(err?.message ?? err?.code ?? 'unknown error');
@@ -81,7 +101,7 @@ export default function FindSitter() {
         cancelled = true;
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [slot?.dateKey, slot?.period])
+    }, [slot?.dateKey, slot?.period, proposal?.sitter?.uid])
   );
 
   return (
@@ -112,9 +132,34 @@ export default function FindSitter() {
           />
         ) : null}
 
-        {sitters?.map((sitter) => (
+        {sitters?.map((sitter) => {
+          const assignedStatus = proposal?.sitter?.uid === sitter.uid ? proposal!.sitter!.confirmationStatus : null;
+          return (
           <View key={sitter.uid} style={styles.card}>
-            {slot ? (
+            {assignedStatus ? (
+              <View
+                style={[
+                  styles.availabilityBadge,
+                  assignedStatus === 'confirmed' && styles.availabilityBadgeAvailable,
+                  assignedStatus === 'declined' && styles.availabilityBadgeDeclined,
+                ]}
+              >
+                <Ionicons
+                  name={assignedStatus === 'confirmed' ? 'checkmark-circle' : assignedStatus === 'declined' ? 'close-circle' : 'time-outline'}
+                  size={14}
+                  color={assignedStatus === 'confirmed' ? colors.positive : assignedStatus === 'declined' ? colors.error : colors.warning}
+                />
+                <Text
+                  style={[
+                    styles.availabilityBadgeText,
+                    assignedStatus === 'confirmed' && styles.availabilityBadgeTextAvailable,
+                    assignedStatus === 'declined' && styles.availabilityBadgeTextDeclined,
+                  ]}
+                >
+                  {SITTER_STATUS_LABEL[assignedStatus]}
+                </Text>
+              </View>
+            ) : slot ? (
               <View style={[styles.availabilityBadge, styles.availabilityBadgeAvailable]}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.positive} />
                 <Text style={[styles.availabilityBadgeText, styles.availabilityBadgeTextAvailable]}>Open for this playdate</Text>
@@ -182,7 +227,7 @@ export default function FindSitter() {
               </Text>
             </View>
 
-            {proposalId ? (
+            {proposalId && assignedStatus !== 'pending' && assignedStatus !== 'confirmed' ? (
               <View style={styles.addRow}>
                 <Pressable
                   style={[styles.addButton, addingUid === sitter.uid && styles.addButtonDisabled]}
@@ -190,13 +235,14 @@ export default function FindSitter() {
                   disabled={addingUid !== null}
                 >
                   <Text style={styles.addButtonText}>
-                    {addingUid === sitter.uid ? 'Adding…' : 'Add to Playdate'}
+                    {addingUid === sitter.uid ? 'Adding…' : assignedStatus === 'declined' ? 'Invite again' : 'Add to Playdate'}
                   </Text>
                 </Pressable>
               </View>
             ) : null}
           </View>
-        ))}
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -269,6 +315,9 @@ const styles = StyleSheet.create({
   availabilityBadgeAvailable: {
     backgroundColor: colors.positiveMuted,
   },
+  availabilityBadgeDeclined: {
+    backgroundColor: colors.errorMuted,
+  },
   availabilityBadgeText: {
     fontSize: 11,
     fontWeight: '700',
@@ -276,6 +325,9 @@ const styles = StyleSheet.create({
   },
   availabilityBadgeTextAvailable: {
     color: colors.positive,
+  },
+  availabilityBadgeTextDeclined: {
+    color: colors.error,
   },
   cardHeader: {
     flexDirection: 'row',

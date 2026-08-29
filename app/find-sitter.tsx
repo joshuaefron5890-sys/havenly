@@ -38,7 +38,7 @@ export default function FindSitter() {
       await addSitterToPlaydate(proposalId, sitter);
       router.back();
     } catch (err: any) {
-      showAlert('Couldn’t add that sitter', err?.message ?? err?.code ?? 'Please try again.');
+      showAlert('Couldn’t add them to the playdate', err?.message ?? err?.code ?? 'Please try again.');
       setAddingUid(null);
     }
   };
@@ -77,18 +77,18 @@ export default function FindSitter() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
           {slot
-            ? 'Experienced sitters near you who’ve confirmed they’re free for this playdate, matched to your kids’ experience.'
-            : 'Experienced sitters near you, sorted by how much of their experience matches your kids’.'}
+            ? 'Experienced help near you who’ve confirmed they’re free for this playdate, matched to your kids’ experience.'
+            : 'Experienced help near you, sorted by how much of their experience matches your kids’.'}
         </Text>
 
-        {error ? <EmptyState text={`Couldn’t load sitters (${error}).`} /> : null}
+        {error ? <EmptyState text={`Couldn’t load results (${error}).`} /> : null}
         {sitters === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
         {sitters?.length === 0 ? (
           <EmptyState
             text={
               slot
-                ? 'No sitters have confirmed availability for this playdate yet — check back soon.'
-                : 'No experienced sitters in your area yet — check back soon.'
+                ? 'No one has confirmed availability for this playdate yet — check back soon.'
+                : 'No experienced help in your area yet — check back soon.'
             }
           />
         ) : null}

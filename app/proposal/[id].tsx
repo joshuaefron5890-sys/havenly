@@ -313,7 +313,7 @@ export default function ProposalDetail() {
 
         {SITTERS_ENABLED && proposal.status === 'accepted' && proposal.sitter ? (
           <View style={styles.card}>
-            <Text style={styles.cardLabel}>SITTER</Text>
+            <Text style={styles.cardLabel}>HELP FOR THIS PLAYDATE</Text>
             <View style={styles.assignedSitterRow}>
               <Photo
                 source={proposal.sitter.photoUrl ? { uri: proposal.sitter.photoUrl } : undefined}
@@ -360,7 +360,7 @@ export default function ProposalDetail() {
               </View>
             )}
             <Pressable onPress={() => router.push(`/find-sitter?proposalId=${id}&date=${encodeURIComponent(proposal.date)}`)}>
-              <Text style={styles.changeSitterLink}>Change sitter</Text>
+              <Text style={styles.changeSitterLink}>Change</Text>
             </Pressable>
           </View>
         ) : SITTERS_ENABLED && proposal.status === 'accepted' ? (

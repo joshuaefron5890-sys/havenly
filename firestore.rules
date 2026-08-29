@@ -220,7 +220,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && (
-          (request.resource.data.clusterId == 'bay-area' && request.auth.token.email in ['joshuaefron5890@gmail.com'])
+          (request.resource.data.clusterId == 'bay-area' && request.auth.token.email in ['admin@haven-ly.com'])
         )
         && request.resource.data.postedByUid == request.auth.uid
         && request.resource.data.text is string

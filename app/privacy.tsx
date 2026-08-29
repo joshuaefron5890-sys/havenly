@@ -16,7 +16,7 @@ import { colors } from '../theme/colors';
 // EFFECTIVE_DATE below and the collection lists in SECTIONS should track
 // reality, not the other way around.
 const EFFECTIVE_DATE = 'August 29, 2026';
-const CONTACT_EMAIL = 'joshuaefron5890@gmail.com';
+const CONTACT_EMAIL = 'admin@haven-ly.com';
 
 type Section = { heading: string; paragraphs: string[]; bullets?: string[] };
 

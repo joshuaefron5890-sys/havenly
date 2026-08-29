@@ -72,14 +72,14 @@ export default function FindSitter() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
           {slot
-            ? 'Vetted sitters near you with open slots for this playdate sort first, matched to your kids’ experience.'
-            : 'Vetted sitters near you, sorted by how much of their experience matches your kids’.'}
+            ? 'Experienced sitters near you with open slots for this playdate sort first, matched to your kids’ experience.'
+            : 'Experienced sitters near you, sorted by how much of their experience matches your kids’.'}
         </Text>
 
         {error ? <EmptyState text={`Couldn’t load sitters (${error}).`} /> : null}
         {sitters === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
         {sitters?.length === 0 ? (
-          <EmptyState text="No vetted sitters in your area yet — check back soon." />
+          <EmptyState text="No experienced sitters in your area yet — check back soon." />
         ) : null}
 
         {sitters?.map((sitter) => (

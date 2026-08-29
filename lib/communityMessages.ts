@@ -1,4 +1,4 @@
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { getMyClusterId } from './clusterContext';
 
@@ -18,23 +18,23 @@ export function subscribeToCommunityMessages(callback: (messages: CommunityMessa
   if (!db) {
     return () => {};
   }
-  const q = query(
-    collection(db, 'communityMessages'),
-    where('clusterId', '==', getMyClusterId()),
-    orderBy('createdAt', 'asc')
-  );
+  // No orderBy here on purpose — combining it with the where() below would
+  // need a composite index (clusterId + createdAt) that doesn't exist, and
+  // the query fails outright until one is created. Sorted client-side
+  // instead, same as every other multi-condition query in this codebase.
+  const q = query(collection(db, 'communityMessages'), where('clusterId', '==', getMyClusterId()));
   return onSnapshot(q, (snap) => {
-    callback(
-      snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          text: typeof data.text === 'string' ? data.text : '',
-          postedByName: typeof data.postedByName === 'string' ? data.postedByName : 'Haven.ly',
-          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
-        };
-      })
-    );
+    const messages = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        text: typeof data.text === 'string' ? data.text : '',
+        postedByName: typeof data.postedByName === 'string' ? data.postedByName : 'Haven.ly',
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
+      };
+    });
+    messages.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
+    callback(messages);
   });
 }
 

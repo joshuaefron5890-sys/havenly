@@ -343,8 +343,8 @@ export default function ProposalDetail() {
             </View>
             <Text style={styles.sitterPromoTitle}>Want to actually enjoy this one?</Text>
             <Text style={styles.sitterPromoText}>
-              Bring in a vetted local sitter with an open slot for this exact time, so you can relax and connect
-              with the other parents instead of watching the kids.
+              Bring in an experienced local sitter with an open slot for this exact time, so you can relax and
+              connect with the other parents instead of watching the kids.
             </Text>
             <Pressable
               style={styles.sitterPromoButton}

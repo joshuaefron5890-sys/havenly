@@ -804,6 +804,10 @@ exports.notifyOnSitterConfirmation = onDocumentUpdated(
     const sitterName = typeof after.sitter.name === 'string' ? after.sitter.name : 'Your sitter';
     const verb = afterStatus === 'confirmed' ? 'confirmed' : 'declined';
     const proposalUrl = `${APP_BASE_URL}/proposal/${event.params.proposalId}`;
+    // A sitter has no familyUid — app/proposal/[id].tsx assumes family
+    // auth context and breaks for them, so their links go to their own
+    // Playdates screen instead, not the family-facing proposal detail.
+    const sitterPlaydatesUrl = `${APP_BASE_URL}/playdates`;
     const familyUids = [after.fromUid, after.toUid].filter((uid) => typeof uid === 'string' && uid);
 
     const familyTitle = `${sitterName} ${verb} the playdate`;
@@ -816,7 +820,7 @@ exports.notifyOnSitterConfirmation = onDocumentUpdated(
     const sitterText = [
       `You ${verb} this playdate on Haven.ly${dateLabel ? `: ${dateLabel}` : '.'}`,
       '',
-      `View details: ${proposalUrl}`,
+      `View your playdates: ${sitterPlaydatesUrl}`,
     ].join('\n');
 
     await Promise.all([
@@ -828,7 +832,7 @@ exports.notifyOnSitterConfirmation = onDocumentUpdated(
       ]),
       sendNotificationEmail(sitterUid, sitterTitle, sitterText),
       pushTokensForFamily(sitterUid).then((tokens) =>
-        sendExpoPush(tokens, sitterTitle, dateLabel || 'Tap to view.', { url: `/proposal/${event.params.proposalId}` })
+        sendExpoPush(tokens, sitterTitle, dateLabel || 'Tap to view.', { url: '/playdates' })
       ),
     ]);
 
@@ -853,6 +857,47 @@ exports.notifyOnSitterConfirmation = onDocumentUpdated(
     } catch (err) {
       console.error(`Could not create playdate calendar event for sitter ${sitterUid}`, err);
     }
+  }
+);
+
+// Fires when a sitter is newly assigned to an accepted playdate
+// (lib/playdateProposals.ts's addSitterToPlaydate, called from
+// app/find-sitter.tsx's "Add to Playdate") — notifies them by email and
+// push that a family is waiting on their confirmation. Fires on a genuine
+// new-or-different assignment: a brand-new sitter.uid, a reassignment to a
+// different sitter (app/proposal/[id].tsx's "Change sitter"), or the same
+// sitter re-added after they'd already confirmed/declined (their status
+// resets to 'pending', so they need to be told again) — but not a no-op
+// re-save of the same still-pending sitter.
+exports.notifyOnSitterAssigned = onDocumentUpdated(
+  { document: 'playdateProposals/{proposalId}', secrets: [resendApiKey] },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!after?.sitter || after.sitter.confirmationStatus !== 'pending') return;
+
+    const sitterUid = after.sitter.uid;
+    if (typeof sitterUid !== 'string' || !sitterUid) return;
+
+    const sameSitterStillPending = before?.sitter?.uid === sitterUid && before?.sitter?.confirmationStatus === 'pending';
+    if (sameSitterStillPending) return;
+
+    const dateLabel = typeof after.dateLabel === 'string' ? after.dateLabel : '';
+    const venue = typeof after.venue === 'string' ? after.venue : '';
+    const details = [dateLabel, venue].filter(Boolean).join(' at ');
+    const sitterPlaydatesUrl = `${APP_BASE_URL}/playdates`;
+
+    const title = 'New playdate request';
+    const text = [
+      `A family on Haven.ly would like you to sit for a playdate${details ? `: ${details}` : '.'}`,
+      '',
+      `Confirm or decline: ${sitterPlaydatesUrl}`,
+    ].join('\n');
+
+    await Promise.all([
+      sendNotificationEmail(sitterUid, title, text),
+      pushTokensForFamily(sitterUid).then((tokens) => sendExpoPush(tokens, title, details || 'Tap to respond.', { url: '/playdates' })),
+    ]);
   }
 );
 

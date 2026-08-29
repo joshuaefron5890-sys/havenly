@@ -36,10 +36,27 @@ const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
 };
 
 const SITTER_CONFIRM_LABEL: Record<NonNullable<PlaydateProposal['sitter']>['confirmationStatus'], string> = {
-  pending: 'Awaiting confirmation',
+  pending: 'Pending confirmation',
   confirmed: 'Confirmed',
   declined: 'Declined',
 };
+
+// A sitter's direct phone/email only appears once the playdate has
+// actually arrived — comparing calendar dates (not exact timestamps) so
+// it's visible any time that day, not just after the exact start time.
+// Before then, "Change sitter" already covers the one thing a family
+// might otherwise need contact info for (deciding whether to keep them).
+function isDayOfOrAfter(dateIso: string): boolean {
+  const playdateDay = new Date(dateIso);
+  if (Number.isNaN(playdateDay.getTime())) return true;
+  const today = new Date();
+  return (
+    playdateDay.getFullYear() < today.getFullYear() ||
+    (playdateDay.getFullYear() === today.getFullYear() &&
+      (playdateDay.getMonth() < today.getMonth() ||
+        (playdateDay.getMonth() === today.getMonth() && playdateDay.getDate() <= today.getDate())))
+  );
+}
 
 // A compact "who's coming" card — used for both sides of the playdate, side
 // by side. Takes either a SuggestedFamily (the signed-in user's own family,
@@ -321,20 +338,27 @@ export default function ProposalDetail() {
                 <Text style={styles.sitterConfirmPillText}>{SITTER_CONFIRM_LABEL[proposal.sitter.confirmationStatus]}</Text>
               </View>
             </View>
-            <View style={styles.contactRow}>
-              {proposal.sitter.phone ? (
-                <View style={styles.contactItem}>
-                  <Ionicons name="call-outline" size={13} color={colors.accent} />
-                  <Text style={styles.contactText}>{proposal.sitter.phone}</Text>
-                </View>
-              ) : null}
-              {proposal.sitter.email ? (
-                <View style={styles.contactItem}>
-                  <Ionicons name="mail-outline" size={13} color={colors.accent} />
-                  <Text style={styles.contactText}>{proposal.sitter.email}</Text>
-                </View>
-              ) : null}
-            </View>
+            {isDayOfOrAfter(proposal.date) ? (
+              <View style={styles.contactRow}>
+                {proposal.sitter.phone ? (
+                  <View style={styles.contactItem}>
+                    <Ionicons name="call-outline" size={13} color={colors.accent} />
+                    <Text style={styles.contactText}>{proposal.sitter.phone}</Text>
+                  </View>
+                ) : null}
+                {proposal.sitter.email ? (
+                  <View style={styles.contactItem}>
+                    <Ionicons name="mail-outline" size={13} color={colors.accent} />
+                    <Text style={styles.contactText}>{proposal.sitter.email}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.contactLocked}>
+                <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+                <Text style={styles.contactLockedText}>Contact info unlocks the day of the playdate</Text>
+              </View>
+            )}
             <Pressable onPress={() => router.push(`/find-sitter?proposalId=${id}&date=${encodeURIComponent(proposal.date)}`)}>
               <Text style={styles.changeSitterLink}>Change sitter</Text>
             </Pressable>
@@ -720,6 +744,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.accent,
+  },
+  contactLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  contactLockedText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textMuted,
   },
   changeSitterLink: {
     fontSize: 12,

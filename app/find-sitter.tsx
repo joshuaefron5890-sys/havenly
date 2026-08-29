@@ -151,19 +151,11 @@ export default function FindSitter() {
               </View>
             ) : null}
 
-            <View style={styles.contactRow}>
-              {sitter.phone ? (
-                <View style={styles.contactItem}>
-                  <Ionicons name="call-outline" size={14} color={colors.accent} />
-                  <Text style={styles.contactText}>{sitter.phone}</Text>
-                </View>
-              ) : null}
-              {sitter.email ? (
-                <View style={styles.contactItem}>
-                  <Ionicons name="mail-outline" size={14} color={colors.accent} />
-                  <Text style={styles.contactText}>{sitter.email}</Text>
-                </View>
-              ) : null}
+            <View style={styles.contactLocked}>
+              <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+              <Text style={styles.contactLockedText}>
+                Contact info unlocks once you add them to the playdate, starting the day of
+              </Text>
             </View>
 
             {proposalId ? (
@@ -345,24 +337,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.accent,
   },
-  contactRow: {
+  contactLocked: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
+    alignItems: 'center',
+    gap: 6,
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  contactText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.accent,
+  contactLockedText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.textMuted,
   },
   addRow: {
     flexDirection: 'row',

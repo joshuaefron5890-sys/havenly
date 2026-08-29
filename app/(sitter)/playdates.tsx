@@ -8,7 +8,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
 import { showAlert } from '../../lib/alert';
 import { auth } from '../../lib/firebase';
-import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
+import { familyDisplayName, familyPhoto, fetchPlaydateFamilies, SitterVisibleFamily } from '../../lib/families';
 import { requestGoogleCalendarAuthCode } from '../../lib/googleIdentity';
 import {
   fetchSitterConfirmedPlaydates,
@@ -26,8 +26,12 @@ import { images } from '../../theme/images';
 // either family) and no tap-through to a family's public profile (that
 // screen assumes family auth context the same way /proposal/[id] used to,
 // per app/find-sitter.tsx's own notifyOnSitterConfirmation comment — not
-// worth risking the same class of bug here for a nice-to-have).
-function FamilyBlock({ family, fallbackLabel }: { family: SuggestedFamily | undefined; fallbackLabel: string }) {
+// worth risking the same class of bug here for a nice-to-have). Does show
+// each kid's neurodivergence tags, though, unlike FamilyMini — a sitter
+// actually caring for these kids needs that context to support them
+// properly (see functions/index.js's getPlaydateFamilies for why this is
+// safe to show here specifically, but not on family-to-family screens).
+function FamilyBlock({ family, fallbackLabel }: { family: SitterVisibleFamily | undefined; fallbackLabel: string }) {
   const kids = (family?.children ?? []).filter((c) => c.name);
   return (
     <View style={styles.familyBlock}>
@@ -46,11 +50,22 @@ function FamilyBlock({ family, fallbackLabel }: { family: SuggestedFamily | unde
             {family.city}, {family.state}
           </Text>
         ) : null}
-        {kids.length ? (
-          <Text style={styles.familyKids} numberOfLines={2}>
-            {kids.map((k) => (k.age ? `${k.name}, ${k.age}` : k.name)).join(' · ')}
-          </Text>
-        ) : null}
+        {kids.map((kid, i) => (
+          <View key={`${kid.name}-${i}`} style={styles.kidBlock}>
+            <Text style={styles.familyKids} numberOfLines={1}>
+              {kid.age ? `${kid.name}, ${kid.age}` : kid.name}
+            </Text>
+            {kid.neurodivergence.length ? (
+              <View style={styles.diagnosisRow}>
+                {kid.neurodivergence.map((tag) => (
+                  <View key={tag} style={styles.diagnosisTag}>
+                    <Text style={styles.diagnosisTagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -61,18 +76,21 @@ export default function SitterPlaydates() {
   const [profile, setProfile] = useState<SitterProfile | null>(null);
   const [requests, setRequests] = useState<PlaydateProposal[]>([]);
   const [confirmed, setConfirmed] = useState<PlaydateProposal[]>([]);
-  const [families, setFamilies] = useState<Map<string, SuggestedFamily>>(new Map());
+  const [families, setFamilies] = useState<Map<string, SitterVisibleFamily>>(new Map());
   const [respondingId, setRespondingId] = useState<string | null>(null);
 
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
   // Batched into one call per load rather than one per card — same
-  // reasoning as lib/families.ts's own fetchContributorPhotos.
+  // reasoning as lib/families.ts's own fetchContributorPhotos. Passes
+  // proposal ids, not family uids — getPlaydateFamilies checks per id that
+  // the caller is actually the assigned sitter before including that
+  // proposal's families at all.
   const loadFamilies = async (proposals: PlaydateProposal[]) => {
-    const uids = [...new Set(proposals.flatMap((p) => [p.fromUid, p.toUid]).filter(Boolean))];
-    if (!uids.length) return;
-    const result = await fetchFamiliesByUids(uids);
+    const proposalIds = proposals.map((p) => p.id);
+    if (!proposalIds.length) return;
+    const result = await fetchPlaydateFamilies(proposalIds);
     setFamilies((prev) => {
       const next = new Map(prev);
       result.forEach((f) => next.set(f.uid, f));
@@ -447,10 +465,29 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 1,
   },
+  kidBlock: {
+    marginTop: 4,
+  },
   familyKids: {
     fontSize: 11,
     color: colors.textMuted,
-    marginTop: 2,
+  },
+  diagnosisRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 3,
+  },
+  diagnosisTag: {
+    backgroundColor: colors.accentMuted,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  diagnosisTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.accent,
   },
   playdateActions: {
     flexDirection: 'row',

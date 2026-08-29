@@ -1248,6 +1248,75 @@ exports.getFamiliesByUids = onCall(async (request) => {
   return { families };
 });
 
+// Same field selection as toPublicFamily, plus each child's neurodivergence
+// tags — deliberately NOT included in toPublicFamily (which powers
+// family-to-family Discover/browsing, where a raw diagnosis list is more
+// than a stranger needs; getFamilyProfile only ever shares the
+// *intersection* with the viewer's own kids for that reason). A sitter
+// who's actually been assigned to watch these specific kids genuinely
+// needs to know what they're supporting, though, so this is a separate,
+// deliberately narrower-scoped function — see getPlaydateFamilies below,
+// which is the only caller and only ever returns this for a proposal the
+// requester is literally the assigned sitter on.
+function toSitterVisibleFamily(uid, data) {
+  return {
+    uid,
+    firstName: typeof data.firstName === 'string' ? data.firstName : '',
+    lastName: typeof data.lastName === 'string' ? data.lastName : '',
+    familyPhotoUrl: typeof data.familyPhotoUrl === 'string' ? data.familyPhotoUrl : null,
+    city: typeof data.city === 'string' ? data.city : '',
+    state: typeof data.state === 'string' ? data.state : '',
+    children: Array.isArray(data.children)
+      ? data.children.map((c) => ({
+          name: typeof c?.name === 'string' ? c.name : '',
+          age: typeof c?.age === 'string' ? c.age : '',
+          grade: typeof c?.grade === 'string' ? c.grade : '',
+          photoUrl: typeof c?.photoUrl === 'string' ? c.photoUrl : null,
+          neurodivergence: Array.isArray(c?.neurodivergence) ? c.neurodivergence.filter((n) => typeof n === 'string') : [],
+        }))
+      : [],
+  };
+}
+
+// Powers app/(sitter)/playdates.tsx's family/kid detail cards. Takes a
+// batch of proposal ids (one call for every card on screen, same
+// batching reasoning as getFamiliesByUids) and, for each one, checks that
+// the CALLER is the assigned sitter on it before including either
+// family's uid in what gets fetched — a sitter only ever sees this level
+// of detail for a playdate they've actually been asked to help with, not
+// by browsing. Silently skips any proposal id that doesn't check out
+// rather than erroring the whole batch, since a stale/removed assignment
+// shouldn't break the rest of the list.
+exports.getPlaydateFamilies = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const proposalIds = Array.isArray(request.data?.proposalIds)
+    ? request.data.proposalIds.filter((id) => typeof id === 'string').slice(0, 50)
+    : [];
+  if (!proposalIds.length) {
+    return { families: [] };
+  }
+
+  const proposalSnaps = await Promise.all(
+    proposalIds.map((id) => admin.firestore().collection('playdateProposals').doc(id).get())
+  );
+  const uids = new Set();
+  for (const snap of proposalSnaps) {
+    const data = snap.data();
+    if (data?.sitter?.uid !== request.auth.uid) continue;
+    if (typeof data.fromUid === 'string') uids.add(data.fromUid);
+    if (typeof data.toUid === 'string') uids.add(data.toUid);
+  }
+  if (!uids.size) {
+    return { families: [] };
+  }
+
+  const userSnaps = await Promise.all([...uids].map((uid) => admin.firestore().collection('users').doc(uid).get()));
+  const families = userSnaps.filter((snap) => snap.exists).map((snap) => toSitterVisibleFamily(snap.id, snap.data()));
+  return { families };
+});
+
 // Same reasoning as toPublicFamily above — a sitter's full sitters/{uid}
 // doc is only ever readable by the sitter themselves (see firestore.rules);
 // every other family sees only this subset, and only ever for a sitter

@@ -51,6 +51,37 @@ export async function fetchFamiliesByUids(uids: string[]): Promise<SuggestedFami
   return result.data.families;
 }
 
+// Sitter-only, richer than SuggestedFamily — each child also carries its
+// neurodivergence tags (see functions/index.js's toSitterVisibleFamily for
+// why this is a separate, more sensitive shape rather than just adding the
+// field to SuggestedFamily everywhere).
+export type SitterVisibleFamily = {
+  uid: string;
+  firstName: string;
+  lastName: string;
+  familyPhotoUrl: string | null;
+  city: string;
+  state: string;
+  children: (SuggestedFamilyChild & { neurodivergence: string[] })[];
+};
+
+// Powers app/(sitter)/playdates.tsx's family/kid detail cards — batched
+// across every request/confirmed proposal shown at once (functions/
+// index.js's getPlaydateFamilies only ever returns a family for a
+// proposal the caller is the actual assigned sitter on, checked per id).
+export async function fetchPlaydateFamilies(proposalIds: string[]): Promise<SitterVisibleFamily[]> {
+  if (!functions) {
+    throw new Error('not-configured');
+  }
+  if (!proposalIds.length) return [];
+  const call = httpsCallable<{ proposalIds: string[] }, { families: SitterVisibleFamily[] }>(
+    functions,
+    'getPlaydateFamilies'
+  );
+  const result = await call({ proposalIds });
+  return result.data.families;
+}
+
 export function familyPhoto(family: {
   familyPhotoUrl: string | null;
   children: SuggestedFamilyChild[];

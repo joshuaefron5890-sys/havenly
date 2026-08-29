@@ -180,6 +180,16 @@ export async function addSitterToPlaydate(proposalId: string, sitter: Recommende
   await setDoc(doc(db, 'playdateProposals', proposalId), { sitter: snapshot }, { merge: true });
 }
 
+// Either family can remove the assigned sitter (e.g. to pick a different
+// one later) — enforced again server-side in firestore.rules, pinned to
+// just the `sitter` field going to null. functions/index.js's
+// notifyOnSitterRemoved reacts to this to tell the sitter and clean up any
+// Google Calendar event already created for them.
+export async function removeSitterFromPlaydate(proposalId: string): Promise<void> {
+  if (!db) throw new Error('not-signed-in');
+  await setDoc(doc(db, 'playdateProposals', proposalId), { sitter: null }, { merge: true });
+}
+
 // Only the assigned sitter can respond, via a dot-path update so
 // firestore.rules can pin the diff to just `sitter` — enforced again
 // server-side (functions/index.js's notifyOnSitterConfirmation reacts to

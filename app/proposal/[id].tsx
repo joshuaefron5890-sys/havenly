@@ -9,7 +9,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
-import { showAlert } from '../../lib/alert';
+import { showAlert, showConfirm } from '../../lib/alert';
 import {
   familyDisplayName,
   familyPhoto,
@@ -21,7 +21,13 @@ import {
 } from '../../lib/families';
 import { addPlaydateToGoogleCalendar } from '../../lib/googleCalendar';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
-import { cancelProposal, PlaydateProposal, respondToProposal, subscribeToProposal } from '../../lib/playdateProposals';
+import {
+  cancelProposal,
+  PlaydateProposal,
+  removeSitterFromPlaydate,
+  respondToProposal,
+  subscribeToProposal,
+} from '../../lib/playdateProposals';
 import { SITTERS_ENABLED } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
@@ -125,6 +131,7 @@ export default function ProposalDetail() {
   const [myFamily, setMyFamily] = useState<SuggestedFamily | null>(null);
   const [responding, setResponding] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [removingSitter, setRemovingSitter] = useState(false);
 
   // A signed-out visitor (e.g. opening an emailed link cold, in a private
   // window) would otherwise spin forever below: subscribeToProposal's
@@ -224,6 +231,27 @@ export default function ProposalDetail() {
       showAlert('Couldn’t cancel this playdate', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setCanceling(false);
+    }
+  };
+
+  // Confirm first, since this can't be undone from here — the family would
+  // need to go back through "Find Help" and pick someone again (possibly
+  // the same sitter) if they change their mind.
+  const handleCancelSitter = async () => {
+    if (!id || removingSitter) return;
+    const confirmed = await showConfirm(
+      'Cancel this sitter?',
+      'They’ll be notified. You can add a sitter again later if you want.',
+      'Cancel sitter'
+    );
+    if (!confirmed) return;
+    setRemovingSitter(true);
+    try {
+      await removeSitterFromPlaydate(id);
+    } catch (err: any) {
+      showAlert('Couldn’t cancel the sitter', err?.message ?? err?.code ?? 'Please try again.');
+    } finally {
+      setRemovingSitter(false);
     }
   };
 
@@ -359,8 +387,8 @@ export default function ProposalDetail() {
                 <Text style={styles.contactLockedText}>Contact info unlocks the day of the playdate</Text>
               </View>
             )}
-            <Pressable onPress={() => router.push(`/find-sitter?proposalId=${id}&date=${encodeURIComponent(proposal.date)}`)}>
-              <Text style={styles.changeSitterLink}>Change</Text>
+            <Pressable onPress={handleCancelSitter} disabled={removingSitter}>
+              <Text style={styles.changeSitterLink}>{removingSitter ? 'Canceling…' : 'Cancel'}</Text>
             </Pressable>
           </View>
         ) : SITTERS_ENABLED && proposal.status === 'accepted' ? (

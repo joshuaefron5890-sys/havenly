@@ -901,6 +901,55 @@ exports.notifyOnSitterAssigned = onDocumentUpdated(
   }
 );
 
+// Fires when a family cancels an already-assigned sitter
+// (lib/playdateProposals.ts's removeSitterFromPlaydate, called from
+// app/proposal/[id].tsx's "Cancel" confirmation) — tells the removed
+// sitter so their pending/confirmed request doesn't just silently vanish,
+// and cleans up any Google Calendar event notifyOnSitterConfirmation
+// already created for them (deleteGoogleCalendarEvent's deterministic id +
+// 404-is-success handling makes this safe even if no event ever existed).
+exports.notifyOnSitterRemoved = onDocumentUpdated(
+  { document: 'playdateProposals/{proposalId}', secrets: [resendApiKey, googleClientSecret] },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before?.sitter || after?.sitter) return;
+
+    const sitterUid = before.sitter.uid;
+    if (typeof sitterUid !== 'string' || !sitterUid) return;
+
+    const dateLabel = typeof before.dateLabel === 'string' ? before.dateLabel : '';
+    const sitterPlaydatesUrl = `${APP_BASE_URL}/playdates`;
+
+    const title = 'Playdate request canceled';
+    const text = [
+      `A family on Haven.ly canceled your sitter assignment for a playdate${dateLabel ? `: ${dateLabel}` : '.'}`,
+      '',
+      `View your playdates: ${sitterPlaydatesUrl}`,
+    ].join('\n');
+
+    await Promise.all([
+      sendNotificationEmail(sitterUid, title, text),
+      pushTokensForFamily(sitterUid).then((tokens) =>
+        sendExpoPush(tokens, title, dateLabel || 'Tap to view.', { url: '/playdates' })
+      ),
+    ]);
+
+    try {
+      const sitterSnap = await admin.firestore().collection('sitters').doc(sitterUid).get();
+      const sitterData = sitterSnap.data();
+      if (!sitterData?.googleCalendarSyncEnabled || !sitterData?.googleCalendar?.refreshToken) return;
+      await deleteGoogleCalendarEvent(
+        sitterData.googleCalendar.refreshToken,
+        googleClientSecret.value(),
+        googleEventIdFor(event.params.proposalId, sitterUid)
+      );
+    } catch (err) {
+      console.error(`Could not remove playdate calendar event for sitter ${sitterUid}`, err);
+    }
+  }
+);
+
 // Fires on every new message — skips a playdate-proposal message (the
 // trigger above already emails that one) and an empty/system message.
 // Recipient is derived from the parent conversation's participantUids,

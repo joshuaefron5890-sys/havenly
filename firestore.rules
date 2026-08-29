@@ -162,6 +162,17 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sitter'])
         && request.resource.data.sitter.uid is string
         && request.resource.data.sitter.name is string;
+      // Either family can remove an already-assigned sitter (the "Cancel"
+      // action on app/proposal/[id].tsx's assigned-sitter card) so they can
+      // add a different one later — separate clause from the add/replace
+      // one above since that one requires sitter.uid to be a string, which
+      // a null-clearing write would fail.
+      allow update: if request.auth != null
+        && resource != null
+        && resource.data.status == 'accepted'
+        && myFamilyUid() in resource.data.participantUids
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sitter'])
+        && request.resource.data.sitter == null;
       // The assigned sitter confirming or declining their own assignment —
       // request.resource.data.sitter.uid == resource.data.sitter.uid stops
       // them from reassigning the slot to themselves under a different

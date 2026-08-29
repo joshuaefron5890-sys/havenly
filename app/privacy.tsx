@@ -15,7 +15,7 @@ import { colors } from '../theme/colors';
 // Update this whenever what the app actually collects/shares changes —
 // EFFECTIVE_DATE below and the collection lists in SECTIONS should track
 // reality, not the other way around.
-const EFFECTIVE_DATE = 'August 26, 2026';
+const EFFECTIVE_DATE = 'August 29, 2026';
 const CONTACT_EMAIL = 'joshuaefron5890@gmail.com';
 
 type Section = { heading: string; paragraphs: string[]; bullets?: string[] };
@@ -38,7 +38,7 @@ const SECTIONS: Section[] = [
       'Preferences: play style, interests, goals, personality, and availability, used to power matching and suggested playdate times.',
       'Messages and playdate activity: messages you send to other families, playdate proposals, and posts you make to community boards.',
       'Sitter profiles (if you register as a sitter): name, contact information, bio, photo, credentials, and background-check status.',
-      'Calendar availability (only if you connect Google Calendar): we receive free/busy time ranges, not the titles, descriptions, or attendees of your events.',
+      'Calendar availability (only if you connect Google Calendar): we receive free/busy time ranges, not the titles, descriptions, or attendees of your events. If you’re a sitter and choose to let Haven.ly add your confirmed playdates to your calendar, we also create calendar events on your behalf for that purpose only.',
       'A device push-notification token, so we can deliver notifications about messages and playdate activity.',
     ],
   },
@@ -59,9 +59,18 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    heading: 'Our use of Google user data',
+    paragraphs: [
+      'If you connect Google Calendar, Haven.ly requests access to your free/busy availability so we can flag scheduling conflicts and suggest playdate times — never the titles, descriptions, locations, or attendees of your actual events. Sitters may separately choose to grant Haven.ly permission to create calendar events for their own confirmed playdates.',
+      'If you sign in with Google, we receive the name, email address, and profile photo Google shares as part of that sign-in.',
+      'We use this information solely to provide the Haven.ly features described in this policy — matching, scheduling, and account sign-in — and never to serve ads or sell it. It’s shared only with the service providers listed above, to the extent needed to operate those features, and is retained only as long as your account and the relevant connection stay active; disconnecting Google Calendar (see “Your choices” below) or deleting your account stops any further access and removes what we’ve stored.',
+      'Haven.ly’s use and transfer of information received from Google APIs to any other app will adhere to the Google API Services User Data Policy, including the Limited Use requirements.',
+    ],
+  },
+  {
     heading: 'Your choices',
     paragraphs: [
-      'You can review and edit your family, child, and preference information at any time from your Profile. You can disconnect Google Calendar from Profile as well.',
+      'You can review and edit your family, child, and preference information at any time from your Profile. You can disconnect Google Calendar from Profile as well; sitters can do the same from their availability screen.',
       'You can permanently delete your account from Profile → Delete account. This removes your profile and related records and deletes your sign-in credentials; messages, playdate proposals, and community posts you’ve already sent remain visible to the other people in those conversations, the same way most messaging apps handle a deleted account’s message history.',
     ],
   },

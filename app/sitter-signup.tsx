@@ -14,7 +14,7 @@ import { ZipCodeField } from '../components/ZipCodeField';
 import { useAuth } from '../contexts/AuthContext';
 import { auth, firebaseConfigured } from '../lib/firebase';
 import { NEURODIVERGENCE_OPTIONS } from '../lib/neurodivergence';
-import { pickAndUploadDocument, pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
+import { extensionFromDocumentAsset, pickDocument, pickImageFile, pickNativePhoto, PickedDocument, uploadPhotoBlob } from '../lib/photoUpload';
 import { useIsDesktop } from '../lib/responsive';
 import {
   docExtensionLabel,
@@ -53,9 +53,15 @@ export default function SitterSignup() {
   const [profile, setProfile] = useState<SitterProfile>(emptySitterProfile);
   const [password, setPassword] = useState('');
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Picked locally but not yet uploaded — see the big comment on
+  // handleSubmit below for why upload is deferred to submit time instead
+  // of happening the moment something's picked.
+  const [pendingPhotoBlob, setPendingPhotoBlob] = useState<Blob | null>(null);
+  const [pendingPhotoPreviewUri, setPendingPhotoPreviewUri] = useState<string | null>(null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [pendingDocs, setPendingDocs] = useState<PickedDocument[]>([]);
+  const [pickingDoc, setPickingDoc] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -81,31 +87,8 @@ export default function SitterSignup() {
     }));
   };
 
-  // Photo/document upload both need auth.currentUser to be set (see
-  // uploadPhotoBlob), but on a brand-new (non-edit) signup the account
-  // isn't created until handleSubmit's final "Submit for review" — and the
-  // photo field sits at the very top of this single-page form, well before
-  // that. Rather than restructure the whole form around deferred uploads,
-  // this lazily creates the account the first time someone tries to upload
-  // anything, using whatever email/password they've already filled in
-  // above it on the page. handleSubmit below then skips re-creating the
-  // account if this already did.
-  const ensureSignedIn = async (): Promise<void> => {
-    if (editMode || auth?.currentUser) return;
-    if (!firebaseConfigured || !auth) {
-      throw new Error('Sign-up isn’t configured yet — the app is missing its backend credentials.');
-    }
-    if (!profile.email.trim() || !password) {
-      throw new Error('Add your email and password above first, then try uploading again.');
-    }
-    if (password.length < 6) {
-      throw new Error('Password should be at least 6 characters.');
-    }
-    await createUserWithEmailAndPassword(auth, profile.email.trim(), password);
-  };
-
-  // Firebase auth errors carry a `.code` (mapped via friendlyError); the
-  // plain Errors ensureSignedIn throws above carry a human-readable
+  // Firebase auth errors carry a `.code` (mapped via friendlyError); a
+  // plain Error (e.g. a picker permission failure) carries a human-readable
   // `.message` directly — anything else falls back to the generic message.
   const uploadErrorMessage = (err: any, fallback: string): string => {
     if (err?.code) return friendlyError(err.code);
@@ -113,6 +96,10 @@ export default function SitterSignup() {
     return fallback;
   };
 
+  // Picking (and, on web, cropping) a photo is purely local — no network,
+  // no account needed — so it happens immediately. The actual upload is
+  // deferred to handleSubmit, once there's definitely a signed-in account
+  // to own the file. See handleSubmit's comment for why.
   const handlePickPhoto = async () => {
     setPhotoError(null);
     if (Platform.OS === 'web') {
@@ -120,56 +107,90 @@ export default function SitterSignup() {
       if (file) setPickedPhoto(file);
       return;
     }
-    setUploadingPhoto(true);
+    setPickingPhoto(true);
     try {
-      await ensureSignedIn();
-      const url = await pickAndUploadNativePhoto('sitter-photo.jpg');
-      if (url) patch({ photoUrl: url });
+      const picked = await pickNativePhoto();
+      if (picked) {
+        setPendingPhotoBlob(picked.blob);
+        setPendingPhotoPreviewUri(picked.uri);
+      }
     } catch (err) {
-      setPhotoError(uploadErrorMessage(err, 'Couldn’t upload that photo — check your photo library permission and try again.'));
+      setPhotoError(uploadErrorMessage(err, 'Couldn’t open your photo library — check its permission and try again.'));
     } finally {
-      setUploadingPhoto(false);
+      setPickingPhoto(false);
     }
   };
 
-  const handleCropConfirm = async (blob: Blob) => {
+  const handleCropConfirm = (blob: Blob) => {
     setPickedPhoto(null);
-    setUploadingPhoto(true);
-    try {
-      await ensureSignedIn();
-      const url = await uploadPhotoBlob(blob, 'sitter-photo.jpg');
-      patch({ photoUrl: url });
-    } catch (err) {
-      setPhotoError(uploadErrorMessage(err, 'Couldn’t upload that photo — check your connection and try again.'));
-    } finally {
-      setUploadingPhoto(false);
-    }
+    setPendingPhotoBlob(blob);
+    setPendingPhotoPreviewUri(URL.createObjectURL(blob));
   };
 
   // A certification document is often a PDF or Word doc, not a photo —
-  // pickAndUploadDocument opens the OS's own file picker (Files/iCloud
-  // Drive/Google Drive on native, the browser's file picker on web) rather
-  // than restricting to the photo library the way the profile photo above
+  // pickDocument opens the OS's own file picker (Files/iCloud Drive/Google
+  // Drive on native, the browser's file picker on web) rather than
+  // restricting to the photo library the way the profile photo above
   // does, and handles both platforms itself (no Platform.OS branching
-  // needed here, unlike the photo flow).
+  // needed here, unlike the photo flow). Same deferred-upload reasoning as
+  // the photo above — picking is local and immediate, uploading waits for
+  // handleSubmit.
   const handleAddDocument = async () => {
     setDocError(null);
-    setUploadingDoc(true);
+    setPickingDoc(true);
     try {
-      await ensureSignedIn();
-      const url = await pickAndUploadDocument('sitter-cert');
-      if (url) patch({ certificationDocUrls: [...profile.certificationDocUrls, url] });
+      const picked = await pickDocument();
+      if (picked) setPendingDocs((prev) => [...prev, picked]);
     } catch (err) {
-      setDocError(uploadErrorMessage(err, 'Couldn’t upload that document — check your connection and try again.'));
+      setDocError(uploadErrorMessage(err, 'Couldn’t open the file picker — check your connection and try again.'));
     } finally {
-      setUploadingDoc(false);
+      setPickingDoc(false);
     }
   };
 
-  const removeDocument = (url: string) => {
+  const removeUploadedDocument = (url: string) => {
     patch({ certificationDocUrls: profile.certificationDocUrls.filter((u) => u !== url) });
   };
 
+  const removePendingDocument = (index: number) => {
+    setPendingDocs((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Uploads whatever's been picked-but-not-yet-uploaded (handlePickPhoto/
+  // handleCropConfirm/handleAddDocument only ever stash things locally —
+  // see their comments) and folds the resulting URLs into the given
+  // profile. Only ever called from handleSubmit, below, once there's
+  // definitely a signed-in account to own the files.
+  const uploadPendingAssets = async (base: SitterProfile): Promise<SitterProfile> => {
+    let next = base;
+    if (pendingPhotoBlob) {
+      const url = await uploadPhotoBlob(pendingPhotoBlob, 'sitter-photo.jpg');
+      next = { ...next, photoUrl: url };
+    }
+    if (pendingDocs.length) {
+      const uploadedUrls = await Promise.all(
+        pendingDocs.map((doc, i) => {
+          const ext = extensionFromDocumentAsset(doc.name, doc.mimeType);
+          return uploadPhotoBlob(doc.blob, `sitter-cert-${Date.now()}-${i}.${ext}`, doc.mimeType);
+        })
+      );
+      next = { ...next, certificationDocUrls: [...next.certificationDocUrls, ...uploadedUrls] };
+    }
+    return next;
+  };
+
+  // Account creation (for a brand-new signup) happens right here, and only
+  // here — not the moment someone picks a photo or document. Uploading
+  // does need a signed-in account (see uploadPhotoBlob), but creating one
+  // early, before someone has actually committed to signing up, meant a
+  // half-filled-out photo pick silently created a real account — and other
+  // screens still mounted in the background (e.g. the landing page, whose
+  // own "route a signed-in user into the app" effect doesn't know this
+  // account is mid sitter-signup) would react to that and yank the person
+  // into the unrelated family onboarding flow. Deferring both account
+  // creation and the actual upload to this one place means nothing happens
+  // — no account, no Storage writes — until "Submit for review" is
+  // actually pressed.
   const handleSubmit = async () => {
     setError(null);
     if (!profile.name.trim()) {
@@ -184,10 +205,11 @@ export default function SitterSignup() {
     if (editMode) {
       setSubmitting(true);
       try {
-        await saveMySitterProfile(profile, false);
+        const finalProfile = await uploadPendingAssets(profile);
+        await saveMySitterProfile(finalProfile, false);
         router.replace('/(sitter)');
       } catch (err: any) {
-        setError(err?.message ?? err?.code ?? 'Something went wrong saving your profile. Please try again.');
+        setError(uploadErrorMessage(err, 'Something went wrong saving your profile. Please try again.'));
       } finally {
         setSubmitting(false);
       }
@@ -209,10 +231,9 @@ export default function SitterSignup() {
 
     setSubmitting(true);
     try {
-      // ensureSignedIn (called from an earlier photo/document upload) may
-      // have already created the account — re-calling
-      // createUserWithEmailAndPassword here would throw
-      // auth/email-already-in-use, so only create it if that didn't
+      // A retry after an earlier failed attempt (e.g. the account got
+      // created but a subsequent upload failed) would otherwise throw
+      // auth/email-already-in-use here — only create it if that didn't
       // already happen.
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName: profile.name.trim() });
@@ -220,10 +241,11 @@ export default function SitterSignup() {
         const credential = await createUserWithEmailAndPassword(auth, profile.email.trim(), password);
         await updateProfile(credential.user, { displayName: profile.name.trim() });
       }
-      await saveMySitterProfile(profile, true);
+      const finalProfile = await uploadPendingAssets(profile);
+      await saveMySitterProfile(finalProfile, true);
       router.replace('/(sitter)');
     } catch (err: any) {
-      setError(friendlyError(err?.code ?? ''));
+      setError(uploadErrorMessage(err, 'Something went wrong submitting your profile. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -284,16 +306,11 @@ export default function SitterSignup() {
           </>
         )}
 
-        {/* Photo comes after email/password (not first, despite being the
-            first thing visually in earlier versions of this form) — adding
-            it lazily creates the account via ensureSignedIn using whatever
-            email/password have been entered so far, which only works once
-            those fields are actually filled in. */}
         <AddPhotoCircle
           label="Your photo"
           caption="Tap to add · optional"
-          imageUri={profile.photoUrl}
-          uploading={uploadingPhoto}
+          imageUri={pendingPhotoPreviewUri ?? profile.photoUrl}
+          uploading={pickingPhoto}
           onPress={handlePickPhoto}
         />
         {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
@@ -373,7 +390,7 @@ export default function SitterSignup() {
           PDFs, photos, or Word docs of certification cards or credentials, reviewed privately during vetting —
           never shown to families.
         </Text>
-        {profile.certificationDocUrls.length > 0 ? (
+        {profile.certificationDocUrls.length > 0 || pendingDocs.length > 0 ? (
           <View style={styles.docGrid}>
             {profile.certificationDocUrls.map((url) => (
               <View key={url} style={styles.docThumbWrap}>
@@ -385,7 +402,25 @@ export default function SitterSignup() {
                     <Text style={styles.docFileLabel}>{docExtensionLabel(url)}</Text>
                   </View>
                 )}
-                <Pressable style={styles.docRemoveButton} onPress={() => removeDocument(url)} hitSlop={8}>
+                <Pressable style={styles.docRemoveButton} onPress={() => removeUploadedDocument(url)} hitSlop={8}>
+                  <Ionicons name="close-circle" size={20} color={colors.error} />
+                </Pressable>
+              </View>
+            ))}
+            {/* Not uploaded yet — see handleAddDocument's comment — so
+                these render from the local pick (previewUri/mimeType)
+                rather than a Storage URL. */}
+            {pendingDocs.map((doc, i) => (
+              <View key={`${doc.name}-${i}`} style={styles.docThumbWrap}>
+                {doc.mimeType?.startsWith('image/') ? (
+                  <Image source={{ uri: doc.previewUri }} style={styles.docThumb} />
+                ) : (
+                  <View style={[styles.docThumb, styles.docFileThumb]}>
+                    <Ionicons name="document-text-outline" size={22} color={colors.textMuted} />
+                    <Text style={styles.docFileLabel}>{extensionFromDocumentAsset(doc.name, doc.mimeType).toUpperCase()}</Text>
+                  </View>
+                )}
+                <Pressable style={styles.docRemoveButton} onPress={() => removePendingDocument(i)} hitSlop={8}>
                   <Ionicons name="close-circle" size={20} color={colors.error} />
                 </Pressable>
               </View>
@@ -393,8 +428,8 @@ export default function SitterSignup() {
           </View>
         ) : null}
         {docError ? <Text style={styles.photoError}>{docError}</Text> : null}
-        <Pressable style={styles.addDocButton} onPress={handleAddDocument} disabled={uploadingDoc}>
-          {uploadingDoc ? (
+        <Pressable style={styles.addDocButton} onPress={handleAddDocument} disabled={pickingDoc}>
+          {pickingDoc ? (
             <ActivityIndicator color={colors.accent} size="small" />
           ) : (
             <>

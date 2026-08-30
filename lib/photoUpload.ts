@@ -1,4 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
+import { Platform } from 'react-native';
 import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
 import { app, auth } from './firebase';
 
@@ -26,10 +27,14 @@ export function pickImageFile(): Promise<File | null> {
 // Native counterpart to pickImageFile + PhotoCropperModal combined: asks
 // for photo library permission, opens the OS's own picker with its own
 // built-in (square) crop step — there's no canvas API on native to
-// reimplement PhotoCropperModal's custom circular cropper — then uploads
-// the result directly. Resolves null if the user cancels the picker.
-// Throws 'permission-denied' if photo library access was refused.
-export async function pickAndUploadNativePhoto(pathSuffix: string): Promise<string | null> {
+// reimplement PhotoCropperModal's custom circular cropper. Pick-only (see
+// pickAndUploadNativePhoto below for the upload-immediately wrapper) —
+// callers that need to defer the actual upload (e.g.
+// app/sitter-signup.tsx, where uploading requires a signed-in account
+// that may not exist yet) can hold onto the returned blob/uri instead.
+// Resolves null if the user cancels the picker. Throws 'permission-denied'
+// if photo library access was refused.
+export async function pickNativePhoto(): Promise<{ blob: Blob; uri: string } | null> {
   const ImagePicker = await import('expo-image-picker');
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
@@ -43,9 +48,19 @@ export async function pickAndUploadNativePhoto(pathSuffix: string): Promise<stri
   if (result.canceled || !result.assets[0]) {
     return null;
   }
-  const response = await fetch(result.assets[0].uri);
+  const uri = result.assets[0].uri;
+  const response = await fetch(uri);
   const blob = await response.blob();
-  return uploadPhotoBlob(blob, pathSuffix);
+  return { blob, uri };
+}
+
+// Convenience wrapper for every caller that already has a signed-in
+// account by the time a photo picker can even be reached (onboarding,
+// invite acceptance, contributions) — pick then upload in one step.
+export async function pickAndUploadNativePhoto(pathSuffix: string): Promise<string | null> {
+  const picked = await pickNativePhoto();
+  if (!picked) return null;
+  return uploadPhotoBlob(picked.blob, pathSuffix);
 }
 
 // A certification/credential document isn't necessarily a photo — it's
@@ -73,15 +88,33 @@ const DOCUMENT_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-export async function pickAndUploadDocument(pathPrefix: string): Promise<string | null> {
+export type PickedDocument = {
+  blob: Blob;
+  name: string;
+  mimeType?: string;
+  // A locally-renderable preview URL — createObjectURL(blob) on web (asset.uri
+  // there isn't reliably renderable), the picker's own file:// uri on native.
+  previewUri: string;
+};
+
+// Pick-only — see pickNativePhoto's comment above for why this is a
+// separate function from the upload-immediately wrapper below.
+export async function pickDocument(): Promise<PickedDocument | null> {
   const result = await DocumentPicker.getDocumentAsync({ type: DOCUMENT_MIME_TYPES, multiple: false });
   const asset = result.canceled ? null : result.assets?.[0];
   if (!asset) return null;
   // The web implementation attaches the already-in-hand File object
   // directly (asset.file) — only native needs the uri->blob round trip.
   const blob = asset.file ?? (await (await fetch(asset.uri)).blob());
-  const ext = extensionFromDocumentAsset(asset.name, asset.mimeType);
-  return uploadPhotoBlob(blob, `${pathPrefix}-${Date.now()}.${ext}`, asset.mimeType);
+  const previewUri = Platform.OS === 'web' ? URL.createObjectURL(blob) : asset.uri;
+  return { blob, name: asset.name, mimeType: asset.mimeType, previewUri };
+}
+
+export async function pickAndUploadDocument(pathPrefix: string): Promise<string | null> {
+  const picked = await pickDocument();
+  if (!picked) return null;
+  const ext = extensionFromDocumentAsset(picked.name, picked.mimeType);
+  return uploadPhotoBlob(picked.blob, `${pathPrefix}-${Date.now()}.${ext}`, picked.mimeType);
 }
 
 const MIME_TYPE_EXTENSIONS: Record<string, string> = {
@@ -93,7 +126,10 @@ const MIME_TYPE_EXTENSIONS: Record<string, string> = {
   'image/heic': 'heic',
 };
 
-function extensionFromDocumentAsset(name: string, mimeType?: string): string {
+// Exported for app/sitter-signup.tsx, which needs the same extension label
+// for a not-yet-uploaded pending document as docExtensionLabel derives from
+// an already-uploaded URL.
+export function extensionFromDocumentAsset(name: string, mimeType?: string): string {
   const fromName = name.match(/\.([a-zA-Z0-9]+)$/)?.[1];
   if (fromName) return fromName.toLowerCase();
   return (mimeType && MIME_TYPE_EXTENSIONS[mimeType]) || 'dat';

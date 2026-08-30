@@ -50,7 +50,7 @@ jobs:
       # <owner>.github.io/<repo>/ URL — GitHub Pages reads this file out of
       # the deployed artifact on every deploy, so it isn't a one-time UI
       # setting that could get lost switching branches/artifacts.
-      - run: echo "haven-ly.com" > dist/CNAME
+      - run: echo "openedcircle.com" > dist/CNAME
 
       - uses: actions/configure-pages@v5
         with:

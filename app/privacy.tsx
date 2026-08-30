@@ -8,7 +8,7 @@ import { colors } from '../theme/colors';
 
 // Public, unauthenticated route (App Store Connect's "Privacy Policy URL"
 // field, and Apple's reviewers, need to reach this without signing in) —
-// deployed automatically to https://haven-ly.com/privacy alongside the
+// deployed automatically to https://openedcircle.com/privacy alongside the
 // rest of the web build (see .github/workflows/deploy-web.yml). No auth
 // gate wraps it, same as /sign-in.
 //
@@ -16,6 +16,10 @@ import { colors } from '../theme/colors';
 // EFFECTIVE_DATE below and the collection lists in SECTIONS should track
 // reality, not the other way around.
 const EFFECTIVE_DATE = 'August 29, 2026';
+// Still the old domain deliberately — this has to be a real, working
+// mailbox, and admin@openedcircle.com doesn't exist yet (needs actual
+// email hosting set up, separate from the web/DNS rebrand). Switch this
+// once that's done.
 const CONTACT_EMAIL = 'admin@haven-ly.com';
 
 type Section = { heading: string; paragraphs: string[]; bullets?: string[] };

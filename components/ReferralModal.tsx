@@ -9,7 +9,7 @@ import { fetchMyReferralStats, ReferralStats } from '../lib/referrals';
 import { saveMySitterProfile } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
-const SIGNUP_URL = 'https://haven-ly.com/sitter-signup';
+const SIGNUP_URL = 'https://openedcircle.com/sitter-signup';
 
 function referralMessage(code: string): string {
   return `Join me as a sitter on Opened Circle! Use my code ${code} when you sign up — we'll both get $15 once you're approved. ${SIGNUP_URL}`;

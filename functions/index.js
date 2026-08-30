@@ -628,9 +628,12 @@ exports.addExternalEventToGoogleCalendar = onCall({ secrets: [googleClientSecret
 // `firebase functions:secrets:set RESEND_API_KEY`, same pattern as
 // googleClientSecret above; RESEND_FROM_EMAIL must be an address on a
 // domain verified in the Resend dashboard (Domains > Add Domain) — set up
-// and confirmed verified for haven-ly.com — not just any address, since
-// Resend rejects sends from an unverified one.
-const APP_BASE_URL = 'https://haven-ly.com';
+// and confirmed verified for haven-ly.com, NOT openedcircle.com yet (that
+// verification hasn't been done — see the rebrand plan), so this still
+// sends from the old domain even though APP_BASE_URL below (just used to
+// build links, unrelated to Resend's sender-domain check) already points
+// at the new one.
+const APP_BASE_URL = 'https://openedcircle.com';
 const resendApiKey = defineSecret('RESEND_API_KEY');
 const RESEND_FROM_EMAIL = 'Opened Circle <notifications@haven-ly.com>';
 

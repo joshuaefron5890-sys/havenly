@@ -8,9 +8,16 @@ import { EmptyState } from '../components/EmptyState';
 import { Photo } from '../components/Photo';
 import { showAlert } from '../lib/alert';
 import { addSitterToPlaydate, PlaydateProposal, subscribeToProposal } from '../lib/playdateProposals';
+import { useIsDesktop } from '../lib/responsive';
 import { AVAILABILITY_PERIODS, dateKey } from '../lib/sitterAvailability';
 import { fetchRecommendedSitters, RecommendedSitter } from '../lib/sitters';
 import { colors } from '../theme/colors';
+
+// Same photo used on the Sitters splash page (app/sitters.tsx) and the
+// in-app sitter promo card (app/proposal/[id].tsx) — one consistent hero
+// image across every sitter-adjacent screen rather than a new pick here.
+const HERO_IMAGE =
+  'https://images.unsplash.com/photo-1585541993027-55373d67ea86?q=80&w=1658&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 const SITTER_STATUS_LABEL: Record<'pending' | 'confirmed' | 'declined', string> = {
   pending: 'Pending confirmation',
@@ -20,6 +27,7 @@ const SITTER_STATUS_LABEL: Record<'pending' | 'confirmed' | 'declined', string> 
 
 export default function FindSitter() {
   const { proposalId, date } = useLocalSearchParams<{ proposalId?: string; date?: string }>();
+  const isDesktop = useIsDesktop();
   const [sitters, setSitters] = useState<RecommendedSitter[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [addingUid, setAddingUid] = useState<string | null>(null);
@@ -106,19 +114,22 @@ export default function FindSitter() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable style={styles.back} onPress={goBack}>
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Find Help</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>
-          {slot
-            ? 'Experienced help near you who’ve confirmed they’re free for this playdate, matched to your kids’ experience.'
-            : 'Experienced help near you, sorted by how much of their experience matches your kids’.'}
-        </Text>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
+        <View style={styles.hero}>
+          <Photo source={{ uri: HERO_IMAGE }} style={styles.heroImage} />
+          <View style={styles.heroScrim} />
+          <Pressable style={styles.back} onPress={goBack}>
+            <Ionicons name="chevron-back" size={20} color={colors.text} />
+          </Pressable>
+          <View style={styles.heroTextWrap}>
+            <Text style={styles.heroTitle}>Find Help</Text>
+            <Text style={styles.heroDescription}>
+              {slot
+                ? 'Experienced help near you who’ve confirmed they’re free for this playdate, matched to your kids’ experience.'
+                : 'Experienced help near you, sorted by how much of their experience matches your kids’.'}
+            </Text>
+          </View>
+        </View>
 
         {error ? <EmptyState text={`Couldn’t load results (${error}).`} /> : null}
         {sitters === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
@@ -262,35 +273,67 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 12,
-  },
   back: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.text,
   },
   content: {
     padding: 20,
   },
-  intro: {
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 18,
+  // This is a focused browse/results screen, not a nav-anchored page — no
+  // sidebar makes sense here, so "desktop-friendly" just means a
+  // comfortably wide centered column instead of stretching edge to edge.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+  },
+  hero: {
+    height: 200,
+    borderRadius: 20,
     marginBottom: 16,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  heroImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  // Darkens the bottom of the photo so the white title/description stay
+  // legible regardless of how bright the underlying photo is — same idiom
+  // as SectionHero/app/family/[id].tsx's own hero banners.
+  heroScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '75%',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  heroTextWrap: {
+    padding: 16,
+  },
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.surface,
+    marginBottom: 4,
+  },
+  heroDescription: {
+    fontSize: 13,
+    color: colors.surface,
+    opacity: 0.9,
+    lineHeight: 18,
   },
   spinner: {
     marginVertical: 12,

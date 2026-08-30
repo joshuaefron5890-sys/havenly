@@ -5,6 +5,7 @@ import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, Sty
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
+import { ReferralModal } from '../../components/ReferralModal';
 import { auth, signOutUser } from '../../lib/firebase';
 import { fetchSitterConfirmedPlaydates, fetchSitterPlaydateRequests } from '../../lib/playdateProposals';
 import { useIsDesktop } from '../../lib/responsive';
@@ -29,6 +30,7 @@ export default function SitterHome() {
   const [profile, setProfile] = useState<SitterProfile | null>(null);
   const [requestCount, setRequestCount] = useState(0);
   const [confirmedCount, setConfirmedCount] = useState(0);
+  const [referralModalVisible, setReferralModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -102,6 +104,17 @@ export default function SitterHome() {
             </Text>
           </View>
         ) : null}
+
+        <Pressable style={styles.referralCard} onPress={() => setReferralModalVisible(true)}>
+          <View style={styles.referralIcon}>
+            <Ionicons name="gift-outline" size={18} color={colors.surface} />
+          </View>
+          <Text style={styles.referralTitle}>Refer a sitter, earn $15</Text>
+          <Text style={styles.referralText}>You both get $15 once they're approved and join Haven.ly.</Text>
+          <View style={styles.referralCta}>
+            <Text style={styles.referralCtaText}>Get my code</Text>
+          </View>
+        </Pressable>
 
         <View style={[styles.navCards, isDesktop && styles.navCardsDesktop]}>
           <Pressable
@@ -209,6 +222,8 @@ export default function SitterHome() {
           <Text style={styles.editButtonText}>Edit profile</Text>
         </Pressable>
       </ScrollView>
+
+      <ReferralModal visible={referralModalVisible} onClose={() => setReferralModalVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -310,6 +325,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text,
     lineHeight: 18,
+  },
+  referralCard: {
+    backgroundColor: colors.text,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 16,
+  },
+  referralIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  referralTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.surface,
+    marginBottom: 4,
+  },
+  referralText: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 14,
+  },
+  referralCta: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  referralCtaText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.surface,
   },
   availabilityCard: {
     flexDirection: 'row',

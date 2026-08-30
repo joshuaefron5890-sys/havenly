@@ -54,6 +54,11 @@ export function SettingsMenu() {
     router.push('/admin/hidden');
   };
 
+  const goToReferralPayouts = () => {
+    setOpen(false);
+    router.push('/admin/referrals');
+  };
+
   const logOut = async () => {
     setOpen(false);
     await signOutUser();
@@ -106,6 +111,10 @@ export function SettingsMenu() {
                 <Pressable style={styles.item} onPress={goToHiddenContent}>
                   <Ionicons name="eye-off-outline" size={18} color={colors.text} />
                   <Text style={styles.itemText}>Hidden items</Text>
+                </Pressable>
+                <Pressable style={styles.item} onPress={goToReferralPayouts}>
+                  <Ionicons name="cash-outline" size={18} color={colors.text} />
+                  <Text style={styles.itemText}>Referral payouts</Text>
                 </Pressable>
               </>
             ) : null}

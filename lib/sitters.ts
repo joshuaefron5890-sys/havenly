@@ -106,6 +106,16 @@ export type SitterProfile = {
   // wins over what the calendar says, indefinitely, not just for the
   // session it was made in.
   availabilityManualOverrides: Record<string, true>;
+  // Assigned once, server-side, the moment this sitter's doc is first
+  // created (functions/index.js's onSitterProfileCreated trigger) — never
+  // client-writable, so null until that trigger has run (briefly, right
+  // after signup).
+  referralCode: string | null;
+  // Where their referral earnings (as either a referrer or a referred
+  // sitter — see lib/referrals.ts) actually get sent. Both null/empty
+  // until the sitter fills them in from the referral modal.
+  payoutMethod: 'venmo' | 'paypal' | null;
+  payoutHandle: string;
 };
 
 export const emptySitterProfile: SitterProfile = {
@@ -128,6 +138,9 @@ export const emptySitterProfile: SitterProfile = {
   googleCalendarSyncEnabled: false,
   availabilityConflictOverrides: {},
   availabilityManualOverrides: {},
+  referralCode: null,
+  payoutMethod: null,
+  payoutHandle: '',
 };
 
 const VALID_PERIODS = new Set(AVAILABILITY_PERIODS.map((p) => p.key));
@@ -175,6 +188,9 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
     googleCalendarSyncEnabled: data.googleCalendarSyncEnabled === true,
     availabilityConflictOverrides: parseTrueMap(data.availabilityConflictOverrides),
     availabilityManualOverrides: parseTrueMap(data.availabilityManualOverrides),
+    referralCode: typeof data.referralCode === 'string' ? data.referralCode : null,
+    payoutMethod: data.payoutMethod === 'venmo' || data.payoutMethod === 'paypal' ? data.payoutMethod : null,
+    payoutHandle: typeof data.payoutHandle === 'string' ? data.payoutHandle : '',
   };
 }
 
@@ -193,14 +209,32 @@ export async function fetchMySitterProfile(): Promise<SitterProfile | null> {
 // firestore.rules requires backgroundCheckStatus stay 'pending' on create
 // and pins it (plus vettedAt/vettedByEmail) out of every update's diff, so
 // there's no path for a sitter to mark themselves vetted.
-export async function saveMySitterProfile(patch: Partial<SitterProfile>, isNew: boolean): Promise<void> {
+//
+// `referredByCode` is only meaningful on the isNew path — whatever the
+// sitter typed into sitter-signup's optional "Referral code" field, if
+// anything. Firestore create isn't field-restricted the way update is
+// (see firestore.rules), so this is safe to write directly; it's the
+// server-side onSitterProfileCreated trigger (Admin SDK) that actually
+// resolves it into a real referredByUid, silently ignoring it if the code
+// doesn't match a real sitter. Never touched again after creation.
+export async function saveMySitterProfile(
+  patch: Partial<SitterProfile>,
+  isNew: boolean,
+  referredByCode?: string
+): Promise<void> {
   const uid = auth?.currentUser?.uid;
   if (!uid || !db) throw new Error('not-signed-in');
   const sitterRef = doc(db, 'sitters', uid);
   if (isNew) {
     await setDoc(
       sitterRef,
-      { ...patch, clusterId: clusterForZip(patch.zipCode ?? ''), backgroundCheckStatus: 'pending', createdAt: serverTimestamp() },
+      {
+        ...patch,
+        clusterId: clusterForZip(patch.zipCode ?? ''),
+        backgroundCheckStatus: 'pending',
+        createdAt: serverTimestamp(),
+        ...(referredByCode ? { referredByCodeInput: referredByCode } : {}),
+      },
       { merge: true }
     );
     return;

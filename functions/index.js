@@ -1374,6 +1374,65 @@ exports.getPlaydateFamilies = onCall(async (request) => {
   return { families };
 });
 
+// "CHRISTINA" + 4 random alphanumerics — readable enough to say out loud
+// or text to a friend, unlike a raw uid. Collisions are checked by the
+// caller (onSitterProfileCreated below) and retried, so this doesn't need
+// to be perfectly unique on its own.
+function randomReferralSuffix() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I — easy to misread out loud
+  let suffix = '';
+  for (let i = 0; i < 4; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+  return suffix;
+}
+
+function generateReferralCode(name) {
+  const base = (typeof name === 'string' ? name : '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 10) || 'SITTER';
+  return `${base}${randomReferralSuffix()}`;
+}
+
+// Runs once, automatically, the moment a sitter first registers (see
+// lib/sitters.ts's saveMySitterProfile) — assigns their own referralCode
+// (so they can refer others later, per app/(sitter)/index.tsx's referral
+// card) and, if they entered someone else's code at signup
+// (referredByCodeInput, a plain string the client is free to write since
+// firestore.rules doesn't field-restrict sitter creates), resolves it into
+// a real referredByUid here with the Admin SDK. A client could otherwise
+// just write a fake referredByUid directly at create time — resolving it
+// server-side instead is what actually makes the referral relationship
+// trustworthy enough to pay out on (see setSitterVettingStatus below).
+// Silently no-ops on an unrecognized code rather than blocking signup —
+// same "don't punish a typo" reasoning as most optional-field handling
+// elsewhere in this app.
+exports.onSitterProfileCreated = onDocumentCreated('sitters/{uid}', async (event) => {
+  const snap = event.data;
+  if (!snap) return;
+  const uid = event.params.uid;
+  const data = snap.data() ?? {};
+
+  let code = null;
+  for (let attempt = 0; attempt < 5 && !code; attempt++) {
+    const candidate = generateReferralCode(data.name);
+    const existing = await admin.firestore().collection('sitters').where('referralCode', '==', candidate).limit(1).get();
+    if (existing.empty) code = candidate;
+  }
+  if (!code) code = `SITTER${uid.slice(0, 6).toUpperCase()}`;
+
+  const update = { referralCode: code };
+
+  const inputCode = typeof data.referredByCodeInput === 'string' ? data.referredByCodeInput.trim().toUpperCase() : '';
+  if (inputCode) {
+    const referrerSnap = await admin.firestore().collection('sitters').where('referralCode', '==', inputCode).limit(1).get();
+    if (!referrerSnap.empty && referrerSnap.docs[0].id !== uid) {
+      update.referredByUid = referrerSnap.docs[0].id;
+    }
+  }
+
+  await snap.ref.set(update, { merge: true });
+});
+
 // Same reasoning as toPublicFamily above — a sitter's full sitters/{uid}
 // doc is only ever readable by the sitter themselves (see firestore.rules);
 // every other family sees only this subset, and only ever for a sitter
@@ -1560,7 +1619,167 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
         sendExpoPush(tokens, title, 'Your profile is now live for families to find.', { url: '/sitter-signup?edit=1' })
       ),
     ]);
+
+    // A referred sitter clearing vetting is the one trigger point for both
+    // sides' $15 (see lib/referrals.ts) — not the earlier signup moment,
+    // so a fraudulent/never-approved account can't be used to farm
+    // payouts. Guarded by a referralPayouts lookup (not a field on the
+    // sitter doc) so a flagged-then-re-cleared sitter can't trigger this
+    // twice.
+    const referredByUid = beforeSnap.data()?.referredByUid;
+    if (typeof referredByUid === 'string' && referredByUid) {
+      const existingPayout = await admin.firestore().collection('referralPayouts').where('referredUid', '==', uid).limit(1).get();
+      if (existingPayout.empty) {
+        const now = admin.firestore.Timestamp.now();
+        const dueBy = admin.firestore.Timestamp.fromMillis(now.toMillis() + 7 * 24 * 60 * 60 * 1000);
+        const batch = admin.firestore().batch();
+        batch.set(admin.firestore().collection('referralPayouts').doc(), {
+          payeeUid: referredByUid,
+          role: 'referrer',
+          referredUid: uid,
+          amount: 15,
+          status: 'owed',
+          createdAt: now,
+          dueBy,
+        });
+        batch.set(admin.firestore().collection('referralPayouts').doc(), {
+          payeeUid: uid,
+          role: 'referred',
+          referredUid: uid,
+          amount: 15,
+          status: 'owed',
+          createdAt: now,
+          dueBy,
+        });
+        await batch.commit();
+
+        const referrerSnap = await admin.firestore().collection('sitters').doc(referredByUid).get();
+        const referrerFirstName = (typeof referrerSnap.data()?.name === 'string' ? referrerSnap.data().name : '')
+          .trim()
+          .split(' ')[0];
+        const referralTitle = `You earned $15${firstName ? ` — ${firstName} joined Haven.ly` : ''}`;
+        await Promise.all([
+          sendNotificationEmail(
+            referredByUid,
+            referralTitle,
+            [
+              referrerFirstName ? `Hi ${referrerFirstName},` : 'Hi,',
+              '',
+              `${firstName || 'The sitter you referred'} just got approved on Haven.ly, which means you've earned $15 for referring them.`,
+              '',
+              'We’ll send it to your Venmo or PayPal on file within 7 days.',
+            ].join('\n')
+          ),
+          pushTokensForFamily(referredByUid).then((tokens) =>
+            sendExpoPush(tokens, referralTitle, 'Payout on the way within 7 days.', { url: '/sitter-signup?edit=1' })
+          ),
+        ]);
+      }
+    }
   }
+});
+
+// A sitter's own referral code, running totals, and payout info on file —
+// see lib/referrals.ts's ReferralStats for why this has to be a callable
+// rather than a direct Firestore read (counting "who signed up with my
+// code" means querying other sitters' docs by referredByUid, which
+// firestore.rules never lets a plain client do).
+exports.getMyReferralStats = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const uid = request.auth.uid;
+  const selfSnap = await admin.firestore().collection('sitters').doc(uid).get();
+  if (!selfSnap.exists) {
+    throw new HttpsError('failed-precondition', 'No sitter profile found.');
+  }
+  const self = selfSnap.data();
+
+  const referredSnap = await admin.firestore().collection('sitters').where('referredByUid', '==', uid).get();
+  let approvedCount = 0;
+  referredSnap.docs.forEach((d) => {
+    if (d.data().backgroundCheckStatus === 'clear') approvedCount += 1;
+  });
+
+  const payoutsSnap = await admin.firestore().collection('referralPayouts').where('payeeUid', '==', uid).get();
+  let earnedPaid = 0;
+  let owedPending = 0;
+  payoutsSnap.docs.forEach((d) => {
+    const amount = typeof d.data().amount === 'number' ? d.data().amount : 0;
+    if (d.data().status === 'paid') earnedPaid += amount;
+    else owedPending += amount;
+  });
+
+  return {
+    code: typeof self.referralCode === 'string' ? self.referralCode : null,
+    payoutMethod: self.payoutMethod === 'venmo' || self.payoutMethod === 'paypal' ? self.payoutMethod : null,
+    payoutHandle: typeof self.payoutHandle === 'string' ? self.payoutHandle : null,
+    referredCount: referredSnap.size,
+    approvedCount,
+    pendingCount: referredSnap.size - approvedCount,
+    earnedPaid,
+    owedPending,
+  };
+});
+
+// Admin-only manual payout queue — every $15 owed and not yet marked paid,
+// joined with the payee's current Venmo/PayPal info (looked up live here
+// rather than frozen into the payout row, so a sitter fixing a typo'd
+// handle after the fact still gets found when an admin actually processes
+// this). Haven.ly disburses via Venmo/PayPal by hand; this just tracks who
+// is owed what and by when.
+exports.getPendingReferralPayouts = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const snap = await admin.firestore().collection('referralPayouts').where('status', '==', 'owed').orderBy('dueBy', 'asc').limit(200).get();
+  const payeeUids = [...new Set(snap.docs.map((d) => d.data().payeeUid))];
+  const payeeSnaps = await Promise.all(payeeUids.map((uid) => admin.firestore().collection('sitters').doc(uid).get()));
+  const payeeByUid = new Map(payeeSnaps.map((s) => [s.id, s.data() ?? {}]));
+
+  const payouts = snap.docs.map((d) => {
+    const data = d.data();
+    const payee = payeeByUid.get(data.payeeUid) ?? {};
+    return {
+      id: d.id,
+      payeeUid: data.payeeUid,
+      payeeName: typeof payee.name === 'string' ? payee.name : '',
+      payoutMethod: payee.payoutMethod === 'venmo' || payee.payoutMethod === 'paypal' ? payee.payoutMethod : null,
+      payoutHandle: typeof payee.payoutHandle === 'string' ? payee.payoutHandle : null,
+      role: data.role === 'referrer' ? 'referrer' : 'referred',
+      amount: typeof data.amount === 'number' ? data.amount : 0,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
+      dueBy: data.dueBy?.toDate ? data.dueBy.toDate().toISOString() : null,
+    };
+  });
+
+  return { payouts };
+});
+
+// The only way a referralPayouts row's status ever changes — an admin
+// confirming they actually sent the Venmo/PayPal payment by hand.
+exports.markReferralPayoutPaid = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  const id = typeof request.data?.id === 'string' ? request.data.id : '';
+  if (!id) {
+    throw new HttpsError('invalid-argument', 'A payout id is required.');
+  }
+  await admin.firestore().collection('referralPayouts').doc(id).set(
+    {
+      status: 'paid',
+      paidAt: admin.firestore.FieldValue.serverTimestamp(),
+      paidByEmail: request.auth.token.email ?? null,
+    },
+    { merge: true }
+  );
 });
 
 // Content moderation — lets a cluster admin permanently hide a bad/spam

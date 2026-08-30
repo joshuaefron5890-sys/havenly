@@ -268,9 +268,20 @@ service cloud.firestore {
           'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate',
           'certificationDocUrls', 'availability', 'googleCalendarConnected',
           'googleCalendarSyncEnabled', 'availabilityConflictOverrides',
-          'availabilityManualOverrides', 'updatedAt'
+          'availabilityManualOverrides', 'updatedAt', 'payoutMethod', 'payoutHandle'
         ]);
       allow delete: if false;
+    }
+
+    // Sitter referral payouts (see functions/index.js's setSitterVettingStatus
+    // and getMyReferralStats/getPendingReferralPayouts/markReferralPayoutPaid)
+    // — every row here is created and read entirely through Cloud Functions
+    // (Admin SDK), including a sitter's own stats, since computing those
+    // means querying other sitters' docs by referredByUid, which a plain
+    // client read could never do under the sitters rule above anyway. No
+    // client path needs direct access to this collection at all.
+    match /referralPayouts/{id} {
+      allow read, write: if false;
     }
 
     // Content moderation (see functions/index.js's hideContent comment) —

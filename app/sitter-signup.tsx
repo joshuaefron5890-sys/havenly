@@ -52,6 +52,10 @@ export default function SitterSignup() {
   const [loadingExisting, setLoadingExisting] = useState(editMode);
   const [profile, setProfile] = useState<SitterProfile>(emptySitterProfile);
   const [password, setPassword] = useState('');
+  // Only meaningful on the create path — see saveMySitterProfile's own
+  // comment for why this is resolved server-side rather than trusted from
+  // here directly.
+  const [referralCodeInput, setReferralCodeInput] = useState('');
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   // Picked locally but not yet uploaded — see the big comment on
   // handleSubmit below for why upload is deferred to submit time instead
@@ -242,7 +246,7 @@ export default function SitterSignup() {
         await updateProfile(credential.user, { displayName: profile.name.trim() });
       }
       const finalProfile = await uploadPendingAssets(profile);
-      await saveMySitterProfile(finalProfile, true);
+      await saveMySitterProfile(finalProfile, true, referralCodeInput.trim() || undefined);
       router.replace('/(sitter)');
     } catch (err: any) {
       setError(uploadErrorMessage(err, 'Something went wrong submitting your profile. Please try again.'));
@@ -302,6 +306,14 @@ export default function SitterSignup() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+            />
+            <FieldInput
+              label="Referral code"
+              placeholder="e.g. CHRISTINA5H2"
+              optional
+              value={referralCodeInput}
+              onChangeText={setReferralCodeInput}
+              autoCapitalize="characters"
             />
           </>
         )}

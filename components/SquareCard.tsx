@@ -62,9 +62,10 @@ export function SquareCard({
   // person icon next to their name — null/undefined (no photo on file, or
   // not resolved yet) falls back to that icon instead of leaving a gap.
   contributorPhoto?: string | null;
-  // A small circle in the thumbnail's bottom-right corner — kept separate
-  // from `badge` (top, spans the width) so a card can carry both a status
-  // label like "Suggested" and its match percentage at once.
+  // Renders as a small puzzle-piece icon in the thumbnail's bottom-right
+  // corner rather than the raw number — kept separate from `badge` (top,
+  // spans the width) so a card can carry both a status label like
+  // "Suggested" and its match indicator at once.
   matchScore?: number;
   // Softens the icon fallback (light gray instead of near-black, muted
   // instead of white) for content that's simply missing a photo — as
@@ -179,9 +180,7 @@ export function SquareCard({
         ) : null}
         {matchScore != null ? (
           <View style={styles.matchScoreBadge}>
-            <Text style={styles.matchScoreText} numberOfLines={1}>
-              {matchScore}%
-            </Text>
+            <Ionicons name="extension-puzzle" size={12} color={colors.surface} />
           </View>
         ) : null}
         {onDelete ? (
@@ -329,22 +328,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
+  // A plain puzzle-piece icon rather than a percentage — a family match is
+  // shown qualitatively ("this fits"), not as a number to compare, so
+  // there's nothing here that needs room for text.
   matchScoreBadge: {
     position: 'absolute',
     bottom: 4,
     right: 4,
-    minWidth: 24,
-    height: 18,
-    paddingHorizontal: 3,
-    borderRadius: 9,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  matchScoreText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.surface,
   },
   badgePositive: {
     backgroundColor: colors.positive,

@@ -140,8 +140,8 @@ export default function FamilyDetail() {
               ) : null}
             </View>
             <View style={styles.matchBadge}>
-              <Text style={styles.matchScore}>{profile.matchScore}</Text>
-              <Text style={styles.matchLabel}>match</Text>
+              <Ionicons name="extension-puzzle" size={16} color={colors.accent} />
+              <Text style={styles.matchLabel}>Family Match</Text>
             </View>
           </View>
         </View>
@@ -311,28 +311,22 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginTop: 2,
   },
+  // A qualitative "this fits" indicator rather than a raw score — sized to
+  // its content instead of the old fixed circle, since "Family Match" runs
+  // wider than a two-digit number ever did.
   matchBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    backgroundColor: colors.surface,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  matchScore: {
-    // A serif accent (Georgia, near-universal, so no webfont to bundle) —
-    // deliberately breaks from the app's usual sans-serif for a bit of
-    // editorial personality on the one big number on this screen.
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.accent,
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   matchLabel: {
-    fontSize: 9,
-    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.accent,
   },
   sharedExperienceRow: {
     flexDirection: 'row',

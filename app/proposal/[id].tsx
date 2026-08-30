@@ -300,14 +300,7 @@ export default function ProposalDetail() {
         <View style={styles.familiesRow}>
           <FamilyMini family={myFamily} fallbackLabel="You" />
           <View style={styles.connector}>
-            {otherFamily ? (
-              <>
-                <Text style={styles.connectorScore}>{otherFamily.matchScore}%</Text>
-                <Text style={styles.connectorScoreLabel}>match</Text>
-              </>
-            ) : (
-              <Ionicons name="people" size={16} color={colors.accent} />
-            )}
+            <Ionicons name={otherFamily ? 'extension-puzzle' : 'people'} size={18} color={colors.accent} />
           </View>
           <FamilyMini
             family={otherFamily}
@@ -621,16 +614,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 40,
-  },
-  connectorScore: {
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  connectorScoreLabel: {
-    fontSize: 8,
-    color: colors.textMuted,
   },
   card: {
     backgroundColor: colors.surface,

@@ -399,9 +399,6 @@ export default function ProposalDetail() {
             imageStyle={styles.sitterPromoImage}
           >
             <View style={styles.sitterPromoScrim} />
-            <View style={styles.sitterPromoIcon}>
-              <Ionicons name="heart" size={22} color={colors.accent} />
-            </View>
             <Text style={styles.sitterPromoTitle}>Want someone to help with the kids?</Text>
             <Text style={styles.sitterPromoText}>
               Bring in an experienced local sitter with an open slot for this exact time, so you can relax and
@@ -467,15 +464,15 @@ export default function ProposalDetail() {
           </Pressable>
         </View>
       ) : canCancel ? (
-        <View style={[styles.footerStack, isDesktop && styles.desktopColumn]}>
+        <View style={[styles.footerStack, isDesktop && styles.footerRowDesktop, isDesktop && styles.desktopColumn]}>
           <Pressable
-            style={[styles.cancelButton, canceling && styles.buttonDisabled]}
+            style={[styles.cancelButton, isDesktop && styles.flexFill, canceling && styles.buttonDisabled]}
             onPress={handleCancel}
             disabled={canceling}
           >
             <Text style={styles.cancelButtonText}>{canceling ? 'Cancelling…' : 'Cancel playdate'}</Text>
           </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={proposeNewTime}>
+          <Pressable style={[styles.secondaryButton, isDesktop && styles.flexFill]} onPress={proposeNewTime}>
             <Text style={styles.secondaryButtonText}>Propose Update</Text>
           </Pressable>
         </View>
@@ -667,7 +664,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     overflow: 'hidden',
   },
+  // Explicit width/height — without it the underlying <img> can render at
+  // a collapsed size before layout stabilizes on web, which is what was
+  // clipping the "Find Help" button below the fold (same fix already
+  // needed on the sitter-signup/onboarding hero panels).
   sitterPromoImage: {
+    width: '100%',
+    height: '100%',
     borderRadius: 20,
   },
   sitterPromoScrim: {
@@ -677,15 +680,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(24, 24, 27, 0.55)',
-  },
-  sitterPromoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
   },
   sitterPromoTitle: {
     fontSize: 18,
@@ -848,6 +842,14 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingBottom: 20,
+  },
+  // Side by side on desktop instead of stacked — there's plenty of spare
+  // width in the wide column to not need the extra vertical space.
+  footerRowDesktop: {
+    flexDirection: 'row',
+  },
+  flexFill: {
+    flex: 1,
   },
   buttonDisabled: {
     opacity: 0.6,

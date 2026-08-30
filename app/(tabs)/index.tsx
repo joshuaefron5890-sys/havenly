@@ -942,14 +942,8 @@ export default function ForYou() {
           <View style={[styles.playdateCallout, isDesktop && styles.playdateCalloutDesktop]}>
             <View style={styles.playdateCalloutMain}>
               <Pressable style={styles.playdateCalloutHeader} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
-                <View style={styles.playdateCalloutHeaderText}>
-                  <Text style={styles.playdateCalloutEyebrow}>UPCOMING PLAYDATE</Text>
-                  <Text style={styles.playdateCalloutTitle}>{proposalStartLabel(upcomingPlaydate)}</Text>
-                </View>
-                <View style={styles.playdateCalloutBadge}>
-                  <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
-                  <Text style={styles.playdateCalloutBadgeText}>Confirmed</Text>
-                </View>
+                <Text style={styles.playdateCalloutEyebrow}>UPCOMING PLAYDATE</Text>
+                <Text style={styles.playdateCalloutTitle}>{proposalStartLabel(upcomingPlaydate)}</Text>
               </Pressable>
 
               <View style={styles.playdateCalloutFamiliesRow}>
@@ -1018,6 +1012,10 @@ export default function ForYou() {
             </View>
 
             <View style={[styles.playdateCalloutActions, isDesktop && styles.playdateCalloutActionsDesktop]}>
+              <View style={styles.playdateCalloutBadge}>
+                <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
+                <Text style={styles.playdateCalloutBadgeText}>Confirmed</Text>
+              </View>
               {SITTERS_ENABLED && !upcomingPlaydate.sitter ? (
                 <Pressable
                   style={styles.playdateCalloutSitterCta}
@@ -1559,14 +1557,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   playdateCalloutHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
     marginBottom: 16,
-  },
-  playdateCalloutHeaderText: {
-    flex: 1,
   },
   playdateCalloutEyebrow: {
     fontSize: 11,
@@ -1575,14 +1566,20 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     marginBottom: 4,
   },
+  // Grouped with the CTAs in playdateCalloutActions rather than up in the
+  // header — it used to float alone to the left of the buttons once they
+  // moved into their own column on desktop, disconnected from everything
+  // else in that column.
   playdateCalloutBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 4,
     backgroundColor: colors.positiveMuted,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    marginBottom: 10,
   },
   playdateCalloutBadgeText: {
     fontSize: 12,

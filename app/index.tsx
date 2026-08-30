@@ -111,7 +111,7 @@ export default function Landing() {
               <View style={styles.brandChip}>
                 <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
                 <Text style={styles.brandWordmark}>
-                  Haven<Text style={styles.brandWordmarkAccent}>.ly</Text>
+                  Opened <Text style={styles.brandWordmarkAccent}>Circle</Text>
                 </Text>
               </View>
             </View>
@@ -199,7 +199,6 @@ const styles = StyleSheet.create({
   },
   brandWordmarkAccent: {
     color: colors.accent,
-    fontStyle: 'italic',
   },
   spacer: {
     flex: 1,

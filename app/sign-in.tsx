@@ -166,7 +166,7 @@ export default function SignIn() {
                 <View style={styles.desktopBrandRow}>
                   <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
                   <Text style={styles.desktopWordmark}>
-                    Haven<Text style={styles.desktopWordmarkAccent}>.ly</Text>
+                    Opened <Text style={styles.desktopWordmarkAccent}>Circle</Text>
                   </Text>
                 </View>
               </View>
@@ -324,7 +324,6 @@ const styles = StyleSheet.create({
   },
   desktopWordmarkAccent: {
     color: colors.accent,
-    fontStyle: 'italic',
   },
   desktopPanelTitle: {
     fontSize: 26,

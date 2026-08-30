@@ -485,7 +485,7 @@ export default function SitterSignup() {
                 <View style={styles.desktopBrandRow}>
                   <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
                   <Text style={styles.desktopWordmark}>
-                    Haven<Text style={styles.desktopWordmarkAccent}>.ly</Text> for Sitters
+                    Opened <Text style={styles.desktopWordmarkAccent}>Circle</Text> for Sitters
                   </Text>
                 </View>
               </View>
@@ -724,7 +724,6 @@ const styles = StyleSheet.create({
   },
   desktopWordmarkAccent: {
     color: colors.accent,
-    fontStyle: 'italic',
   },
   desktopPanelTitle: {
     fontSize: 26,

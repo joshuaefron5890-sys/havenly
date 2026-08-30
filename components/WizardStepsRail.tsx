@@ -33,7 +33,7 @@ export function WizardStepsRail({ currentPath }: { currentPath: string }) {
       <View style={styles.brandRow}>
         <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
         <Text style={styles.wordmark}>
-          Haven<Text style={styles.wordmarkAccent}>.ly</Text>
+          Opened <Text style={styles.wordmarkAccent}>Circle</Text>
         </Text>
       </View>
       {ONBOARDING_STEPS.map((step, i) => {
@@ -84,7 +84,6 @@ const styles = StyleSheet.create({
   },
   wordmarkAccent: {
     color: colors.accent,
-    fontStyle: 'italic',
   },
   stepRow: {
     flexDirection: 'row',

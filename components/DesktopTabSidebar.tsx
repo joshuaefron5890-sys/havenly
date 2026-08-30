@@ -32,7 +32,7 @@ export function DesktopTabSidebar() {
       <View style={styles.brandRow}>
         <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
         <Text style={styles.wordmark}>
-          Haven<Text style={styles.wordmarkAccent}>.ly</Text>
+          Opened <Text style={styles.wordmarkAccent}>Circle</Text>
         </Text>
       </View>
       <View style={styles.nav}>
@@ -82,7 +82,6 @@ const styles = StyleSheet.create({
   },
   wordmarkAccent: {
     color: colors.accent,
-    fontStyle: 'italic',
   },
   nav: {
     gap: 2,

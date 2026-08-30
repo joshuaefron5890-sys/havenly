@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '../../components/AppText';
 import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
+import { Photo } from '../../components/Photo';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SectionHero } from '../../components/SectionHero';
@@ -596,22 +597,37 @@ export default function ForYou() {
     onPress: () => void;
   };
 
-  const highlights = useMemo<Highlight[]>(() => {
-    const confirmed: Highlight[] = confirmedProposals.map((p) => {
-      const photos = confirmedProposalPhotos[p.id];
-      return {
-        key: `confirmed-${p.id}`,
-        title: proposalStartLabel(p),
-        subtitle: p.venue,
-        pairImages: photos
-          ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
-          : undefined,
-        icon: 'calendar',
-        badge: 'Confirmed',
-        badgeVariant: 'positive',
-        onPress: () => router.push(`/proposal/${p.id}`),
-      };
+  // confirmedProposals is already sorted soonest-first, so the first one
+  // that falls within the next 7 days (if any) is the one to surface in
+  // its own full callout above the Highlights band — it also gets left
+  // out of `confirmed` below so it doesn't show up a second time there.
+  const upcomingPlaydate = useMemo(() => {
+    const now = Date.now();
+    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+    return confirmedProposals.find((p) => {
+      const t = new Date(p.date).getTime();
+      return !Number.isNaN(t) && t >= now && t <= now + oneWeekMs;
     });
+  }, [confirmedProposals]);
+
+  const highlights = useMemo<Highlight[]>(() => {
+    const confirmed: Highlight[] = confirmedProposals
+      .filter((p) => p.id !== upcomingPlaydate?.id)
+      .map((p) => {
+        const photos = confirmedProposalPhotos[p.id];
+        return {
+          key: `confirmed-${p.id}`,
+          title: proposalStartLabel(p),
+          subtitle: p.venue,
+          pairImages: photos
+            ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
+            : undefined,
+          icon: 'calendar',
+          badge: 'Confirmed',
+          badgeVariant: 'positive',
+          onPress: () => router.push(`/proposal/${p.id}`),
+        };
+      });
 
     const proposed: Highlight[] = pendingProposals.map((p) => {
       const photos = pendingProposalPhotos[p.id];
@@ -781,6 +797,7 @@ export default function ForYou() {
   }, [
     confirmedProposals,
     confirmedProposalPhotos,
+    upcomingPlaydate,
     pendingProposals,
     pendingProposalPhotos,
     events,
@@ -796,17 +813,6 @@ export default function ForYou() {
   ]);
 
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
-
-  // confirmedProposals is already sorted soonest-first, so the first one
-  // that falls within the next 7 days (if any) is the one to surface.
-  const upcomingPlaydate = useMemo(() => {
-    const now = Date.now();
-    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
-    return confirmedProposals.find((p) => {
-      const t = new Date(p.date).getTime();
-      return !Number.isNaN(t) && t >= now && t <= now + oneWeekMs;
-    });
-  }, [confirmedProposals]);
 
   // Each preview row below caps at one row (perRow, or ARTICLE_PAGE_SIZE for
   // the article list) — community contributions get first claim on those
@@ -901,22 +907,45 @@ export default function ForYou() {
         />
         {upcomingPlaydate ? (
           <Pressable
-            style={styles.playdateBanner}
+            style={styles.playdateCallout}
             onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}
           >
-            <View style={styles.playdateBannerIcon}>
-              <Ionicons name="calendar" size={20} color={colors.positive} />
+            <View style={styles.playdateCalloutTop}>
+              <View style={styles.playdateCalloutPhotos}>
+                <Photo
+                  source={
+                    confirmedProposalPhotos[upcomingPlaydate.id]?.[0]
+                      ? { uri: confirmedProposalPhotos[upcomingPlaydate.id]![0]! }
+                      : undefined
+                  }
+                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarBack]}
+                  variant="person"
+                  iconSize={20}
+                />
+                <Photo
+                  source={
+                    confirmedProposalPhotos[upcomingPlaydate.id]?.[1]
+                      ? { uri: confirmedProposalPhotos[upcomingPlaydate.id]![1]! }
+                      : undefined
+                  }
+                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarFront]}
+                  variant="person"
+                  iconSize={20}
+                />
+              </View>
+              <View style={styles.playdateCalloutBadge}>
+                <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
+                <Text style={styles.playdateCalloutBadgeText}>Confirmed</Text>
+              </View>
             </View>
-            <View style={styles.playdateBannerText}>
-              <Text style={styles.playdateBannerTitle}>Upcoming playdate</Text>
-              <Text style={styles.playdateBannerSubtitle}>
-                {proposalStartLabel(upcomingPlaydate)}
-                {upcomingPlaydate.venue ? ` · ${upcomingPlaydate.venue}` : ''}
-              </Text>
-            </View>
-            <View style={styles.playdateBannerCta}>
-              <Text style={styles.playdateBannerCtaText}>View details</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.positive} />
+            <Text style={styles.playdateCalloutTitle}>Upcoming playdate</Text>
+            <Text style={styles.playdateCalloutSubtitle}>
+              {proposalStartLabel(upcomingPlaydate)}
+              {upcomingPlaydate.venue ? ` · ${upcomingPlaydate.venue}` : ''}
+            </Text>
+            <View style={styles.playdateCalloutCta}>
+              <Text style={styles.playdateCalloutCtaText}>View details</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.surface} />
             </View>
           </Pressable>
         ) : null}
@@ -1407,44 +1436,81 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingRight: 16,
   },
-  playdateBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // A full standalone callout rather than the old thin banner — this is
+  // the single most actionable thing on the dashboard, so it gets its own
+  // real estate instead of a one-line strip that duplicated the same
+  // playdate's own Highlights card right below it (that card is now
+  // filtered out of Highlights whenever this callout is showing it).
+  playdateCallout: {
     backgroundColor: colors.positiveMuted,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
-    gap: 12,
   },
-  playdateBannerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playdateBannerText: {
-    flex: 1,
-  },
-  playdateBannerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  playdateBannerSubtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  playdateBannerCta: {
+  playdateCalloutTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  playdateBannerCtaText: {
-    fontSize: 13,
+  playdateCalloutPhotos: {
+    flexDirection: 'row',
+    width: 56,
+    height: 44,
+  },
+  playdateCalloutAvatar: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: colors.positiveMuted,
+  },
+  playdateCalloutAvatarBack: {
+    left: 0,
+  },
+  playdateCalloutAvatarFront: {
+    left: 20,
+  },
+  playdateCalloutBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  playdateCalloutBadgeText: {
+    fontSize: 12,
     fontWeight: '700',
     color: colors.positive,
+  },
+  playdateCalloutTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
+  playdateCalloutSubtitle: {
+    fontSize: 15,
+    color: colors.textMuted,
+    marginTop: 4,
+    marginBottom: 18,
+  },
+  playdateCalloutCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    alignSelf: 'stretch',
+    backgroundColor: colors.positive,
+    borderRadius: 999,
+    paddingVertical: 13,
+  },
+  playdateCalloutCtaText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.surface,
   },
 });

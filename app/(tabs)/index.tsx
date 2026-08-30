@@ -958,7 +958,7 @@ export default function ForYou() {
                   source={myUpcomingFamily && familyPhoto(myUpcomingFamily) ? { uri: familyPhoto(myUpcomingFamily)! } : undefined}
                   style={styles.playdateCalloutFamilyPhoto}
                   variant="person"
-                  iconSize={22}
+                  iconSize={40}
                 />
                 <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
                   {myUpcomingFamily ? familyDisplayName(myUpcomingFamily) : 'Your family'}
@@ -967,7 +967,7 @@ export default function ForYou() {
                   {myUpcomingFamily ? familySubtitle(myUpcomingFamily) : ''}
                 </Text>
               </View>
-              <PuzzleMatchIcon size={18} color={colors.accent} gapColor={colors.surface} />
+              <PuzzleMatchIcon size={22} color={colors.accent} gapColor={colors.surface} />
               <View style={styles.playdateCalloutFamily}>
                 <Photo
                   source={
@@ -975,7 +975,7 @@ export default function ForYou() {
                   }
                   style={styles.playdateCalloutFamilyPhoto}
                   variant="person"
-                  iconSize={22}
+                  iconSize={40}
                 />
                 <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
                   {otherUpcomingFamily ? familyDisplayName(otherUpcomingFamily) : '…'}
@@ -1585,26 +1585,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background,
     borderRadius: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 8,
   },
   playdateCalloutFamilyPhoto: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    marginBottom: 6,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    marginBottom: 10,
   },
   playdateCalloutFamilyName: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
   },
   playdateCalloutFamilyKids: {
-    fontSize: 11,
+    fontSize: 13,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 3,
   },
   playdateCalloutInfoRow: {
     flexDirection: 'row',

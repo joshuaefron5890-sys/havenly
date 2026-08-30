@@ -421,7 +421,12 @@ export default function SitterSignup() {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         <View style={styles.desktopRow}>
-          <ImageBackground source={{ uri: PANEL_IMAGE }} style={styles.desktopPanel} resizeMode="cover">
+          <ImageBackground
+            source={{ uri: PANEL_IMAGE }}
+            style={styles.desktopPanel}
+            imageStyle={styles.desktopPanelImage}
+            resizeMode="cover"
+          >
             <LinearGradient
               colors={['rgba(20, 18, 16, 0.35)', 'rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.88)']}
               locations={[0, 0.5, 1]}
@@ -632,6 +637,13 @@ const styles = StyleSheet.create({
   desktopPanel: {
     width: '38%',
     backgroundColor: colors.accentMuted,
+  },
+  // Explicit, rather than trusting resizeMode="cover" alone to size the
+  // underlying <img> — forces it to actually fill the panel edge to edge
+  // instead of whatever its own intrinsic/natural size would otherwise be.
+  desktopPanelImage: {
+    width: '100%',
+    height: '100%',
   },
   desktopPanelContent: {
     flex: 1,

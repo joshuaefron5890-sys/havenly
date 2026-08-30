@@ -7,7 +7,6 @@ import { Text } from '../../components/AppText';
 import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { Photo } from '../../components/Photo';
-import { PuzzleMatchIcon } from '../../components/PuzzleMatchIcon';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SectionHero } from '../../components/SectionHero';
@@ -953,35 +952,32 @@ export default function ForYou() {
             </Pressable>
 
             <View style={styles.playdateCalloutFamiliesRow}>
-              <View style={styles.playdateCalloutFamily}>
+              <View style={styles.playdateCalloutPhotos}>
                 <Photo
                   source={myUpcomingFamily && familyPhoto(myUpcomingFamily) ? { uri: familyPhoto(myUpcomingFamily)! } : undefined}
-                  style={styles.playdateCalloutFamilyPhoto}
+                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarBack]}
                   variant="person"
-                  iconSize={40}
+                  iconSize={26}
                 />
-                <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
-                  {myUpcomingFamily ? familyDisplayName(myUpcomingFamily) : 'Your family'}
-                </Text>
-                <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
-                  {myUpcomingFamily ? familySubtitle(myUpcomingFamily) : ''}
-                </Text>
-              </View>
-              <PuzzleMatchIcon size={22} color={colors.accent} gapColor={colors.surface} />
-              <View style={styles.playdateCalloutFamily}>
                 <Photo
                   source={
                     otherUpcomingFamily && familyPhoto(otherUpcomingFamily) ? { uri: familyPhoto(otherUpcomingFamily)! } : undefined
                   }
-                  style={styles.playdateCalloutFamilyPhoto}
+                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarFront]}
                   variant="person"
-                  iconSize={40}
+                  iconSize={26}
                 />
+              </View>
+              <View style={styles.playdateCalloutFamilyNames}>
                 <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
-                  {otherUpcomingFamily ? familyDisplayName(otherUpcomingFamily) : '…'}
+                  {(myUpcomingFamily ? familyDisplayName(myUpcomingFamily) : 'Your family') +
+                    ' & ' +
+                    (otherUpcomingFamily ? familyDisplayName(otherUpcomingFamily) : '…')}
                 </Text>
                 <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
-                  {otherUpcomingFamily ? familySubtitle(otherUpcomingFamily) : ''}
+                  {[myUpcomingFamily ? familySubtitle(myUpcomingFamily) : '', otherUpcomingFamily ? familySubtitle(otherUpcomingFamily) : '']
+                    .filter(Boolean)
+                    .join(' · ')}
                 </Text>
               </View>
             </View>
@@ -1571,39 +1567,45 @@ const styles = StyleSheet.create({
     color: colors.text,
     letterSpacing: -0.2,
   },
-  // The two families, side by side around the match icon — the visual
-  // heart of the callout (per-family photo/name/kids) rather than a
-  // number or a color fill.
+  // The two families' photos, overlapping (same idiom as SquareCard's
+  // pairImages thumbnail), plus both names/kids to the right — no boxed
+  // container or match icon needed here, the photos themselves are the
+  // visual.
   playdateCalloutFamiliesRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 14,
-  },
-  playdateCalloutFamily: {
-    flex: 1,
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    gap: 16,
+    marginBottom: 16,
   },
-  playdateCalloutFamilyPhoto: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    marginBottom: 10,
+  playdateCalloutPhotos: {
+    width: 90,
+    height: 64,
+  },
+  playdateCalloutAvatar: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 3,
+    borderColor: colors.surface,
+  },
+  playdateCalloutAvatarBack: {
+    left: 0,
+  },
+  playdateCalloutAvatarFront: {
+    left: 26,
+  },
+  playdateCalloutFamilyNames: {
+    flex: 1,
   },
   playdateCalloutFamilyName: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
-    textAlign: 'center',
   },
   playdateCalloutFamilyKids: {
     fontSize: 13,
     color: colors.textMuted,
-    textAlign: 'center',
     marginTop: 3,
   },
   playdateCalloutInfoRow: {

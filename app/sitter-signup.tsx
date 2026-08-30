@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddPhotoCircle } from '../components/AddPhotoCircle';
@@ -25,6 +26,13 @@ import {
   SITTER_CERTIFICATIONS,
 } from '../lib/sitters';
 import { colors } from '../theme/colors';
+
+// Same photo already vetted for app/sitters.tsx's hero and the in-app
+// sitter promo card (app/proposal/[id].tsx's SITTER_PROMO_IMAGE) — reused
+// here for the same "Become a sitter" visual identity rather than picking
+// a new, unvetted image.
+const PANEL_IMAGE =
+  'https://images.unsplash.com/photo-1585541993027-55373d67ea86?q=80&w=1658&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 function friendlyError(code: string): string {
   switch (code) {
@@ -417,22 +425,31 @@ export default function SitterSignup() {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         <View style={styles.desktopRow}>
-          <View style={styles.desktopPanel}>
-            <View style={styles.desktopBrandRow}>
-              <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
-              <Text style={styles.desktopWordmark}>
-                Haven<Text style={styles.desktopWordmarkAccent}>.ly</Text> for Sitters
+          <ImageBackground source={{ uri: PANEL_IMAGE }} style={styles.desktopPanel} resizeMode="cover">
+            <LinearGradient
+              colors={['rgba(20, 18, 16, 0.35)', 'rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.88)']}
+              locations={[0, 0.5, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.desktopPanelContent}>
+              <View style={styles.desktopBrandChip}>
+                <View style={styles.desktopBrandRow}>
+                  <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
+                  <Text style={styles.desktopWordmark}>
+                    Haven<Text style={styles.desktopWordmarkAccent}>.ly</Text> for Sitters
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.desktopPanelTitle}>
+                {editMode ? 'Keep your profile current.' : 'Get matched with families who actually need you.'}
+              </Text>
+              <Text style={styles.desktopPanelText}>
+                {editMode
+                  ? 'Families see your profile exactly as you leave it here — availability, rate, and experience included.'
+                  : "We'll review your background check before you show up in any family's recommendations."}
               </Text>
             </View>
-            <Text style={styles.desktopPanelTitle}>
-              {editMode ? 'Keep your profile current.' : 'Get matched with families who actually need you.'}
-            </Text>
-            <Text style={styles.desktopPanelText}>
-              {editMode
-                ? 'Families see your profile exactly as you leave it here — availability, rate, and experience included.'
-                : "We'll review your background check before you show up in any family's recommendations."}
-            </Text>
-          </View>
+          </ImageBackground>
           <View style={styles.desktopFormWrap}>
             <View style={styles.desktopFormInner}>{formShell}</View>
           </View>
@@ -618,10 +635,22 @@ const styles = StyleSheet.create({
   },
   desktopPanel: {
     width: '38%',
+    backgroundColor: colors.accentMuted,
+  },
+  desktopPanelContent: {
+    flex: 1,
     justifyContent: 'center',
     gap: 16,
     paddingHorizontal: 48,
-    backgroundColor: colors.accentMuted,
+  },
+  // A backing chip rather than relying on the gradient alone — same
+  // reasoning as the fix on app/index.tsx / app/sitters.tsx.
+  desktopBrandChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(20, 18, 16, 0.45)',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   desktopBrandRow: {
     flexDirection: 'row',
@@ -635,7 +664,7 @@ const styles = StyleSheet.create({
   desktopWordmark: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
+    color: '#FFFFFF',
   },
   desktopWordmarkAccent: {
     color: colors.accent,
@@ -644,13 +673,19 @@ const styles = StyleSheet.create({
   desktopPanelTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: colors.text,
+    color: '#FFFFFF',
     lineHeight: 32,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   desktopPanelText: {
     fontSize: 15,
-    color: colors.text,
+    color: 'rgba(255, 255, 255, 0.85)',
     lineHeight: 22,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   desktopFormWrap: {
     flex: 1,

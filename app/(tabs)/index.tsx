@@ -1023,7 +1023,7 @@ export default function ForYou() {
                     router.push(`/find-sitter?proposalId=${upcomingPlaydate.id}&date=${encodeURIComponent(upcomingPlaydate.date)}`)
                   }
                 >
-                  <Ionicons name="heart-outline" size={15} color={colors.accent} />
+                  <Ionicons name="heart-outline" size={15} color={colors.surface} />
                   <Text style={styles.playdateCalloutSitterCtaText}>Find a sitter for this playdate</Text>
                 </Pressable>
               ) : null}
@@ -1527,13 +1527,11 @@ const styles = StyleSheet.create({
   // real estate instead of a one-line strip that duplicated the same
   // playdate's own Highlights card right below it (that card is now
   // filtered out of Highlights whenever this callout is showing it). A
-  // very soft blue wash (lighter than colors.infoMuted, which is tuned for
-  // smaller hint/tip UI elsewhere — a card this large reads better with a
-  // gentler tint) sets it apart from the plain white cards on the
-  // dashboard without the green from the Confirmed badge taking over the
-  // whole card.
+  // dark charcoal card (same tone as colors.text) rather than a tinted
+  // wash — every text/icon color below is flipped to white/light-gray to
+  // match, chosen over blue/peach/etc. via a side-by-side mockup.
   playdateCallout: {
-    backgroundColor: '#EFF5FA',
+    backgroundColor: '#18181B',
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
@@ -1563,7 +1561,7 @@ const styles = StyleSheet.create({
   playdateCalloutEyebrow: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.textMuted,
+    color: '#B9B9BE',
     letterSpacing: 1.2,
     marginBottom: 4,
   },
@@ -1591,7 +1589,7 @@ const styles = StyleSheet.create({
   playdateCalloutTitle: {
     fontSize: 19,
     fontWeight: '800',
-    color: colors.text,
+    color: colors.surface,
     letterSpacing: -0.2,
   },
   // The two families' photos, overlapping (same idiom as SquareCard's
@@ -1614,7 +1612,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 3,
-    borderColor: colors.surface,
+    borderColor: '#18181B',
   },
   playdateCalloutAvatarBack: {
     left: 0,
@@ -1628,11 +1626,11 @@ const styles = StyleSheet.create({
   playdateCalloutFamilyName: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.surface,
   },
   playdateCalloutFamilyKids: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: '#B9B9BE',
     marginTop: 3,
   },
   playdateCalloutInfoRow: {
@@ -1643,13 +1641,13 @@ const styles = StyleSheet.create({
   },
   playdateCalloutInfoText: {
     fontSize: 14,
-    color: colors.text,
+    color: colors.surface,
   },
   playdateCalloutSitterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 12,
     padding: 10,
     marginBottom: 14,
@@ -1665,20 +1663,23 @@ const styles = StyleSheet.create({
   playdateCalloutSitterName: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.surface,
   },
   playdateCalloutSitterMeta: {
     fontSize: 11,
-    color: colors.textMuted,
+    color: '#B9B9BE',
     marginTop: 1,
   },
+  // White (not the orange accent used elsewhere) — orange-on-charcoal read
+  // fine but white keeps this secondary button visually paired with the
+  // solid "View details" button's own white text.
   playdateCalloutSitterCta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: colors.surface,
     borderRadius: 999,
     paddingVertical: 11,
     marginBottom: 14,
@@ -1686,7 +1687,7 @@ const styles = StyleSheet.create({
   playdateCalloutSitterCtaText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.accent,
+    color: colors.surface,
   },
   playdateCalloutCta: {
     flexDirection: 'row',

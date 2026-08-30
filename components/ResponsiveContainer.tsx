@@ -26,7 +26,13 @@ const MAX_DESKTOP_CONTENT_WIDTH = 1440;
 // the URL itself collapses away, which is what actually disambiguates
 // "tabs home" from "splash" (both would otherwise read as the same '/').
 function isDesktopEligibleRoute(first: string | undefined): boolean {
-  return first === undefined || first === 'sign-in' || first === 'onboarding' || first === '(tabs)';
+  return (
+    first === undefined ||
+    first === 'sign-in' ||
+    first === 'sitters' ||
+    first === 'onboarding' ||
+    first === '(tabs)'
+  );
 }
 
 export function ResponsiveContainer({ children }: PropsWithChildren) {

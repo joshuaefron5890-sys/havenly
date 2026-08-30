@@ -45,7 +45,7 @@ function signIn() {
 }
 
 function becomeSitter() {
-  router.push('/sitter-signup');
+  router.push('/sitters');
 }
 
 // Shared between both layouts so the CTA/links block never drifts out of

@@ -77,30 +77,40 @@ function stackToText(stack: unknown): string {
 }
 
 export function installFatalErrorDisplay(): void {
-  // Primary interception — see the file comment above for why this one
-  // actually matters, unlike the two below. Native-only: there's no
-  // native bridge/module registry on the web build at all (this whole
-  // tool only ever existed to chase the TestFlight crash), so requiring
-  // NativeExceptionsManager there throws its own unrelated
+  // Native-only, entirely: there's no native bridge/module registry on the
+  // web build at all (this whole tool only ever existed to chase a
+  // TestFlight crash-on-launch with no other way to see the JS error), so
+  // requiring NativeExceptionsManager on web throws its own unrelated
   // "__fbBatchedBridgeConfig is not set" error — skip it there instead of
   // surfacing that as if it were a caught fatal error.
-  if (require('react-native').Platform.OS !== 'web') {
-    try {
-      const NativeExceptionsManager = require('react-native/Libraries/Core/NativeExceptionsManager').default;
-      if (NativeExceptionsManager) {
-        NativeExceptionsManager.reportException = (data: any) => {
-          capture(`[reportException] ${data?.message ?? '(no message)'}\n\n${stackToText(data?.stack)}`);
-        };
-        NativeExceptionsManager.reportFatalException = (message: string, stack: unknown) => {
-          capture(`[reportFatalException] ${message}\n\n${stackToText(stack)}`);
-        };
-        NativeExceptionsManager.reportSoftException = (message: string, stack: unknown) => {
-          capture(`[reportSoftException] ${message}\n\n${stackToText(stack)}`);
-        };
-      }
-    } catch (err) {
-      capture(`[crashDiagnostics] couldn't patch NativeExceptionsManager: ${String(err)}`);
+  //
+  // The console.error/ErrorUtils overrides below used to run unconditionally
+  // ("harmless to keep" even on web) — that was wrong. console.error is a
+  // completely normal, recoverable logging channel on web (Firestore's SDK
+  // uses it to report a snapshot listener hiccup it's already handling
+  // internally, for instance — it never throws), and treating every single
+  // call as an unrecoverable full-app crash white-screened haven-ly.com for
+  // any signed-in family who hit one, with no recovery short of a page
+  // reload. Scoping the whole function to native keeps 100% of the original
+  // TestFlight diagnostic intact while no longer touching the web build at
+  // all.
+  if (require('react-native').Platform.OS === 'web') return;
+
+  try {
+    const NativeExceptionsManager = require('react-native/Libraries/Core/NativeExceptionsManager').default;
+    if (NativeExceptionsManager) {
+      NativeExceptionsManager.reportException = (data: any) => {
+        capture(`[reportException] ${data?.message ?? '(no message)'}\n\n${stackToText(data?.stack)}`);
+      };
+      NativeExceptionsManager.reportFatalException = (message: string, stack: unknown) => {
+        capture(`[reportFatalException] ${message}\n\n${stackToText(stack)}`);
+      };
+      NativeExceptionsManager.reportSoftException = (message: string, stack: unknown) => {
+        capture(`[reportSoftException] ${message}\n\n${stackToText(stack)}`);
+      };
     }
+  } catch (err) {
+    capture(`[crashDiagnostics] couldn't patch NativeExceptionsManager: ${String(err)}`);
   }
 
   // Belt-and-suspenders — harmless to keep even though neither of these

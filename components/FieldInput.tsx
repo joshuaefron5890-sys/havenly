@@ -13,6 +13,8 @@ export function FieldInput({
   autoCapitalize,
   error,
   multiline,
+  onSubmitEditing,
+  returnKeyType,
 }: {
   label: string;
   placeholder?: string;
@@ -24,6 +26,11 @@ export function FieldInput({
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   error?: string;
   multiline?: boolean;
+  // Fires on the native keyboard's return key, and — for a non-multiline
+  // field on web — on the Enter key too, so a form's primary button can be
+  // triggered without reaching for the mouse.
+  onSubmitEditing?: () => void;
+  returnKeyType?: 'done' | 'next' | 'go' | 'send';
 }) {
   return (
     <View style={styles.wrapper}>
@@ -41,6 +48,8 @@ export function FieldInput({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         multiline={multiline}
+        onSubmitEditing={onSubmitEditing}
+        returnKeyType={returnKeyType}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>

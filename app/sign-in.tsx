@@ -116,6 +116,8 @@ export default function SignIn() {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        returnKeyType="next"
+        onSubmitEditing={handleSignIn}
       />
       <FieldInput
         label="Password"
@@ -123,6 +125,8 @@ export default function SignIn() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        returnKeyType="done"
+        onSubmitEditing={handleSignIn}
       />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}

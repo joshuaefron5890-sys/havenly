@@ -65,7 +65,7 @@ export default function ProductDetail() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <Photo source={imageUrl ? { uri: imageUrl } : undefined} style={styles.heroImage} />
           <View style={styles.heroTopRow}>
             <Pressable style={styles.back} onPress={() => goBack()}>
@@ -81,7 +81,7 @@ export default function ProductDetail() {
           </View>
         </View>
 
-        <Text style={styles.title}>{title || 'Product'}</Text>
+        <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{title || 'Product'}</Text>
         {(vendor || source) ? (
           <Text style={styles.vendor}>{[vendor, source].filter(Boolean).join(' · ')}</Text>
         ) : null}
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   // centered reading column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   hero: {
@@ -149,6 +149,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     overflow: 'hidden',
+  },
+  heroDesktop: {
+    height: 340,
   },
   heroImage: {
     position: 'absolute',
@@ -182,6 +185,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 4,
+  },
+  titleDesktop: {
+    fontSize: 30,
   },
   vendor: {
     fontSize: 15,

@@ -54,14 +54,14 @@ export default function EventDetail() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <Photo source={imageUrl ? { uri: imageUrl } : undefined} style={styles.heroImage} variant="image" iconSize={40} />
           <Pressable style={styles.back} onPress={() => goBack()}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
         </View>
 
-        <Text style={styles.title}>{title || 'Event'}</Text>
+        <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{title || 'Event'}</Text>
 
         <View style={styles.card}>
           <Text style={styles.cardLabel}>DATE & TIME</Text>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   // centered reading column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   hero: {
@@ -155,6 +155,9 @@ const styles = StyleSheet.create({
     padding: 16,
     overflow: 'hidden',
     backgroundColor: colors.accentMuted,
+  },
+  heroDesktop: {
+    height: 340,
   },
   heroImage: {
     position: 'absolute',
@@ -176,6 +179,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 16,
+  },
+  titleDesktop: {
+    fontSize: 30,
   },
   card: {
     backgroundColor: colors.surface,

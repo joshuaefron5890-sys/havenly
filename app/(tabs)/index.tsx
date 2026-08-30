@@ -1527,11 +1527,12 @@ const styles = StyleSheet.create({
   // real estate instead of a one-line strip that duplicated the same
   // playdate's own Highlights card right below it (that card is now
   // filtered out of Highlights whenever this callout is showing it). A
-  // dark charcoal card (same tone as colors.text) rather than a tinted
-  // wash — every text/icon color below is flipped to white/light-gray to
-  // match, chosen over blue/peach/etc. via a side-by-side mockup.
+  // dark card rather than a tinted wash — a warm espresso charcoal rather
+  // than pure near-black (colors.text), which read as too harsh against
+  // the warm photos elsewhere on the dashboard. Every text/icon color
+  // below is flipped to white/light-gray to match.
   playdateCallout: {
-    backgroundColor: '#18181B',
+    backgroundColor: '#2B2724',
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
@@ -1612,7 +1613,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 3,
-    borderColor: '#18181B',
+    borderColor: '#2B2724',
   },
   playdateCalloutAvatarBack: {
     left: 0,

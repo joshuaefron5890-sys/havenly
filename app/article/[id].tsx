@@ -88,7 +88,7 @@ export default function ArticleDetail() {
           )}
         </View>
 
-        <Text style={styles.title}>{title || 'Article'}</Text>
+        <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{title || 'Article'}</Text>
         <Text style={styles.attribution}>{attribution}</Text>
 
         {summary ? (
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   // centered reading column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   topRow: {
@@ -182,6 +182,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 4,
+  },
+  titleDesktop: {
+    fontSize: 30,
   },
   attribution: {
     fontSize: 13,

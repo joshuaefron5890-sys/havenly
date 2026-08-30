@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
   // to-edge full-browser-width text or the old fixed mobile column.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   familiesRow: {

@@ -173,7 +173,7 @@ export default function ContributionDetail() {
           <Text style={styles.communityBadgeText}>Member added</Text>
         </View>
 
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{title}</Text>
 
         <Pressable
           style={styles.contributorRow}
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   // centered reading column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   communityBadge: {
@@ -322,6 +322,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 16,
+  },
+  titleDesktop: {
+    fontSize: 30,
   },
   // Mirrors app/family/[id].tsx's own photo + name treatment (scaled down
   // for an inline row instead of a hero banner) — tapping through opens

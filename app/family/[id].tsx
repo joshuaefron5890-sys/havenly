@@ -111,7 +111,7 @@ export default function FamilyDetail() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <Photo
             source={profile.familyPhotoUrl ? { uri: profile.familyPhotoUrl } : undefined}
             style={styles.heroImage}
@@ -133,7 +133,7 @@ export default function FamilyDetail() {
           </View>
           <View style={styles.heroBottomRow}>
             <View style={styles.heroTitleWrap}>
-              <Text style={styles.heroTitle} numberOfLines={1}>
+              <Text style={[styles.heroTitle, isDesktop && styles.heroTitleDesktop]} numberOfLines={1}>
                 {familyName}
               </Text>
               {profile.city ? (
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   // centered reading column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   backAlone: {
@@ -264,6 +264,9 @@ const styles = StyleSheet.create({
     padding: 16,
     justifyContent: 'space-between',
     overflow: 'hidden',
+  },
+  heroDesktop: {
+    height: 340,
   },
   heroImage: {
     position: 'absolute',
@@ -315,6 +318,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.surface,
+  },
+  heroTitleDesktop: {
+    fontSize: 30,
   },
   heroLocation: {
     fontSize: 13,

@@ -312,6 +312,7 @@ export default function SitterSignup() {
           imageUri={pendingPhotoPreviewUri ?? profile.photoUrl}
           uploading={pickingPhoto}
           onPress={handlePickPhoto}
+          align="flex-start"
         />
         {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
         <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />

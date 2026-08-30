@@ -115,14 +115,14 @@ export default function FindSitter() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <Photo source={{ uri: HERO_IMAGE }} style={styles.heroImage} />
           <View style={styles.heroScrim} />
           <Pressable style={styles.back} onPress={goBack}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
           <View style={styles.heroTextWrap}>
-            <Text style={styles.heroTitle}>Find Help</Text>
+            <Text style={[styles.heroTitle, isDesktop && styles.heroTitleDesktop]}>Find Help</Text>
             <Text style={styles.heroDescription}>
               {slot
                 ? 'Experienced help near you who’ve confirmed they’re free for this playdate, matched to your kids’ experience.'
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   // comfortably wide centered column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   hero: {
@@ -301,6 +301,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     justifyContent: 'flex-end',
     overflow: 'hidden',
+  },
+  heroDesktop: {
+    height: 320,
   },
   heroImage: {
     position: 'absolute',
@@ -328,6 +331,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.surface,
     marginBottom: 4,
+  },
+  heroTitleDesktop: {
+    fontSize: 28,
   },
   heroDescription: {
     fontSize: 13,

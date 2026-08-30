@@ -9,15 +9,21 @@ export function AddPhotoCircle({
   imageUri,
   uploading,
   onPress,
+  align = 'center',
 }: {
   label: string;
   caption: string;
   imageUri?: string | null;
   uploading?: boolean;
   onPress?: () => void;
+  // Every existing caller wants this centered in its own column — sitter
+  // signup's form is left-aligned throughout, so this is the one place
+  // a centered photo picker looks out of place next to left-aligned
+  // labels/inputs above and below it.
+  align?: 'center' | 'flex-start';
 }) {
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { alignItems: align }]}>
       <Pressable style={styles.circle} onPress={onPress} disabled={uploading}>
         {uploading ? (
           <ActivityIndicator color={colors.accent} />

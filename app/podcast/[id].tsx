@@ -88,7 +88,7 @@ export default function PodcastDetail() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <Photo source={artworkUrl ? { uri: artworkUrl } : undefined} style={styles.heroImage} />
           <View style={styles.heroTopRow}>
             <Pressable style={styles.back} onPress={() => goBack()}>
@@ -104,7 +104,7 @@ export default function PodcastDetail() {
           </View>
         </View>
 
-        <Text style={styles.title}>{title || 'Untitled podcast'}</Text>
+        <Text style={[styles.title, isDesktop && styles.titleDesktop]}>{title || 'Untitled podcast'}</Text>
         {artist ? <Text style={styles.artist}>{artist}</Text> : null}
         {facts ? <Text style={styles.facts}>{facts}</Text> : null}
 
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   // centered reading column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   hero: {
@@ -173,6 +173,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     overflow: 'hidden',
+  },
+  heroDesktop: {
+    height: 340,
   },
   heroImage: {
     position: 'absolute',
@@ -206,6 +209,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginBottom: 4,
+  },
+  titleDesktop: {
+    fontSize: 30,
   },
   artist: {
     fontSize: 15,

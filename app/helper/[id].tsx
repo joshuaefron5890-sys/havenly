@@ -14,13 +14,13 @@ export default function HelperDetail() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <Photo source={images.helperMarcus} style={styles.heroImage} />
           <Pressable style={styles.back} onPress={() => goBack()}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
         </View>
-        <Text style={styles.title}>Marcus T.</Text>
+        <Text style={[styles.title, isDesktop && styles.titleDesktop]}>Marcus T.</Text>
         <Text style={styles.subtitle}>BCBA · 7 years experience · 0.6 mi</Text>
 
         <View style={styles.statsRow}>
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   // centered reading column instead of stretching edge to edge.
   desktopColumn: {
     width: '100%',
-    maxWidth: 640,
+    maxWidth: 900,
     alignSelf: 'center',
   },
   hero: {
@@ -99,6 +99,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     overflow: 'hidden',
+  },
+  heroDesktop: {
+    height: 340,
   },
   heroImage: {
     position: 'absolute',
@@ -119,6 +122,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.text,
+  },
+  titleDesktop: {
+    fontSize: 30,
   },
   subtitle: {
     fontSize: 14,

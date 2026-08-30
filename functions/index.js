@@ -46,7 +46,7 @@ async function resolveFamilyUid(authUid) {
 const CLUSTERS = {
   'bay-area': {
     name: 'Bay Area',
-    admins: ['admin@haven-ly.com'],
+    admins: ['admin@haven-ly.com', 'joshuaefron5890@gmail.com'],
   },
 };
 const DEFAULT_CLUSTER_ID = 'bay-area';

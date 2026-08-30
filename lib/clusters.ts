@@ -5,7 +5,7 @@
 // during onboarding (see app/onboarding/family.tsx) without a round trip
 // to a Cloud Function for something this cheap to compute locally.
 export const CLUSTERS: Record<string, { name: string; admins: string[] }> = {
-  'bay-area': { name: 'Bay Area', admins: ['admin@haven-ly.com'] },
+  'bay-area': { name: 'Bay Area', admins: ['admin@haven-ly.com', 'joshuaefron5890@gmail.com'] },
 };
 
 export const DEFAULT_CLUSTER_ID = 'bay-area';

@@ -4,6 +4,7 @@ import { Text } from './AppText';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 import { Photo } from './Photo';
+import { PuzzleMatchIcon } from './PuzzleMatchIcon';
 
 // A square, image-forward card for dashboard grids — deliberately shows
 // less than a ListRow (title + one line of subtitle) since it links through
@@ -180,7 +181,7 @@ export function SquareCard({
         ) : null}
         {matchScore != null ? (
           <View style={styles.matchScoreBadge}>
-            <Ionicons name="extension-puzzle" size={12} color={colors.surface} />
+            <PuzzleMatchIcon size={11} color={colors.surface} />
           </View>
         ) : null}
         {onDelete ? (
@@ -328,9 +329,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
-  // A plain puzzle-piece icon rather than a percentage — a family match is
-  // shown qualitatively ("this fits"), not as a number to compare, so
-  // there's nothing here that needs room for text.
+  // Two interlocking puzzle pieces rather than a percentage — a family
+  // match is shown qualitatively ("this fits"), not as a number to
+  // compare, so there's nothing here that needs room for text.
   matchScoreBadge: {
     position: 'absolute',
     bottom: 4,

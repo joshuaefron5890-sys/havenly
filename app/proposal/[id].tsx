@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddToGoogleCalendarPrompt } from '../../components/AddToGoogleCalendarPrompt';
 import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
+import { PuzzleMatchIcon } from '../../components/PuzzleMatchIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { showAlert, showConfirm } from '../../lib/alert';
@@ -300,7 +301,11 @@ export default function ProposalDetail() {
         <View style={styles.familiesRow}>
           <FamilyMini family={myFamily} fallbackLabel="You" />
           <View style={styles.connector}>
-            <Ionicons name={otherFamily ? 'extension-puzzle' : 'people'} size={18} color={colors.accent} />
+            {otherFamily ? (
+              <PuzzleMatchIcon size={15} color={colors.accent} />
+            ) : (
+              <Ionicons name="people" size={16} color={colors.accent} />
+            )}
           </View>
           <FamilyMini
             family={otherFamily}

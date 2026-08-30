@@ -7,6 +7,7 @@ import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
+import { PuzzleMatchIcon } from '../../components/PuzzleMatchIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
 import { addFavoriteFamily, getFavoriteFamilyUids, removeFavoriteFamily } from '../../lib/favorites';
@@ -140,8 +141,8 @@ export default function FamilyDetail() {
               ) : null}
             </View>
             <View style={styles.matchBadge}>
-              <Ionicons name="extension-puzzle" size={16} color={colors.accent} />
-              <Text style={styles.matchLabel}>Family Match</Text>
+              <PuzzleMatchIcon size={16} color={colors.accent} />
+              <Text style={styles.matchLabel}>Strong Match</Text>
             </View>
           </View>
         </View>

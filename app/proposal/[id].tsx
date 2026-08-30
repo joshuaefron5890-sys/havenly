@@ -28,6 +28,7 @@ import {
   respondToProposal,
   subscribeToProposal,
 } from '../../lib/playdateProposals';
+import { useIsDesktop } from '../../lib/responsive';
 import { SITTERS_ENABLED } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
@@ -125,6 +126,7 @@ function FamilyMini({
 
 export default function ProposalDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isDesktop = useIsDesktop();
   const { user, familyUid, loading: authLoading } = useAuth();
   const [proposal, setProposal] = useState<PlaydateProposal | null | undefined>(undefined);
   const [otherFamily, setOtherFamily] = useState<FamilyProfile | null>(null);
@@ -283,7 +285,7 @@ export default function ProposalDetail() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.header}>
+      <View style={[styles.header, isDesktop && styles.desktopColumn]}>
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
@@ -293,7 +295,10 @@ export default function ProposalDetail() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        style={isDesktop && styles.desktopColumn}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.familiesRow}>
           <FamilyMini family={myFamily} fallbackLabel="You" />
           <View style={styles.connector}>
@@ -444,7 +449,7 @@ export default function ProposalDetail() {
       </ScrollView>
 
       {canRespond ? (
-        <View style={styles.footerStack}>
+        <View style={[styles.footerStack, isDesktop && styles.desktopColumn]}>
           <View style={styles.footer}>
             <Pressable
               style={[styles.declineButton, responding && styles.buttonDisabled]}
@@ -466,7 +471,7 @@ export default function ProposalDetail() {
           </Pressable>
         </View>
       ) : canCancel ? (
-        <View style={styles.footerStack}>
+        <View style={[styles.footerStack, isDesktop && styles.desktopColumn]}>
           <Pressable
             style={[styles.cancelButton, canceling && styles.buttonDisabled]}
             onPress={handleCancel}
@@ -479,7 +484,7 @@ export default function ProposalDetail() {
           </Pressable>
         </View>
       ) : (
-        <View style={styles.footer}>
+        <View style={[styles.footer, isDesktop && styles.desktopColumn]}>
           <Pressable style={[styles.secondaryButton, styles.secondaryButtonFill]} onPress={proposeNewTime}>
             <Text style={styles.secondaryButtonText}>Propose Update</Text>
           </Pressable>
@@ -539,6 +544,15 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  // This is a single, focused detail screen rather than a nav-anchored
+  // page — no sidebar makes sense here, so "desktop-friendly" just means
+  // a comfortably wide, centered reading column instead of either edge-
+  // to-edge full-browser-width text or the old fixed mobile column.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   familiesRow: {
     flexDirection: 'row',

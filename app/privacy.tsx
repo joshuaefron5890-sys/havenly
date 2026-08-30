@@ -22,10 +22,10 @@ type Section = { heading: string; paragraphs: string[]; bullets?: string[] };
 
 const SECTIONS: Section[] = [
   {
-    heading: 'What Haven.ly is',
+    heading: 'What Opened Circle is',
     paragraphs: [
-      'Haven.ly ("Haven.ly," "we," "us") is an app that helps families with neurodivergent children connect with other families in their local community — matching, messaging, playdate proposals, local events, and curated resources. This policy explains what information we collect through the app, how we use it, and who we share it with.',
-      'Haven.ly is intended for use by parents and guardians (18 and older) on behalf of their family. It is not directed at children, and children do not create their own accounts or interact with the app directly — any information about a child is entered by their parent or guardian.',
+      'Opened Circle ("Opened Circle," "we," "us") is an app that helps families with neurodivergent children connect with other families in their local community — matching, messaging, playdate proposals, local events, and curated resources. This policy explains what information we collect through the app, how we use it, and who we share it with.',
+      'Opened Circle is intended for use by parents and guardians (18 and older) on behalf of their family. It is not directed at children, and children do not create their own accounts or interact with the app directly — any information about a child is entered by their parent or guardian.',
     ],
   },
   {
@@ -38,21 +38,21 @@ const SECTIONS: Section[] = [
       'Preferences: play style, interests, goals, personality, and availability, used to power matching and suggested playdate times.',
       'Messages and playdate activity: messages you send to other families, playdate proposals, and posts you make to community boards.',
       'Sitter profiles (if you register as a sitter): name, contact information, bio, photo, credentials, and background-check status.',
-      'Calendar availability (only if you connect Google Calendar): we receive free/busy time ranges, not the titles, descriptions, or attendees of your events. If you’re a sitter and choose to let Haven.ly add your confirmed playdates to your calendar, we also create calendar events on your behalf for that purpose only.',
+      'Calendar availability (only if you connect Google Calendar): we receive free/busy time ranges, not the titles, descriptions, or attendees of your events. If you’re a sitter and choose to let Opened Circle add your confirmed playdates to your calendar, we also create calendar events on your behalf for that purpose only.',
       'A device push-notification token, so we can deliver notifications about messages and playdate activity.',
     ],
   },
   {
     heading: 'How we use this information',
     paragraphs: [
-      'We use the information above to run Haven.ly: to match your family with compatible families nearby, enable messaging and playdate proposals, show local events and schools near you, send push notifications about activity relevant to you, and show curated content (podcasts, articles, products) relevant to your family.',
+      'We use the information above to run Opened Circle: to match your family with compatible families nearby, enable messaging and playdate proposals, show local events and schools near you, send push notifications about activity relevant to you, and show curated content (podcasts, articles, products) relevant to your family.',
     ],
   },
   {
     heading: 'How we share information',
     paragraphs: ['We do not sell your personal information. We share it only as follows:'],
     bullets: [
-      'With other Haven.ly families: a limited profile (first name, general location, child’s age/interests/neurodivergence tags relevant to matching) is visible to other families for matching and messaging purposes — not your exact address, email, or phone number unless you choose to share it in a message.',
+      'With other Opened Circle families: a limited profile (first name, general location, child’s age/interests/neurodivergence tags relevant to matching) is visible to other families for matching and messaging purposes — not your exact address, email, or phone number unless you choose to share it in a message.',
       'Service providers who host and run the app on our behalf: Google Firebase (authentication, database, hosting), Google Calendar API (only if you connect it), Expo (push notification delivery), and Resend (transactional email, e.g. family invites).',
       'Apple, when you install the app through TestFlight or the App Store — Apple collects its own device and diagnostic data under Apple’s own privacy policy, separate from this one.',
       'If required by law, or to protect the safety of our users.',
@@ -61,10 +61,10 @@ const SECTIONS: Section[] = [
   {
     heading: 'Our use of Google user data',
     paragraphs: [
-      'If you connect Google Calendar, Haven.ly requests access to your free/busy availability so we can flag scheduling conflicts and suggest playdate times — never the titles, descriptions, locations, or attendees of your actual events. Sitters may separately choose to grant Haven.ly permission to create calendar events for their own confirmed playdates.',
+      'If you connect Google Calendar, Opened Circle requests access to your free/busy availability so we can flag scheduling conflicts and suggest playdate times — never the titles, descriptions, locations, or attendees of your actual events. Sitters may separately choose to grant Opened Circle permission to create calendar events for their own confirmed playdates.',
       'If you sign in with Google, we receive the name, email address, and profile photo Google shares as part of that sign-in.',
-      'We use this information solely to provide the Haven.ly features described in this policy — matching, scheduling, and account sign-in — and never to serve ads or sell it. It’s shared only with the service providers listed above, to the extent needed to operate those features, and is retained only as long as your account and the relevant connection stay active; disconnecting Google Calendar (see “Your choices” below) or deleting your account stops any further access and removes what we’ve stored.',
-      'Haven.ly’s use and transfer of information received from Google APIs to any other app will adhere to the Google API Services User Data Policy, including the Limited Use requirements.',
+      'We use this information solely to provide the Opened Circle features described in this policy — matching, scheduling, and account sign-in — and never to serve ads or sell it. It’s shared only with the service providers listed above, to the extent needed to operate those features, and is retained only as long as your account and the relevant connection stay active; disconnecting Google Calendar (see “Your choices” below) or deleting your account stops any further access and removes what we’ve stored.',
+      'Opened Circle’s use and transfer of information received from Google APIs to any other app will adhere to the Google API Services User Data Policy, including the Limited Use requirements.',
     ],
   },
   {
@@ -83,7 +83,7 @@ const SECTIONS: Section[] = [
   {
     heading: 'Changes to this policy',
     paragraphs: [
-      'If we make material changes to this policy, we’ll update the effective date below. Continued use of Haven.ly after a change means you accept the updated policy.',
+      'If we make material changes to this policy, we’ll update the effective date below. Continued use of Opened Circle after a change means you accept the updated policy.',
     ],
   },
   {

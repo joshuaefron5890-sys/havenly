@@ -35,7 +35,7 @@ export function SitterDesktopSidebar() {
     <View style={styles.sidebar}>
       <View style={styles.brandRow}>
         <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
-        <Text style={styles.wordmark}>Haven.ly for Sitters</Text>
+        <Text style={styles.wordmark}>Opened Circle for Sitters</Text>
       </View>
       <View style={styles.nav}>
         {NAV_ITEMS.map((item) => {

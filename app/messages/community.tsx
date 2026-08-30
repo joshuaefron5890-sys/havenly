@@ -29,7 +29,7 @@ export default function CommunityThread() {
     const text = draft;
     setDraft('');
     try {
-      await postCommunityMessage(text, user?.displayName || 'Haven.ly');
+      await postCommunityMessage(text, user?.displayName || 'Opened Circle');
     } catch (err: any) {
       showAlert('Couldn’t send that announcement', err?.message ?? err?.code ?? 'Please try again.');
       setDraft(text);

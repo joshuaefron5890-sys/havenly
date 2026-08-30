@@ -24,7 +24,7 @@ export default function Matches() {
         </View>
 
         <Text style={styles.headline}>You're all set,</Text>
-        <Text style={styles.headlineAccent}>welcome to Haven.ly!</Text>
+        <Text style={styles.headlineAccent}>welcome to Opened Circle!</Text>
         <Text style={styles.subtext}>Here are families near you ready to connect.</Text>
 
         {SUGGESTED_FAMILIES.map((family) => (

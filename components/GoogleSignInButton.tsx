@@ -10,7 +10,7 @@ import { images } from '../theme/images';
 // comment in lib/googleIdentity.ts for why); native has no DOM to mount
 // that into, so it's a plain Pressable calling the actual Google Sign-In
 // SDK (lib/googleNativeAuth.ts) instead — which, unlike the web flow, CAN
-// be styled to match the rest of Haven.ly's buttons, since there's no
+// be styled to match the rest of Opened Circle's buttons, since there's no
 // Google-owned widget involved.
 export function GoogleSignInButton({
   onCredential,
@@ -75,7 +75,7 @@ function WebGoogleSignInButton({
   const containerRef = useRef<any>(null);
   // Google's button needs an explicit pixel width up front — measured from
   // the outer wrapper's actual laid-out width once, rather than guessed,
-  // so it fills the same space Haven.ly's other full-width buttons do.
+  // so it fills the same space Opened Circle's other full-width buttons do.
   const [width, setWidth] = useState<number | null>(null);
 
   useEffect(() => {

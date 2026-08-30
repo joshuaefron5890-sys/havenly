@@ -29,7 +29,7 @@ export function subscribeToCommunityMessages(callback: (messages: CommunityMessa
       return {
         id: d.id,
         text: typeof data.text === 'string' ? data.text : '',
-        postedByName: typeof data.postedByName === 'string' ? data.postedByName : 'Haven.ly',
+        postedByName: typeof data.postedByName === 'string' ? data.postedByName : 'Opened Circle',
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
       };
     });

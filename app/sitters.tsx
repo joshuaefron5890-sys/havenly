@@ -60,7 +60,7 @@ export default function SittersLanding() {
                 Get matched with families who <Text style={styles.headlineAccent}>actually need you.</Text>
               </Text>
               <Text style={styles.subtext}>
-                Haven.ly connects experienced sitters with local families raising neurodivergent kids.
+                Opened Circle connects experienced sitters with local families raising neurodivergent kids.
               </Text>
 
               <View style={styles.pillarsRow}>
@@ -81,7 +81,7 @@ export default function SittersLanding() {
                 </Text>
               </Pressable>
               <Pressable onPress={() => router.push('/')}>
-                <Text style={styles.familyLink}>Looking for a sitter instead? Go to Haven.ly for families</Text>
+                <Text style={styles.familyLink}>Looking for a sitter instead? Go to Opened Circle for families</Text>
               </Pressable>
             </View>
           </ScrollView>

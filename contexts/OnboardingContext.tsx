@@ -75,7 +75,7 @@ export type OnboardingProfile = {
   soundsGoodTo: string[];
   availability: string[];
   googleCalendarConnected: boolean;
-  // Whether the family opted in to Haven.ly creating events on their Google
+  // Whether the family opted in to Opened Circle creating events on their Google
   // Calendar when a playdate is accepted, as opposed to only checking
   // free/busy. Determines which OAuth scope gets requested on (re)connect —
   // see requestGoogleCalendarAuthCode in lib/googleIdentity.ts.

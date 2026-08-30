@@ -55,7 +55,7 @@ export default function InviteFamilyMember() {
         <Ionicons name="mail" size={40} color={colors.accent} style={styles.sentIcon} />
         <Text style={styles.sentTitle}>Invite sent!</Text>
         <Text style={styles.sentSubtitle}>
-          {name} will get an email with a link to join your family on Haven.ly — once they accept, they'll see
+          {name} will get an email with a link to join your family on Opened Circle — once they accept, they'll see
           everything you see.
         </Text>
         <Pressable style={styles.cta} onPress={() => goBack()}>

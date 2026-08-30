@@ -183,14 +183,14 @@ export default function AcceptInvite() {
       <SafeAreaView style={[styles.screen, styles.centered]}>
         <EmptyState text="This invite link is no longer valid — ask whoever invited you to send a new one." />
         <Pressable style={styles.cta} onPress={() => router.replace('/')}>
-          <Text style={styles.ctaText}>Go to Haven.ly</Text>
+          <Text style={styles.ctaText}>Go to Opened Circle</Text>
         </Pressable>
       </SafeAreaView>
     );
   }
 
   // Signed in already (either just created above, or this is an existing
-  // Haven.ly member who was invited into a second family) — show the photo
+  // Opened Circle member who was invited into a second family) — show the photo
   // step and let them actually join.
   if (user) {
     return (
@@ -232,7 +232,7 @@ export default function AcceptInvite() {
         <Ionicons name="people" size={32} color={colors.accent} style={styles.headerIcon} />
         <Text style={styles.headline}>{invite.invitedByName} invited you</Text>
         <Text style={styles.subtext}>
-          Join {invite.familyLabel} on Haven.ly as their {invite.relationship.toLowerCase()} — you'll see everything
+          Join {invite.familyLabel} on Opened Circle as their {invite.relationship.toLowerCase()} — you'll see everything
           they see: matches, messages, and playdates.
         </Text>
 
@@ -258,7 +258,7 @@ export default function AcceptInvite() {
         {googleSubmitting ? <Text style={styles.googleStatus}>Signing up…</Text> : null}
         <Pressable onPress={() => router.push('/sign-in')}>
           <Text style={styles.signInHint}>
-            Already have a Haven.ly account? <Text style={styles.signInHintAccent}>Sign in</Text> first, then reopen
+            Already have an Opened Circle account? <Text style={styles.signInHintAccent}>Sign in</Text> first, then reopen
             this link.
           </Text>
         </Pressable>

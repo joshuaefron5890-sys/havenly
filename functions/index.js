@@ -164,7 +164,7 @@ async function refreshGoogleAccessToken(refreshToken, clientSecret) {
   const json = await res.json();
   if (!res.ok) {
     // 'invalid_grant' is Google's code for a refresh token that's expired
-    // or been revoked (e.g. the user removed Haven.ly's access in their
+    // or been revoked (e.g. the user removed Opened Circle's access in their
     // Google account) — surfaced as the same failed-precondition every
     // caller here already uses for "never connected," so the client shows
     // its existing reconnect UI instead of Google's raw OAuth error text.
@@ -375,7 +375,7 @@ function derivePlaydateEventFields(proposal) {
 // if that family never set a last name.
 function buildPlaydateSummary(otherFamilyLastName) {
   const trimmed = typeof otherFamilyLastName === 'string' ? otherFamilyLastName.trim() : '';
-  return trimmed ? `Playdate with ${trimmed} Family` : 'Haven.ly playdate';
+  return trimmed ? `Playdate with ${trimmed} Family` : 'Opened Circle playdate';
 }
 
 async function deleteGoogleCalendarEvent(refreshToken, clientSecret, eventId) {
@@ -406,7 +406,7 @@ async function deleteGoogleCalendarEvent(refreshToken, clientSecret, eventId) {
 // scoped refresh token, checked just below via googleCalendarSyncEnabled.
 // Until this project completes Google's OAuth verification, that consent
 // screen throws Google's "unverified app" warning at everyone; the "Advanced
-// > Go to Haven.ly (unsafe)" bypass lets a person through it, capped at 100
+// > Go to Opened Circle (unsafe)" bypass lets a person through it, capped at 100
 // lifetime users project-wide (Google Cloud Console > OAuth consent screen
 // > Audience > OAuth user cap). Anyone who left the toggle off keeps the
 // safe, unaffected freebusy-only connection from sign-up.
@@ -632,7 +632,7 @@ exports.addExternalEventToGoogleCalendar = onCall({ secrets: [googleClientSecret
 // Resend rejects sends from an unverified one.
 const APP_BASE_URL = 'https://haven-ly.com';
 const resendApiKey = defineSecret('RESEND_API_KEY');
-const RESEND_FROM_EMAIL = 'Haven.ly <notifications@haven-ly.com>';
+const RESEND_FROM_EMAIL = 'Opened Circle <notifications@haven-ly.com>';
 
 // "The Efron Family", or a generic fallback if that family never set a
 // last name — same wording buildPlaydateSummary already uses for calendar
@@ -640,7 +640,7 @@ const RESEND_FROM_EMAIL = 'Haven.ly <notifications@haven-ly.com>';
 // it's generated automatically rather than typed by a person.
 function familyLabelFor(lastName) {
   const trimmed = typeof lastName === 'string' ? lastName.trim() : '';
-  return trimmed ? `The ${trimmed} Family` : 'A Haven.ly family';
+  return trimmed ? `The ${trimmed} Family` : 'An Opened Circle family';
 }
 
 // Resolves the recipient's email via Firebase Auth (not Firestore — see
@@ -739,7 +739,7 @@ exports.emailOnPlaydateProposed = onDocumentCreated(
     const details = [dateLabel, venue].filter(Boolean).join(' at ');
 
     const lines = [
-      `${family} sent you a playdate invite on Haven.ly${details ? `: ${details}` : '.'}`,
+      `${family} sent you a playdate invite on Opened Circle${details ? `: ${details}` : '.'}`,
       note ? `Their note: "${note}"` : null,
       '',
       `View and respond: ${APP_BASE_URL}/proposal/${event.params.proposalId}`,
@@ -820,13 +820,13 @@ exports.notifyOnSitterConfirmation = onDocumentUpdated(
 
     const familyTitle = `${sitterName} ${verb} the playdate`;
     const familyText = [
-      `${sitterName} ${verb} their sitter assignment for your playdate on Haven.ly${dateLabel ? `: ${dateLabel}` : '.'}`,
+      `${sitterName} ${verb} their sitter assignment for your playdate on Opened Circle${dateLabel ? `: ${dateLabel}` : '.'}`,
       '',
       `View details: ${proposalUrl}`,
     ].join('\n');
     const sitterTitle = afterStatus === 'confirmed' ? 'Playdate confirmed' : 'Playdate declined';
     const sitterText = [
-      `You ${verb} this playdate on Haven.ly${dateLabel ? `: ${dateLabel}` : '.'}`,
+      `You ${verb} this playdate on Opened Circle${dateLabel ? `: ${dateLabel}` : '.'}`,
       '',
       `View your playdates: ${sitterPlaydatesUrl}`,
     ].join('\n');
@@ -857,7 +857,7 @@ exports.notifyOnSitterConfirmation = onDocumentUpdated(
       if (!startIso || !endIso) return;
       await createGoogleCalendarEvent(sitterData.googleCalendar.refreshToken, googleClientSecret.value(), {
         eventId: googleEventIdFor(event.params.proposalId, sitterUid),
-        summary: 'Haven.ly playdate (sitting)',
+        summary: 'Opened Circle playdate (sitting)',
         location: venue,
         startIso,
         endIso,
@@ -897,7 +897,7 @@ exports.notifyOnSitterAssigned = onDocumentUpdated(
 
     const title = 'New playdate request';
     const text = [
-      `A family on Haven.ly would like you to sit for a playdate${details ? `: ${details}` : '.'}`,
+      `A family on Opened Circle would like you to sit for a playdate${details ? `: ${details}` : '.'}`,
       '',
       `Confirm or decline: ${sitterPlaydatesUrl}`,
     ].join('\n');
@@ -931,7 +931,7 @@ exports.notifyOnSitterRemoved = onDocumentUpdated(
 
     const title = 'Playdate request canceled';
     const text = [
-      `A family on Haven.ly canceled your sitter assignment for a playdate${dateLabel ? `: ${dateLabel}` : '.'}`,
+      `A family on Opened Circle canceled your sitter assignment for a playdate${dateLabel ? `: ${dateLabel}` : '.'}`,
       '',
       `View your playdates: ${sitterPlaydatesUrl}`,
     ].join('\n');
@@ -988,7 +988,7 @@ exports.emailOnMessageSent = onDocumentCreated(
     const family = familyLabelFor(fromSnap.data()?.lastName);
 
     const lines = [
-      `${family} sent you a message on Haven.ly:`,
+      `${family} sent you a message on Opened Circle:`,
       '',
       `"${text}"`,
       '',
@@ -1041,7 +1041,7 @@ exports.notifyOnCommunityMessage = onDocumentCreated(
     const personalUidLists = await Promise.all(familyUids.map((uid) => personalUidsForFamily(uid)));
     const personalUids = [...new Set(personalUidLists.flat())];
 
-    const title = `Haven.ly ${CLUSTERS[clusterId]?.name ?? 'Community'}`;
+    const title = `Opened Circle ${CLUSTERS[clusterId]?.name ?? 'Community'}`;
     const tokenSnaps = await Promise.all(
       personalUids.map((uid) => admin.firestore().collection('pushTokens').doc(uid).get())
     );
@@ -1607,7 +1607,7 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
   // regardless of whether this email send succeeds.
   if (status === 'clear' && !wasAlreadyClear) {
     const firstName = (typeof beforeSnap.data()?.name === 'string' ? beforeSnap.data().name : '').trim().split(' ')[0];
-    const title = 'You’re approved on Haven.ly';
+    const title = 'You’re approved on Opened Circle';
     await Promise.all([
       sendNotificationEmail(
         uid,
@@ -1615,7 +1615,7 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
         [
           firstName ? `Hi ${firstName},` : 'Hi,',
           '',
-          'Your Haven.ly application has been approved. Families nearby can now find you and reach out for playdate support.',
+          'Your Opened Circle application has been approved. Families nearby can now find you and reach out for playdate support.',
           '',
           `View your profile: ${APP_BASE_URL}/sitter-signup?edit=1`,
         ].join('\n')
@@ -1664,7 +1664,7 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
         const referrerFirstName = (typeof referrerSnap.data()?.name === 'string' ? referrerSnap.data().name : '')
           .trim()
           .split(' ')[0];
-        const referralTitle = `You earned $15${firstName ? ` — ${firstName} joined Haven.ly` : ''}`;
+        const referralTitle = `You earned $15${firstName ? ` — ${firstName} joined Opened Circle` : ''}`;
         await Promise.all([
           sendNotificationEmail(
             referredByUid,
@@ -1672,7 +1672,7 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
             [
               referrerFirstName ? `Hi ${referrerFirstName},` : 'Hi,',
               '',
-              `${firstName || 'The sitter you referred'} just got approved on Haven.ly, which means you've earned $15 for referring them.`,
+              `${firstName || 'The sitter you referred'} just got approved on Opened Circle, which means you've earned $15 for referring them.`,
               '',
               'We’ll send it to your Venmo or PayPal on file within 7 days.',
             ].join('\n')
@@ -1742,7 +1742,7 @@ exports.getMyReferralStats = onCall(async (request) => {
 // joined with the payee's current Venmo/PayPal info (looked up live here
 // rather than frozen into the payout row, so a sitter fixing a typo'd
 // handle after the fact still gets found when an admin actually processes
-// this). Haven.ly disburses via Venmo/PayPal by hand; this just tracks who
+// this). Opened Circle disburses via Venmo/PayPal by hand; this just tracks who
 // is owed what and by when.
 exports.getPendingReferralPayouts = onCall(async (request) => {
   if (!request.auth) {
@@ -1998,7 +1998,7 @@ exports.sendFamilyInvite = onCall({ secrets: [resendApiKey] }, async (request) =
 
   const link = `${APP_BASE_URL}/invite/${token}`;
   const lines = [
-    `${invitedByName} invited you to join ${familyLabel} on Haven.ly as their ${relationship}.`,
+    `${invitedByName} invited you to join ${familyLabel} on Opened Circle as their ${relationship}.`,
     '',
     `Accept your invite: ${link}`,
     '',
@@ -2008,7 +2008,7 @@ exports.sendFamilyInvite = onCall({ secrets: [resendApiKey] }, async (request) =
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
       <p style="font-size: 16px; color: #1a1a1a; line-height: 1.5;">
         <strong>${escapeHtml(invitedByName)}</strong> invited you to join <strong>${escapeHtml(familyLabel)}</strong>
-        on Haven.ly as their ${escapeHtml(relationship)}.
+        on Opened Circle as their ${escapeHtml(relationship)}.
       </p>
       <p style="margin: 24px 0;">
         <a href="${link}" style="background: #d97757; color: #ffffff; text-decoration: none; font-weight: 700; padding: 14px 28px; border-radius: 999px; display: inline-block;">
@@ -2024,7 +2024,7 @@ exports.sendFamilyInvite = onCall({ secrets: [resendApiKey] }, async (request) =
       </p>
     </div>
   `;
-  await sendRawEmail(email, `${invitedByName} invited you to join ${familyLabel} on Haven.ly`, lines.join('\n'), html);
+  await sendRawEmail(email, `${invitedByName} invited you to join ${familyLabel} on Opened Circle`, lines.join('\n'), html);
 
   return { sent: true };
 });

@@ -1,4 +1,4 @@
-# Haven.ly
+# Opened Circle
 
 A mobile app built with [Expo](https://expo.dev) + React Native + TypeScript.
 

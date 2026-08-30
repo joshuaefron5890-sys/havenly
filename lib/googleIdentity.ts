@@ -89,7 +89,7 @@ function requestCodeForScope(scope: string, wantsOfflineAccess: boolean): Promis
 // one of Google's "sensitive" scopes: it throws an unverified-app warning
 // (https://support.google.com/cloud/answer/9110914) that only accounts
 // listed as Test users on this project's OAuth consent screen can click
-// through, via "Advanced > Go to Haven.ly (unsafe)" — everyone else is
+// through, via "Advanced > Go to Opened Circle (unsafe)" — everyone else is
 // blocked outright until the project completes Google's verification
 // process (a separate, manual submission this app can't do on its own).
 // A family that just wants free/busy matching, not event creation, can
@@ -122,7 +122,7 @@ export function requestGoogleCalendarAuthCode(pushEvents: boolean): Promise<stri
 // warning persisted even down to a zero-scope request in live testing, so
 // switching APIs — not tuning scope/parameters further — is what's needed
 // here. The tradeoff: Google renders and styles this button itself, so it
-// can't be pixel-matched to the rest of Haven.ly's button design the way a
+// can't be pixel-matched to the rest of Opened Circle's button design the way a
 // plain Pressable could.
 export function renderGoogleSignInButton(
   container: HTMLElement,

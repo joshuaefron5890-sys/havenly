@@ -96,7 +96,7 @@ export function AddToGoogleCalendarPrompt({
               <Text style={styles.title}>Add this playdate to your Google Calendar?</Text>
               <Text style={styles.body}>
                 We’ll create an event for {dateLabel}. Google may show an “unverified app” warning first — choose
-                Advanced, then “Go to Haven.ly (unsafe)”, to continue.
+                Advanced, then “Go to Opened Circle (unsafe)”, to continue.
               </Text>
               {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
               <Pressable

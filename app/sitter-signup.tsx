@@ -275,7 +275,7 @@ export default function SitterSignup() {
       <ScrollView contentContainerStyle={styles.content}>
         {!editMode ? (
           <Text style={styles.intro}>
-            Register to be listed for families on Haven.ly looking for a sitter. We’ll review your background
+            Register to be listed for families on Opened Circle looking for a sitter. We’ll review your background
             check before you show up in any recommendations.
           </Text>
         ) : null}

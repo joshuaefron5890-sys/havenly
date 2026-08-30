@@ -916,7 +916,7 @@ export default function ForYou() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader eyebrow="Haven.ly" />
+      <ScreenHeader eyebrow="Opened Circle" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View

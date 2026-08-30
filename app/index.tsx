@@ -123,7 +123,7 @@ export default function Landing() {
                 A community built for <Text style={styles.headlineAccent}>neurodivergent families.</Text>
               </Text>
               <Text style={styles.subtext}>
-                Haven.ly helps families with neurodivergent children connect with others in their local
+                Opened Circle helps families with neurodivergent children connect with others in their local
                 community.
               </Text>
 

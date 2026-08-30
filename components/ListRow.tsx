@@ -37,7 +37,7 @@ export function ListRow({
   image?: ImageSourcePropType;
   // Shown instead of a blank placeholder box when there's no real image to
   // display (e.g. MedlinePlus articles, which have no thumbnail of their own).
-  // 'community-logo' fills the whole thumbnail with the Haven.ly mark
+  // 'community-logo' fills the whole thumbnail with the Opened Circle mark
   // itself (the Community announcements row) — distinct from the
   // `community` boolean below, which instead overlays a small corner
   // badge of the same mark onto some OTHER icon/image (a contribution's

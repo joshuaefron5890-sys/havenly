@@ -112,12 +112,12 @@ export default function Families() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScreenHeader eyebrow="Haven.ly" />
+      <ScreenHeader eyebrow="Opened Circle" />
       <ScrollView contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={200}>
         <SectionHero
           imageUrl="https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?q=80&w=1654&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           title="Families to meet"
-          description="Every family on Haven.ly, matched by shared neurodivergence, interests, and schedules — not just proximity."
+          description="Every family on Opened Circle, matched by shared neurodivergence, interests, and schedules — not just proximity."
         />
 
         <SearchBar value={query} onChangeText={setQuery} placeholder="Search families" />

@@ -178,7 +178,7 @@ export default function Calendar() {
               <Text style={styles.syncLabel}>Add accepted playdates to this calendar</Text>
               <Text style={styles.syncHint}>
                 {pushEvents
-                  ? 'Needs an extra Google permission — you may see an "unverified app" warning on connect; choose Advanced → Go to Haven.ly (unsafe) to continue.'
+                  ? 'Needs an extra Google permission — you may see an "unverified app" warning on connect; choose Advanced → Go to Opened Circle (unsafe) to continue.'
                   : "Off — we'll only check when you're free, never add anything to your calendar."}
               </Text>
             </View>

@@ -43,7 +43,7 @@ export default function ContributionDetail() {
   const [liveFields, setLiveFields] = useState<Record<string, string>>(() =>
     fieldsJson ? JSON.parse(fieldsJson) : {}
   );
-  const [liveContributedByName, setLiveContributedByName] = useState(contributedByName || 'A Haven.ly family');
+  const [liveContributedByName, setLiveContributedByName] = useState(contributedByName || 'An Opened Circle family');
   const [editVisible, setEditVisible] = useState(false);
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);

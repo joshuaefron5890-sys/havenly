@@ -153,7 +153,7 @@ export default function SitterPlaydates() {
   // this is the one place in the app that ever does, since it's the one
   // place a sitter is actually deciding "yes, put my confirmed playdates on
   // this calendar." Google treats that as a sensitive scope and shows an
-  // "unverified app" warning until Haven.ly completes verification; the
+  // "unverified app" warning until Opened Circle completes verification; the
   // read-only Connect on the availability screen never touches this path,
   // so reconnecting there can't accidentally downgrade what's granted here.
   const handleConnectGoogle = async () => {
@@ -217,7 +217,7 @@ export default function SitterPlaydates() {
           <Text style={styles.calendarHint}>
             {profile?.googleCalendarSyncEnabled
               ? 'On — a confirmed playdate gets added to your Google Calendar automatically.'
-              : 'Off — needs an extra Google permission beyond the one used for availability matching; you may see an "unverified app" warning, choose Advanced → Go to Haven.ly (unsafe) to continue.'}
+              : 'Off — needs an extra Google permission beyond the one used for availability matching; you may see an "unverified app" warning, choose Advanced → Go to Opened Circle (unsafe) to continue.'}
           </Text>
           {googleError ? <Text style={styles.error}>{googleError}</Text> : null}
           <View style={styles.syncRow}>

@@ -233,7 +233,7 @@ function parseContribution(id: string, data: Record<string, unknown>): Contribut
     type: type === 'product' || type === 'podcast' || type === 'article' || type === 'event' ? type : 'article',
     fields: typeof data.fields === 'object' && data.fields !== null ? (data.fields as Record<string, string>) : {},
     contributedByUid: typeof data.contributedByUid === 'string' ? data.contributedByUid : '',
-    contributedByName: typeof data.contributedByName === 'string' ? data.contributedByName : 'A Haven.ly family',
+    contributedByName: typeof data.contributedByName === 'string' ? data.contributedByName : 'An Opened Circle family',
     clusterId: typeof data.clusterId === 'string' && data.clusterId ? data.clusterId : DEFAULT_CLUSTER_ID,
     createdAt: toDate(data.createdAt),
   };
@@ -255,7 +255,7 @@ export async function createContribution(
     type,
     fields,
     contributedByUid: uid,
-    contributedByName: contributorName.trim() || 'A Haven.ly family',
+    contributedByName: contributorName.trim() || 'An Opened Circle family',
     clusterId: getMyClusterId(),
     createdAt: serverTimestamp(),
   });
@@ -272,7 +272,7 @@ export async function updateContribution(
   if (!db) throw new Error('not-signed-in');
   await setDoc(
     doc(db, 'contributions', id),
-    { fields, contributedByName: contributorName.trim() || 'A Haven.ly family' },
+    { fields, contributedByName: contributorName.trim() || 'An Opened Circle family' },
     { merge: true }
   );
 }

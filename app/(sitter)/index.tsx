@@ -77,7 +77,7 @@ export default function SitterHome() {
       {isDesktop ? null : (
         <View style={styles.header}>
           <Image source={require('../../assets/logo-mark.png')} style={styles.mark} resizeMode="contain" />
-          <Text style={styles.headerTitle}>Haven.ly for Sitters</Text>
+          <Text style={styles.headerTitle}>Opened Circle for Sitters</Text>
           <Pressable onPress={logOut} hitSlop={8}>
             <Ionicons name="log-out-outline" size={22} color={colors.textMuted} />
           </Pressable>
@@ -110,7 +110,7 @@ export default function SitterHome() {
             <Ionicons name="gift-outline" size={18} color={colors.surface} />
           </View>
           <Text style={styles.referralTitle}>Refer a sitter, earn $15</Text>
-          <Text style={styles.referralText}>You both get $15 once they're approved and join Haven.ly.</Text>
+          <Text style={styles.referralText}>You both get $15 once they're approved and join Opened Circle.</Text>
           <View style={styles.referralCta}>
             <Text style={styles.referralCtaText}>Get my code</Text>
           </View>

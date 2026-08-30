@@ -68,7 +68,7 @@ export default function MessagesInbox() {
       <ScrollView contentContainerStyle={styles.content}>
         <ListRow
           title="Community"
-          subtitle={communityMessages.at(-1)?.text || 'Announcements from Haven.ly'}
+          subtitle={communityMessages.at(-1)?.text || 'Announcements from Opened Circle'}
           icon="community-logo"
           onPress={() => router.push('/messages/community')}
         />

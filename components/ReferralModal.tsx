@@ -12,7 +12,7 @@ import { colors } from '../theme/colors';
 const SIGNUP_URL = 'https://haven-ly.com/sitter-signup';
 
 function referralMessage(code: string): string {
-  return `Join me as a sitter on Haven.ly! Use my code ${code} when you sign up — we'll both get $15 once you're approved. ${SIGNUP_URL}`;
+  return `Join me as a sitter on Opened Circle! Use my code ${code} when you sign up — we'll both get $15 once you're approved. ${SIGNUP_URL}`;
 }
 
 export function ReferralModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -64,7 +64,7 @@ export function ReferralModal({ visible, onClose }: { visible: boolean; onClose:
 
   const shareViaEmail = () => {
     if (!stats?.code) return;
-    const subject = encodeURIComponent('Join me as a sitter on Haven.ly');
+    const subject = encodeURIComponent('Join me as a sitter on Opened Circle');
     const body = encodeURIComponent(referralMessage(stats.code));
     Linking.openURL(`mailto:?subject=${subject}&body=${body}`).catch(() =>
       showAlert('Couldn’t open email', 'Please try again.')
@@ -156,7 +156,7 @@ export function ReferralModal({ visible, onClose }: { visible: boolean; onClose:
                   ) : null}
                 </View>
                 <Text style={styles.payoutNote}>
-                  We're not linking your account — just sharing this with Haven.ly so we can send your $15
+                  We're not linking your account — just sharing this with Opened Circle so we can send your $15
                   payments. Paid out within 7 days of approval.
                 </Text>
                 {editingPayout ? (

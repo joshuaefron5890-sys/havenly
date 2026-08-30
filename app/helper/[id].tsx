@@ -59,7 +59,7 @@ export default function HelperDetail() {
         <View style={styles.trustBanner}>
           <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
           <Text style={styles.trustText}>
-            <Text style={styles.trustBold}>Vetted by Haven.ly. </Text>
+            <Text style={styles.trustBold}>Vetted by Opened Circle. </Text>
             Background checked, credential-verified, and matched to ND families.
           </Text>
         </View>

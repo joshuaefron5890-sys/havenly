@@ -384,10 +384,10 @@ export default function SitterAvailability() {
                     </View>
                     <View style={styles.conflictActions}>
                       <Pressable style={styles.rejectButton} onPress={() => removeConflictPeriod(conflict)}>
-                        <Text style={styles.rejectButtonText}>Remove</Text>
+                        <Text style={styles.rejectButtonText}>Remove availability</Text>
                       </Pressable>
                       <Pressable style={styles.confirmButton} onPress={() => confirmOverride(conflict.key)}>
-                        <Text style={styles.confirmButtonText}>Confirm anyway</Text>
+                        <Text style={styles.confirmButtonText}>Confirm availability anyway</Text>
                       </Pressable>
                     </View>
                   </View>

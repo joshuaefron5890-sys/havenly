@@ -38,8 +38,8 @@ export default function SittersLanding() {
     <View style={styles.screen}>
       <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} resizeMode="cover">
         <LinearGradient
-          colors={['rgba(20, 18, 16, 0.4)', 'rgba(20, 18, 16, 0.68)', 'rgba(20, 18, 16, 0.94)']}
-          locations={[0, 0.45, 1]}
+          colors={['rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.78)', 'rgba(20, 18, 16, 0.95)']}
+          locations={[0, 0.4, 1]}
           style={StyleSheet.absoluteFill}
         />
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -158,6 +158,9 @@ const styles = StyleSheet.create({
     color: colors.accent,
     letterSpacing: 1.4,
     marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   headline: {
     fontSize: 34,
@@ -165,9 +168,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     lineHeight: 40,
     marginBottom: 12,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
+    textShadowRadius: 10,
   },
   headlineDesktop: {
     fontSize: 52,
@@ -179,10 +182,10 @@ const styles = StyleSheet.create({
   },
   subtext: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.78)',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    color: 'rgba(255, 255, 255, 0.85)',
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    textShadowRadius: 8,
     lineHeight: 23,
     marginBottom: 20,
     maxWidth: 460,

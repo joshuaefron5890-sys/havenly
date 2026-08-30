@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FieldInput } from '../components/FieldInput';
@@ -12,6 +13,12 @@ import { auth, firebaseConfigured, signInWithGoogleIdToken } from '../lib/fireba
 import { routeSignedInUser } from '../lib/onboardingProgress';
 import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
+
+// Same photo used on the sitter-signup left panel — one consistent hero
+// image across the auth-adjacent screens rather than a different pick per
+// screen.
+const PANEL_IMAGE =
+  'https://images.unsplash.com/photo-1607453998774-d533f65dac99?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 function friendlyError(code: string): string {
   switch (code) {
@@ -138,18 +145,32 @@ export default function SignIn() {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         <View style={styles.desktopRow}>
-          <View style={styles.desktopPanel}>
-            <View style={styles.desktopBrandRow}>
-              <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
-              <Text style={styles.desktopWordmark}>
-                Haven<Text style={styles.desktopWordmarkAccent}>.ly</Text>
+          <ImageBackground
+            source={{ uri: PANEL_IMAGE }}
+            style={styles.desktopPanel}
+            imageStyle={styles.desktopPanelImage}
+            resizeMode="cover"
+          >
+            <LinearGradient
+              colors={['rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.78)', 'rgba(20, 18, 16, 0.95)']}
+              locations={[0, 0.4, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.desktopPanelContent}>
+              <View style={styles.desktopBrandChip}>
+                <View style={styles.desktopBrandRow}>
+                  <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
+                  <Text style={styles.desktopWordmark}>
+                    Haven<Text style={styles.desktopWordmarkAccent}>.ly</Text>
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.desktopPanelTitle}>Pick up right where you left off.</Text>
+              <Text style={styles.desktopPanelText}>
+                Your matches, messages, and playdates are all waiting for you.
               </Text>
             </View>
-            <Text style={styles.desktopPanelTitle}>Pick up right where you left off.</Text>
-            <Text style={styles.desktopPanelText}>
-              Your matches, messages, and playdates are all waiting for you.
-            </Text>
-          </View>
+          </ImageBackground>
           <View style={styles.desktopCardWrap}>
             <Pressable style={styles.desktopBack} onPress={() => router.back()}>
               <Ionicons name="chevron-back" size={20} color={colors.text} />
@@ -258,10 +279,29 @@ const styles = StyleSheet.create({
   },
   desktopPanel: {
     width: '42%',
+    backgroundColor: colors.accentMuted,
+  },
+  // Explicit, rather than trusting resizeMode="cover" alone to size the
+  // underlying <img> — forces it to actually fill the panel edge to edge.
+  desktopPanelImage: {
+    width: '100%',
+    height: '100%',
+  },
+  desktopPanelContent: {
+    flex: 1,
     justifyContent: 'center',
     gap: 16,
     paddingHorizontal: 48,
-    backgroundColor: colors.accentMuted,
+  },
+  // A backing chip rather than relying on the gradient alone — the photo's
+  // brightness varies by crop, so the logo/wordmark need a guaranteed dark
+  // patch behind them no matter what's there.
+  desktopBrandChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(20, 18, 16, 0.45)',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   desktopBrandRow: {
     flexDirection: 'row',
@@ -275,7 +315,7 @@ const styles = StyleSheet.create({
   desktopWordmark: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.text,
+    color: '#FFFFFF',
   },
   desktopWordmarkAccent: {
     color: colors.accent,
@@ -284,13 +324,19 @@ const styles = StyleSheet.create({
   desktopPanelTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: colors.text,
+    color: '#FFFFFF',
     lineHeight: 32,
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
   },
   desktopPanelText: {
     fontSize: 15,
-    color: colors.text,
+    color: 'rgba(255, 255, 255, 0.85)',
     lineHeight: 22,
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   desktopCardWrap: {
     flex: 1,

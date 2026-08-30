@@ -428,8 +428,8 @@ export default function SitterSignup() {
             resizeMode="cover"
           >
             <LinearGradient
-              colors={['rgba(20, 18, 16, 0.35)', 'rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.88)']}
-              locations={[0, 0.5, 1]}
+              colors={['rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.78)', 'rgba(20, 18, 16, 0.95)']}
+              locations={[0, 0.4, 1]}
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.desktopPanelContent}>
@@ -683,17 +683,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     lineHeight: 32,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
+    textShadowRadius: 10,
   },
   desktopPanelText: {
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.85)',
     lineHeight: 22,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    textShadowRadius: 8,
   },
   desktopFormWrap: {
     flex: 1,

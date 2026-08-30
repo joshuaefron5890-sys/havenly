@@ -280,53 +280,59 @@ export default function SitterSignup() {
           </Text>
         ) : null}
 
-        <FieldInput label="Your name" placeholder="Jordan Lee" value={profile.name} onChangeText={(name) => patch({ name })} />
+        <View style={[styles.topSection, isDesktop && styles.topSectionDesktop]}>
+          <View style={[styles.topFields, isDesktop && styles.topFieldsDesktop]}>
+            <FieldInput label="Your name" placeholder="Jordan Lee" value={profile.name} onChangeText={(name) => patch({ name })} />
 
-        {editMode ? (
-          <View style={styles.connectedRow}>
-            <Ionicons name="mail-outline" size={22} color={colors.positive} />
-            <View style={styles.connectedTextWrap}>
-              <Text style={styles.connectedTitle}>Signed in</Text>
-              <Text style={styles.connectedEmail}>{user?.email}</Text>
-            </View>
+            {editMode ? (
+              <View style={styles.connectedRow}>
+                <Ionicons name="mail-outline" size={22} color={colors.positive} />
+                <View style={styles.connectedTextWrap}>
+                  <Text style={styles.connectedTitle}>Signed in</Text>
+                  <Text style={styles.connectedEmail}>{user?.email}</Text>
+                </View>
+              </View>
+            ) : (
+              <>
+                <FieldInput
+                  label="Email"
+                  placeholder="jordan@email.com"
+                  value={profile.email}
+                  onChangeText={(email) => patch({ email })}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <FieldInput
+                  label="Password"
+                  placeholder="6+ characters"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+                <FieldInput
+                  label="Referral code"
+                  placeholder="e.g. CHRISTINA5H2"
+                  optional
+                  value={referralCodeInput}
+                  onChangeText={setReferralCodeInput}
+                  autoCapitalize="characters"
+                />
+              </>
+            )}
           </View>
-        ) : (
-          <>
-            <FieldInput
-              label="Email"
-              placeholder="jordan@email.com"
-              value={profile.email}
-              onChangeText={(email) => patch({ email })}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <FieldInput
-              label="Password"
-              placeholder="6+ characters"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            <FieldInput
-              label="Referral code"
-              placeholder="e.g. CHRISTINA5H2"
-              optional
-              value={referralCodeInput}
-              onChangeText={setReferralCodeInput}
-              autoCapitalize="characters"
-            />
-          </>
-        )}
 
-        <AddPhotoCircle
-          label="Your photo"
-          caption="Tap to add · optional"
-          imageUri={pendingPhotoPreviewUri ?? profile.photoUrl}
-          uploading={pickingPhoto}
-          onPress={handlePickPhoto}
-          align="flex-start"
-        />
-        {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+          <View style={[styles.topPhoto, isDesktop && styles.topPhotoDesktop]}>
+            <AddPhotoCircle
+              label="Your photo"
+              caption="Tap to add · optional"
+              imageUri={pendingPhotoPreviewUri ?? profile.photoUrl}
+              uploading={pickingPhoto}
+              onPress={handlePickPhoto}
+              align="flex-start"
+            />
+            {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+          </View>
+        </View>
         <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
 
         <FieldInput
@@ -556,6 +562,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: -12,
     marginBottom: 16,
+  },
+  topSection: {
+    flexDirection: 'column',
+  },
+  topSectionDesktop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 32,
+  },
+  topFields: {
+    flexShrink: 0,
+  },
+  topFieldsDesktop: {
+    flex: 1,
+  },
+  topPhoto: {},
+  topPhotoDesktop: {
+    width: 200,
+    paddingTop: 32,
   },
   connectedRow: {
     flexDirection: 'row',

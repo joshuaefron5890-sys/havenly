@@ -296,10 +296,7 @@ export default function ProposalDetail() {
         </View>
       </View>
 
-      <ScrollView
-        style={isDesktop && styles.desktopColumn}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.familiesRow}>
           <FamilyMini family={myFamily} fallbackLabel="You" />
           <View style={styles.connector}>

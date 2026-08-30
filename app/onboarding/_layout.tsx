@@ -76,18 +76,20 @@ export default function OnboardingLayout() {
     return (
       <View style={styles.desktopRow}>
         <WizardStepsRail currentPath={pathname} />
-        <ImageBackground
-          source={{ uri: PANEL_IMAGE }}
-          style={styles.desktopMain}
-          imageStyle={styles.desktopMainImage}
-          resizeMode="cover"
-        >
-          <View style={styles.desktopMainOverlay} />
+        <View style={styles.desktopFormArea}>
           {/* Caps each step's own (still mobile-width-tuned) form at a
               readable column instead of letting it stretch edge to edge
               in whatever's left of the window next to the rail — none of
               the 10 step screens have their own body redesigned yet. */}
           <View style={styles.desktopStackWrap}>{stack}</View>
+        </View>
+        <ImageBackground
+          source={{ uri: PANEL_IMAGE }}
+          style={styles.desktopPanel}
+          imageStyle={styles.desktopPanelImage}
+          resizeMode="cover"
+        >
+          <View style={styles.desktopPanelOverlay} />
         </ImageBackground>
       </View>
     );
@@ -107,28 +109,41 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
   },
-  desktopMain: {
+  // The form's own white background, flush against the steps rail — no
+  // photo margin on this side (see desktopPanel below for where the photo
+  // still shows).
+  desktopFormArea: {
     flex: 1,
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
-  desktopMainImage: {
+  desktopStackWrap: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+  },
+  // A fixed-width photo panel on the far right only — mirrors sign-in.tsx/
+  // sitter-signup.tsx's split-panel treatment (image confined to one side)
+  // rather than the old full-bleed background that bled through as a
+  // second, redundant photo margin on the rail side of the form too.
+  desktopPanel: {
+    width: '30%',
+    minWidth: 260,
+    backgroundColor: colors.accentMuted,
+  },
+  desktopPanelImage: {
     width: '100%',
     height: '100%',
   },
   // A dark tint (not a light wash — nothing sits on top of the photo here
   // that needs a lighter backdrop, unlike the sign-in/sitter-signup hero
   // panels) so the photo reads a bit moodier/richer instead of washed out.
-  desktopMainOverlay: {
+  desktopPanelOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(20, 18, 16, 0.35)',
-  },
-  desktopStackWrap: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 560,
   },
 });

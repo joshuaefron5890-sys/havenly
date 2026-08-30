@@ -1,6 +1,7 @@
+import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import { Component, ReactNode, useEffect, useState } from 'react';
-import { ScrollView, Text as RNText } from 'react-native';
+import { ActivityIndicator, ScrollView, Text as RNText, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ResponsiveContainer } from '../components/ResponsiveContainer';
 import { AuthProvider } from '../contexts/AuthContext';
@@ -9,6 +10,7 @@ import { OnboardingProvider } from '../contexts/OnboardingContext';
 import { getFatalErrorText, subscribeFatalError } from '../lib/crashDiagnostics';
 import { configureForegroundNotificationHandler, subscribeToNotificationTaps } from '../lib/pushNotifications';
 import { colors } from '../theme/colors';
+import { FONT_FILES } from '../theme/typography';
 
 // TEMPORARY diagnostic UI — see lib/crashDiagnostics.ts. Shared by both
 // paths that can produce an error to display: state pushed from outside
@@ -55,6 +57,12 @@ class FatalErrorBoundary extends Component<{ children: ReactNode }, { errorText:
 }
 
 export default function RootLayout() {
+  // components/AppText.tsx's Text wrapper picks between these by weight/
+  // style, so nothing downstream needs to know the file names — but
+  // nothing can render with the right typeface until they're actually
+  // loaded, hence the blank/spinner gate below.
+  const [fontsLoaded] = useFonts(FONT_FILES);
+
   // The actual handler is installed in index.js, before this file (or
   // anything it imports) ever runs — see lib/crashDiagnostics.ts. This
   // just displays whatever it caught. TEMPORARY, remove once the current
@@ -82,6 +90,14 @@ export default function RootLayout() {
 
   if (errorText) {
     return <ErrorScreen text={errorText} />;
+  }
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
   }
 
   return (

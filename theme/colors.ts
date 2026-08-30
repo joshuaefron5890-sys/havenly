@@ -4,8 +4,17 @@
 export const colors = {
   background: '#F4F4F5',
   surface: '#FFFFFF',
-  text: '#18181B',
-  textMuted: '#71717A',
+  text: '#26262A',
+  textMuted: '#55534C',
+  // Not yet applied throughout — text uses `text`/`textMuted` above almost
+  // everywhere today, including for large headings. These three exist for
+  // deliberate, targeted use going forward: a heading-specific dark teal,
+  // white-on-dark text (distinct from `surface`, which is also a
+  // background color — swapping every text usage of `surface` itself
+  // would risk touching real backgrounds too), and DM Mono captions.
+  heading: '#123D3B',
+  textOnDark: '#FAF8F3',
+  caption: '#8C8A80',
   border: '#E4E4E7',
   accent: '#2A9D8F',
   accentMuted: '#D9EDEB',

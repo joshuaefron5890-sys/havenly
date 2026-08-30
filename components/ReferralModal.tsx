@@ -155,6 +155,10 @@ export function ReferralModal({ visible, onClose }: { visible: boolean; onClose:
                     </Pressable>
                   ) : null}
                 </View>
+                <Text style={styles.payoutNote}>
+                  We're not linking your account — just sharing this with Haven.ly so we can send your $15
+                  payments. Paid out within 7 days of approval.
+                </Text>
                 {editingPayout ? (
                   <>
                     <View style={styles.methodRow}>
@@ -194,7 +198,7 @@ export function ReferralModal({ visible, onClose }: { visible: boolean; onClose:
 
               <Text style={styles.finePrint}>
                 Credit is added once your friend's background check clears — same standard every sitter goes
-                through. We send the $15 to the Venmo/PayPal above within 7 days.
+                through.
               </Text>
             </>
           )}
@@ -362,6 +366,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.accent,
+  },
+  payoutNote: {
+    fontSize: 11.5,
+    color: colors.textMuted,
+    lineHeight: 16,
+    marginBottom: 12,
   },
   methodRow: {
     flexDirection: 'row',

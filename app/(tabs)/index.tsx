@@ -1527,11 +1527,13 @@ const styles = StyleSheet.create({
   // real estate instead of a one-line strip that duplicated the same
   // playdate's own Highlights card right below it (that card is now
   // filtered out of Highlights whenever this callout is showing it). A
-  // light blue wash (not the green used for the Confirmed badge — that
-  // stays a status color, not the whole card's background) sets it apart
-  // from the plain white cards elsewhere on the dashboard.
+  // very soft blue wash (lighter than colors.infoMuted, which is tuned for
+  // smaller hint/tip UI elsewhere — a card this large reads better with a
+  // gentler tint) sets it apart from the plain white cards on the
+  // dashboard without the green from the Confirmed badge taking over the
+  // whole card.
   playdateCallout: {
-    backgroundColor: colors.infoMuted,
+    backgroundColor: '#EFF5FA',
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,

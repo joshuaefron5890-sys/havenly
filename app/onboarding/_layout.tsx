@@ -115,16 +115,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  // A light, mostly-background-colored wash rather than nothing — keeps
-  // the photo as an ambient backdrop around the form instead of competing
-  // with it for attention.
+  // A dark tint (not a light wash — nothing sits on top of the photo here
+  // that needs a lighter backdrop, unlike the sign-in/sitter-signup hero
+  // panels) so the photo reads a bit moodier/richer instead of washed out.
   desktopMainOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(244, 244, 245, 0.45)',
+    backgroundColor: 'rgba(20, 18, 16, 0.35)',
   },
   desktopStackWrap: {
     flex: 1,

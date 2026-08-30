@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
 import { auth, signOutUser } from '../../lib/firebase';
 import { fetchSitterConfirmedPlaydates, fetchSitterPlaydateRequests } from '../../lib/playdateProposals';
+import { useIsDesktop } from '../../lib/responsive';
 import { totalPeriodsSelected } from '../../lib/sitterAvailability';
 import { docExtensionLabel, fetchMySitterProfile, isImageDocUrl, SitterProfile } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
@@ -24,6 +25,7 @@ const STATUS_COLORS: Record<SitterProfile['backgroundCheckStatus'], { bg: string
 };
 
 export default function SitterHome() {
+  const isDesktop = useIsDesktop();
   const [profile, setProfile] = useState<SitterProfile | null>(null);
   const [requestCount, setRequestCount] = useState(0);
   const [confirmedCount, setConfirmedCount] = useState(0);
@@ -70,20 +72,24 @@ export default function SitterHome() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Image source={require('../../assets/logo-mark.png')} style={styles.mark} resizeMode="contain" />
-        <Text style={styles.headerTitle}>Haven.ly for Sitters</Text>
-        <Pressable onPress={logOut} hitSlop={8}>
-          <Ionicons name="log-out-outline" size={22} color={colors.textMuted} />
-        </Pressable>
-      </View>
+      {isDesktop ? null : (
+        <View style={styles.header}>
+          <Image source={require('../../assets/logo-mark.png')} style={styles.mark} resizeMode="contain" />
+          <Text style={styles.headerTitle}>Haven.ly for Sitters</Text>
+          <Pressable onPress={logOut} hitSlop={8}>
+            <Ionicons name="log-out-outline" size={22} color={colors.textMuted} />
+          </Pressable>
+        </View>
+      )}
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.identity}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.contentDesktop]}>
+        <View style={[styles.identity, isDesktop && styles.identityDesktop]}>
           <Photo source={profile.photoUrl ? { uri: profile.photoUrl } : undefined} style={styles.avatar} variant="person" iconSize={28} />
-          <Text style={styles.name}>{profile.name}</Text>
-          <View style={[styles.statusPill, { backgroundColor: status.bg }]}>
-            <Text style={[styles.statusPillText, { color: status.text }]}>{STATUS_LABEL[profile.backgroundCheckStatus]}</Text>
+          <View style={isDesktop && styles.identityTextWrap}>
+            <Text style={styles.name}>{profile.name}</Text>
+            <View style={[styles.statusPill, { backgroundColor: status.bg }]}>
+              <Text style={[styles.statusPillText, { color: status.text }]}>{STATUS_LABEL[profile.backgroundCheckStatus]}</Text>
+            </View>
           </View>
         </View>
 
@@ -97,59 +103,69 @@ export default function SitterHome() {
           </View>
         ) : null}
 
-        <Pressable style={styles.availabilityCard} onPress={() => router.push('/playdates')}>
-          <View style={styles.availabilityTextWrap}>
-            <Text style={styles.availabilityTitle}>Playdates</Text>
-            <Text style={styles.availabilitySubtitle}>
-              {requestCount || confirmedCount
-                ? [
-                    requestCount ? `${requestCount} request${requestCount === 1 ? '' : 's'}` : null,
-                    confirmedCount ? `${confirmedCount} confirmed` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
-                : 'View your playdate requests and confirmed playdates'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-        </Pressable>
+        <View style={[styles.navCards, isDesktop && styles.navCardsDesktop]}>
+          <Pressable
+            style={[styles.availabilityCard, isDesktop && styles.availabilityCardDesktop]}
+            onPress={() => router.push('/playdates')}
+          >
+            <View style={styles.availabilityTextWrap}>
+              <Text style={styles.availabilityTitle}>Playdates</Text>
+              <Text style={styles.availabilitySubtitle}>
+                {requestCount || confirmedCount
+                  ? [
+                      requestCount ? `${requestCount} request${requestCount === 1 ? '' : 's'}` : null,
+                      confirmedCount ? `${confirmedCount} confirmed` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : 'View your playdate requests and confirmed playdates'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
 
-        <Pressable style={styles.availabilityCard} onPress={() => router.push('/availability')}>
-          <View style={styles.availabilityTextWrap}>
-            <Text style={styles.availabilityTitle}>My availability</Text>
-            <Text style={styles.availabilitySubtitle}>
-              {(() => {
-                const count = totalPeriodsSelected(profile.availability);
-                return count
-                  ? `${count} slot${count === 1 ? '' : 's'} set${profile.googleCalendarConnected ? ' · Calendar connected' : ''}`
-                  : "Set when you're free — this is what families see";
-              })()}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-        </Pressable>
-
-        <View style={styles.card}>
-          <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
-          <Field label="Phone" value={profile.phone} />
-          <Field label="Years of experience" value={profile.yearsExperience} />
-          <Field label="Hourly rate" value={profile.hourlyRate} />
-          <Field label="About" value={profile.bio} />
+          <Pressable
+            style={[styles.availabilityCard, isDesktop && styles.availabilityCardDesktop]}
+            onPress={() => router.push('/availability')}
+          >
+            <View style={styles.availabilityTextWrap}>
+              <Text style={styles.availabilityTitle}>My availability</Text>
+              <Text style={styles.availabilitySubtitle}>
+                {(() => {
+                  const count = totalPeriodsSelected(profile.availability);
+                  return count
+                    ? `${count} slot${count === 1 ? '' : 's'} set${profile.googleCalendarConnected ? ' · Calendar connected' : ''}`
+                    : "Set when you're free — this is what families see";
+                })()}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>EXPERIENCE WITH</Text>
-          {profile.specialties.length ? (
-            <View style={styles.tagRow}>
-              {profile.specialties.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.empty}>Nothing added yet</Text>
-          )}
+        <View style={[styles.cardsRow, isDesktop && styles.cardsRowDesktop]}>
+          <View style={[styles.card, isDesktop && styles.cardHalf]}>
+            <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
+            <Field label="Phone" value={profile.phone} />
+            <Field label="Years of experience" value={profile.yearsExperience} />
+            <Field label="Hourly rate" value={profile.hourlyRate} />
+            <Field label="About" value={profile.bio} />
+          </View>
+
+          <View style={[styles.card, isDesktop && styles.cardHalf]}>
+            <Text style={styles.cardLabel}>EXPERIENCE WITH</Text>
+            {profile.specialties.length ? (
+              <View style={styles.tagRow}>
+                {profile.specialties.map((tag) => (
+                  <View key={tag} style={styles.tag}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.empty}>Nothing added yet</Text>
+            )}
+          </View>
         </View>
 
         <View style={styles.card}>
@@ -237,9 +253,28 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  contentDesktop: {
+    padding: 32,
+    maxWidth: 760,
+    width: '100%',
+    alignSelf: 'center',
+  },
   identity: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  identityDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  identityTextWrap: {
+    alignItems: 'flex-start',
+  },
+  navCards: {},
+  navCardsDesktop: {
+    flexDirection: 'row',
+    gap: 12,
   },
   avatar: {
     width: 72,
@@ -287,6 +322,20 @@ const styles = StyleSheet.create({
   },
   availabilityTextWrap: {
     flex: 1,
+  },
+  availabilityCardDesktop: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  cardsRow: {},
+  cardsRowDesktop: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  cardHalf: {
+    flex: 1,
+    marginBottom: 0,
   },
   availabilityTitle: {
     fontSize: 15,

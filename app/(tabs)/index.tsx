@@ -1527,15 +1527,14 @@ const styles = StyleSheet.create({
   // real estate instead of a one-line strip that duplicated the same
   // playdate's own Highlights card right below it (that card is now
   // filtered out of Highlights whenever this callout is showing it). A
-  // plain white card rather than a full green wash — the two families'
-  // own photos are the visual interest here, not a color fill.
+  // light blue wash (not the green used for the Confirmed badge — that
+  // stays a status color, not the whole card's background) sets it apart
+  // from the plain white cards elsewhere on the dashboard.
   playdateCallout: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.infoMuted,
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   // On desktop, the info column doesn't come close to using the card's
   // full width — rather than leave that as bare white space, the CTAs

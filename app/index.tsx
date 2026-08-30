@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { ActivityIndicator, Image, ImageBackground, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -70,11 +70,24 @@ export default function Landing() {
   // A signed-in user should never see the landing page — but they also
   // shouldn't get dumped into the tabs if they never finished onboarding.
   // Resume them at whichever step they last saved progress on instead.
-  useEffect(() => {
-    if (loading || !user) return;
-    routeSignedInUser(user, updateProfile);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user]);
+  //
+  // useFocusEffect, not a plain useEffect: expo-router's Stack keeps a
+  // screen mounted in the background after navigating away from it (for
+  // back-navigation), and `user` is a global AuthContext value — so a
+  // plain effect here would fire and force-navigate even while this
+  // screen sits inert behind, say, /sitter-signup, the moment that
+  // screen's own lazy account creation (its ensureSignedIn, on first
+  // photo/document upload) changes the signed-in user. That's exactly
+  // what was yanking someone mid sitter-signup into the family onboarding
+  // wizard. useFocusEffect only runs while this screen is actually the
+  // visible one.
+  useFocusEffect(
+    useCallback(() => {
+      if (loading || !user) return;
+      routeSignedInUser(user, updateProfile);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, user])
+  );
 
   if (loading || user) {
     return (

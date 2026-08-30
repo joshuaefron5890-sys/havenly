@@ -1,9 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
@@ -12,28 +13,10 @@ import { SITTERS_ENABLED } from '../lib/sitters';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 
-// What the app actually does today, not a generic pitch — each subtitle
-// names the real, shipped part of the product behind that pillar (match
-// scoring; direct messaging, playdate proposals, and local events from
-// TACA and regional family-support orgs; curated products/podcasts/
-// articles), so a new family knows what they're signing up for rather
-// than just how it feels.
-const FEATURES = [
-  {
-    title: 'Find your people',
-    subtitle: 'Matched by shared neurodivergence, interests, and schedules, not just a zip code.',
-    image: images.featureFindPeople,
-  },
-  {
-    title: 'Build community',
-    subtitle: 'Message families, propose playdates, and find events near you, in person or virtual.',
-    image: images.featureBuildCommunity,
-  },
-  {
-    title: 'Get real support',
-    subtitle: 'Sensory products, podcasts, and articles curated for your child.',
-    image: images.featureGetSupport,
-  },
+const PILLARS: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
+  { icon: 'people-outline', label: 'Find your people' },
+  { icon: 'chatbubbles-outline', label: 'Build community' },
+  { icon: 'heart-outline', label: 'Get real support' },
 ];
 
 function joinCommunity() {
@@ -75,10 +58,14 @@ function JoinLinks() {
   );
 }
 
-export default function Onboarding() {
+// One full-bleed hero, edge to edge — same treatment as app/sitters.tsx's
+// landing page, for a consistent "arriving somewhere" first impression
+// instead of a scrolling brochure of feature cards.
+export default function Landing() {
   const { user, loading } = useAuth();
   const { updateProfile } = useOnboarding();
   const isDesktop = useIsDesktop();
+  const { height } = useWindowDimensions();
 
   // A signed-in user should never see the landing page — but they also
   // shouldn't get dumped into the tabs if they never finished onboarding.
@@ -97,103 +84,80 @@ export default function Onboarding() {
     );
   }
 
-  if (isDesktop) {
-    return (
-      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        <ScrollView contentContainerStyle={styles.contentDesktop}>
-          <View style={styles.desktopCopy}>
-            <View style={styles.brandRow}>
+  return (
+    <View style={styles.screen}>
+      <ImageBackground source={images.onboardingHero} style={styles.hero} resizeMode="cover">
+        <LinearGradient
+          colors={['rgba(20, 18, 16, 0.15)', 'rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.94)']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <ScrollView contentContainerStyle={[styles.scrollContent, { minHeight: height }]} bounces={false}>
+            <View style={[styles.topRow, isDesktop && styles.topRowDesktop]}>
               <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
               <Text style={styles.brandWordmark}>
                 Haven<Text style={styles.brandWordmarkAccent}>.ly</Text>
               </Text>
             </View>
-            <Text style={[styles.headline, styles.headlineDesktop]}>
-              A community built for <Text style={styles.headlineAccent}>neurodivergent families.</Text>
-            </Text>
-            <Text style={styles.subtext}>
-              Haven.ly helps families with neurodivergent children connect with others in their local
-              community.
-            </Text>
-            <View style={styles.desktopLinks}>
+
+            <View style={styles.spacer} />
+
+            <View style={[styles.bottomCluster, isDesktop && styles.bottomClusterDesktop]}>
+              <Text style={[styles.headline, isDesktop && styles.headlineDesktop]}>
+                A community built for <Text style={styles.headlineAccent}>neurodivergent families.</Text>
+              </Text>
+              <Text style={styles.subtext}>
+                Haven.ly helps families with neurodivergent children connect with others in their local
+                community.
+              </Text>
+
+              <View style={styles.pillarsRow}>
+                {PILLARS.map((p) => (
+                  <View key={p.label} style={styles.pillar}>
+                    <Ionicons name={p.icon} size={13} color="#FFFFFF" />
+                    <Text style={styles.pillarText}>{p.label}</Text>
+                  </View>
+                ))}
+              </View>
+
               <JoinLinks />
             </View>
-          </View>
-          <View style={styles.desktopMedia}>
-            <Photo source={images.onboardingHero} style={styles.heroDesktop} />
-            <View style={styles.features}>
-              {FEATURES.map((feature) => (
-                <View key={feature.title} style={styles.featureCard}>
-                  <Photo source={feature.image} style={styles.featureImage} />
-                  <View style={styles.featureText}>
-                    <Text style={styles.featureTitle}>{feature.title}</Text>
-                    <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.brandRow}>
-          <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
-          <Text style={styles.brandWordmark}>
-            Haven<Text style={styles.brandWordmarkAccent}>.ly</Text>
-          </Text>
-        </View>
-
-        <Photo source={images.onboardingHero} style={styles.hero} />
-
-        <Text style={styles.headline}>
-          A community built for <Text style={styles.headlineAccent}>neurodivergent families.</Text>
-        </Text>
-        <Text style={styles.subtext}>
-          Haven.ly helps families with neurodivergent children connect with others in their local
-          community.
-        </Text>
-
-        <View style={styles.features}>
-          {FEATURES.map((feature) => (
-            <View key={feature.title} style={styles.featureCard}>
-              <Photo source={feature.image} style={styles.featureImage} />
-              <View style={styles.featureText}>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <JoinLinks />
-      </ScrollView>
-    </SafeAreaView>
+          </ScrollView>
+        </SafeAreaView>
+      </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#141210',
   },
   centered: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.background,
   },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
+  hero: {
+    flex: 1,
   },
-  brandRow: {
+  safe: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 24,
+  },
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 16,
+  },
+  topRowDesktop: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
   },
   brandMark: {
     width: 22,
@@ -202,120 +166,92 @@ const styles = StyleSheet.create({
   brandWordmark: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.text,
+    color: '#FFFFFF',
   },
   brandWordmarkAccent: {
     color: colors.accent,
     fontStyle: 'italic',
   },
-  hero: {
-    height: 220,
-    borderRadius: 24,
-    backgroundColor: colors.accentMuted,
-    marginBottom: 20,
+  spacer: {
+    flex: 1,
+    minHeight: 24,
+  },
+  bottomCluster: {
+    paddingBottom: 8,
+  },
+  bottomClusterDesktop: {
+    maxWidth: 620,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
   },
   headline: {
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '700',
-    color: colors.text,
-  },
-  headlineAccent: {
-    fontSize: 30,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    color: colors.accent,
+    color: '#FFFFFF',
+    lineHeight: 40,
     marginBottom: 12,
   },
+  headlineDesktop: {
+    fontSize: 52,
+    lineHeight: 58,
+  },
+  headlineAccent: {
+    fontStyle: 'italic',
+    color: colors.accent,
+  },
   subtext: {
-    fontSize: 15,
-    color: colors.textMuted,
-    lineHeight: 22,
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.78)',
+    lineHeight: 23,
     marginBottom: 20,
+    maxWidth: 460,
   },
-  features: {
-    gap: 10,
-    marginBottom: 24,
+  pillarsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 26,
   },
-  featureCard: {
+  pillar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 12,
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
   },
-  featureImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 14,
-    backgroundColor: colors.accentMuted,
-  },
-  featureText: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  featureSubtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 18,
-    marginTop: 3,
+  pillarText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   cta: {
     backgroundColor: colors.accent,
     borderRadius: 999,
     paddingVertical: 16,
+    paddingHorizontal: 32,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   ctaText: {
-    color: colors.surface,
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
   signIn: {
-    textAlign: 'center',
-    color: colors.textMuted,
+    color: 'rgba(255, 255, 255, 0.78)',
     fontSize: 14,
     marginBottom: 12,
   },
   signInAccent: {
-    color: colors.accent,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   privacyLink: {
-    textAlign: 'center',
-    color: colors.textMuted,
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 12,
-    marginTop: 8,
-  },
-  contentDesktop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 56,
-    padding: 48,
-    minHeight: '100%',
-  },
-  desktopCopy: {
-    flex: 1,
-    maxWidth: 440,
-  },
-  desktopMedia: {
-    flex: 1,
-  },
-  headlineDesktop: {
-    fontSize: 38,
-  },
-  desktopLinks: {
-    marginTop: 8,
-  },
-  heroDesktop: {
-    height: 340,
-    borderRadius: 24,
-    backgroundColor: colors.accentMuted,
-    marginBottom: 20,
+    marginTop: 4,
   },
 });

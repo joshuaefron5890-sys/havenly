@@ -31,7 +31,8 @@ function isDesktopEligibleRoute(first: string | undefined): boolean {
     first === 'sign-in' ||
     first === 'sitters' ||
     first === 'onboarding' ||
-    first === '(tabs)'
+    first === '(tabs)' ||
+    first === '(sitter)'
   );
 }
 

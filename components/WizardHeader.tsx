@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
+import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
 const TOTAL_STEPS = 10;
@@ -46,13 +47,19 @@ export function WizardHeader({
     }
   };
 
+  // On desktop, WizardStepsRail (app/onboarding/_layout.tsx) already shows
+  // every step at once alongside this screen — repeating the progress
+  // bar/step count/eyebrow here would just be the same information twice.
+  const isDesktop = useIsDesktop();
+  const showProgress = !editMode && !isDesktop;
+
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
         <Pressable style={styles.back} onPress={handleBack}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        {editMode ? null : (
+        {showProgress ? (
           <>
             <View style={styles.track}>
               <View style={[styles.fill, { width: `${(step / TOTAL_STEPS) * 100}%` }]} />
@@ -61,10 +68,10 @@ export function WizardHeader({
               {step}/{TOTAL_STEPS}
             </Text>
           </>
-        )}
+        ) : null}
       </View>
 
-      {editMode ? null : <Text style={styles.eyebrow}>STEP {step} OF {TOTAL_STEPS}</Text>}
+      {showProgress ? <Text style={styles.eyebrow}>STEP {step} OF {TOTAL_STEPS}</Text> : null}
       {hideTitle ? null : (
         <Text style={styles.title}>
           {title} <Text style={styles.accent}>{accent}</Text>

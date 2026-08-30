@@ -1,10 +1,12 @@
 import { router, Stack, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WizardStepsRail } from '../../components/WizardStepsRail';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 // The only onboarding step reachable without an existing session — it's the
@@ -15,6 +17,7 @@ export default function OnboardingLayout() {
   const { user, loading: authLoading } = useAuth();
   const { updateProfile } = useOnboarding();
   const pathname = usePathname();
+  const isDesktop = useIsDesktop();
   const [hydrating, setHydrating] = useState(true);
 
   // Landing directly on any onboarding step — most commonly a page refresh —
@@ -60,7 +63,24 @@ export default function OnboardingLayout() {
     );
   }
 
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />;
+  const stack = <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />;
+
+  if (isDesktop) {
+    return (
+      <View style={styles.desktopRow}>
+        <WizardStepsRail currentPath={pathname} />
+        <View style={styles.desktopMain}>
+          {/* Caps each step's own (still mobile-width-tuned) form at a
+              readable column instead of letting it stretch edge to edge
+              in whatever's left of the window next to the rail — none of
+              the 10 step screens have their own body redesigned yet. */}
+          <View style={styles.desktopStackWrap}>{stack}</View>
+        </View>
+      </View>
+    );
+  }
+
+  return stack;
 }
 
 const styles = StyleSheet.create({
@@ -69,5 +89,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  desktopRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  desktopMain: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  desktopStackWrap: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
   },
 });

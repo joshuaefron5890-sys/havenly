@@ -1,14 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Tabs } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DesktopTabSidebar } from '../../components/DesktopTabSidebar';
 import { useAuth } from '../../contexts/AuthContext';
 import { registerForPushNotificationsAsync } from '../../lib/pushNotifications';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     if (loading || user) return;
@@ -35,13 +38,19 @@ export default function TabsLayout() {
     );
   }
 
-  return (
+  const tabs = (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+        // The sidebar (DesktopTabSidebar) replaces the bottom bar on
+        // desktop rather than the two coexisting — Tabs itself stays
+        // mounted either way, since it's still what actually owns which
+        // screen is showing.
+        tabBarStyle: isDesktop
+          ? { display: 'none' }
+          : { backgroundColor: colors.surface, borderTopColor: colors.border },
       }}
     >
       <Tabs.Screen
@@ -88,6 +97,17 @@ export default function TabsLayout() {
       />
     </Tabs>
   );
+
+  if (isDesktop) {
+    return (
+      <View style={styles.desktopRow}>
+        <DesktopTabSidebar />
+        <View style={styles.desktopMain}>{tabs}</View>
+      </View>
+    );
+  }
+
+  return tabs;
 }
 
 const styles = StyleSheet.create({
@@ -96,5 +116,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  desktopRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  desktopMain: {
+    flex: 1,
   },
 });

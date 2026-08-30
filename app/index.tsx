@@ -7,6 +7,7 @@ import { Photo } from '../components/Photo';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
+import { useIsDesktop } from '../lib/responsive';
 import { SITTERS_ENABLED } from '../lib/sitters';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
@@ -47,9 +48,37 @@ function becomeSitter() {
   router.push('/sitter-signup');
 }
 
+// Shared between both layouts so the CTA/links block never drifts out of
+// sync between them.
+function JoinLinks() {
+  return (
+    <>
+      <Pressable style={styles.cta} onPress={joinCommunity}>
+        <Text style={styles.ctaText}>Join the community</Text>
+      </Pressable>
+      <Pressable onPress={signIn}>
+        <Text style={styles.signIn}>
+          Already a member? <Text style={styles.signInAccent}>Sign in</Text>
+        </Text>
+      </Pressable>
+      {SITTERS_ENABLED ? (
+        <Pressable onPress={becomeSitter}>
+          <Text style={styles.signIn}>
+            Babysitter, nanny, or therapist? <Text style={styles.signInAccent}>Register as a sitter</Text>
+          </Text>
+        </Pressable>
+      ) : null}
+      <Pressable onPress={() => router.push('/privacy')}>
+        <Text style={styles.privacyLink}>Privacy Policy</Text>
+      </Pressable>
+    </>
+  );
+}
+
 export default function Onboarding() {
   const { user, loading } = useAuth();
   const { updateProfile } = useOnboarding();
+  const isDesktop = useIsDesktop();
 
   // A signed-in user should never see the landing page — but they also
   // shouldn't get dumped into the tabs if they never finished onboarding.
@@ -64,6 +93,47 @@ export default function Onboarding() {
     return (
       <SafeAreaView style={[styles.screen, styles.centered]}>
         <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
+
+  if (isDesktop) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={styles.contentDesktop}>
+          <View style={styles.desktopCopy}>
+            <View style={styles.brandRow}>
+              <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
+              <Text style={styles.brandWordmark}>
+                Haven<Text style={styles.brandWordmarkAccent}>.ly</Text>
+              </Text>
+            </View>
+            <Text style={[styles.headline, styles.headlineDesktop]}>
+              A community built for <Text style={styles.headlineAccent}>neurodivergent families.</Text>
+            </Text>
+            <Text style={styles.subtext}>
+              Haven.ly helps families with neurodivergent children connect with others in their local
+              community.
+            </Text>
+            <View style={styles.desktopLinks}>
+              <JoinLinks />
+            </View>
+          </View>
+          <View style={styles.desktopMedia}>
+            <Photo source={images.onboardingHero} style={styles.heroDesktop} />
+            <View style={styles.features}>
+              {FEATURES.map((feature) => (
+                <View key={feature.title} style={styles.featureCard}>
+                  <Photo source={feature.image} style={styles.featureImage} />
+                  <View style={styles.featureText}>
+                    <Text style={styles.featureTitle}>{feature.title}</Text>
+                    <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -100,25 +170,7 @@ export default function Onboarding() {
           ))}
         </View>
 
-        <Pressable style={styles.cta} onPress={joinCommunity}>
-          <Text style={styles.ctaText}>Join the community</Text>
-        </Pressable>
-
-        <Pressable onPress={signIn}>
-          <Text style={styles.signIn}>
-            Already a member? <Text style={styles.signInAccent}>Sign in</Text>
-          </Text>
-        </Pressable>
-        {SITTERS_ENABLED ? (
-          <Pressable onPress={becomeSitter}>
-            <Text style={styles.signIn}>
-              Babysitter, nanny, or therapist? <Text style={styles.signInAccent}>Register as a sitter</Text>
-            </Text>
-          </Pressable>
-        ) : null}
-        <Pressable onPress={() => router.push('/privacy')}>
-          <Text style={styles.privacyLink}>Privacy Policy</Text>
-        </Pressable>
+        <JoinLinks />
       </ScrollView>
     </SafeAreaView>
   );
@@ -239,5 +291,31 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     marginTop: 8,
+  },
+  contentDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 56,
+    padding: 48,
+    minHeight: '100%',
+  },
+  desktopCopy: {
+    flex: 1,
+    maxWidth: 440,
+  },
+  desktopMedia: {
+    flex: 1,
+  },
+  headlineDesktop: {
+    fontSize: 38,
+  },
+  desktopLinks: {
+    marginTop: 8,
+  },
+  heroDesktop: {
+    height: 340,
+    borderRadius: 24,
+    backgroundColor: colors.accentMuted,
+    marginBottom: 20,
   },
 });

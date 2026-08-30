@@ -1393,6 +1393,21 @@ function generateReferralCode(name) {
   return `${base}${randomReferralSuffix()}`;
 }
 
+// Finds a referralCode not already in use by another sitter, retrying a
+// handful of times before falling back to a uid-derived one that's unique
+// by construction. Shared by the onSitterProfileCreated trigger below
+// (new sitters) and getMyReferralStats' lazy-backfill path (sitters whose
+// doc predates this trigger ever existing, so it never ran for them).
+async function assignReferralCode(uid, name) {
+  let code = null;
+  for (let attempt = 0; attempt < 5 && !code; attempt++) {
+    const candidate = generateReferralCode(name);
+    const existing = await admin.firestore().collection('sitters').where('referralCode', '==', candidate).limit(1).get();
+    if (existing.empty) code = candidate;
+  }
+  return code || `SITTER${uid.slice(0, 6).toUpperCase()}`;
+}
+
 // Runs once, automatically, the moment a sitter first registers (see
 // lib/sitters.ts's saveMySitterProfile) — assigns their own referralCode
 // (so they can refer others later, per app/(sitter)/index.tsx's referral
@@ -1412,15 +1427,7 @@ exports.onSitterProfileCreated = onDocumentCreated('sitters/{uid}', async (event
   const uid = event.params.uid;
   const data = snap.data() ?? {};
 
-  let code = null;
-  for (let attempt = 0; attempt < 5 && !code; attempt++) {
-    const candidate = generateReferralCode(data.name);
-    const existing = await admin.firestore().collection('sitters').where('referralCode', '==', candidate).limit(1).get();
-    if (existing.empty) code = candidate;
-  }
-  if (!code) code = `SITTER${uid.slice(0, 6).toUpperCase()}`;
-
-  const update = { referralCode: code };
+  const update = { referralCode: await assignReferralCode(uid, data.name) };
 
   const inputCode = typeof data.referredByCodeInput === 'string' ? data.referredByCodeInput.trim().toUpperCase() : '';
   if (inputCode) {
@@ -1695,6 +1702,15 @@ exports.getMyReferralStats = onCall(async (request) => {
   }
   const self = selfSnap.data();
 
+  // Sitters whose doc was created before onSitterProfileCreated existed
+  // never got a code assigned by that trigger — backfill one here, the
+  // first time any of them opens the referral modal.
+  let code = typeof self.referralCode === 'string' ? self.referralCode : null;
+  if (!code) {
+    code = await assignReferralCode(uid, self.name);
+    await selfSnap.ref.set({ referralCode: code }, { merge: true });
+  }
+
   const referredSnap = await admin.firestore().collection('sitters').where('referredByUid', '==', uid).get();
   let approvedCount = 0;
   referredSnap.docs.forEach((d) => {
@@ -1711,7 +1727,7 @@ exports.getMyReferralStats = onCall(async (request) => {
   });
 
   return {
-    code: typeof self.referralCode === 'string' ? self.referralCode : null,
+    code,
     payoutMethod: self.payoutMethod === 'venmo' || self.payoutMethod === 'paypal' ? self.payoutMethod : null,
     payoutHandle: typeof self.payoutHandle === 'string' ? self.payoutHandle : null,
     referredCount: referredSnap.size,

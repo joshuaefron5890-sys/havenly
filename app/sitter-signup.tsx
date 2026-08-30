@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth, firebaseConfigured } from '../lib/firebase';
 import { NEURODIVERGENCE_OPTIONS } from '../lib/neurodivergence';
 import { pickAndUploadDocument, pickAndUploadNativePhoto, pickImageFile, uploadPhotoBlob } from '../lib/photoUpload';
+import { useIsDesktop } from '../lib/responsive';
 import {
   docExtensionLabel,
   emptySitterProfile,
@@ -42,6 +43,7 @@ export default function SitterSignup() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const editMode = edit === '1';
   const { user, loading: authLoading } = useAuth();
+  const isDesktop = useIsDesktop();
 
   const [loadingExisting, setLoadingExisting] = useState(editMode);
   const [profile, setProfile] = useState<SitterProfile>(emptySitterProfile);
@@ -231,8 +233,8 @@ export default function SitterSignup() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+  const formShell = (
+    <>
       <View style={styles.header}>
         <Pressable style={styles.back} onPress={() => router.replace(editMode ? '/(sitter)' : '/')}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
@@ -408,8 +410,38 @@ export default function SitterSignup() {
           </Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </>
   );
+
+  if (isDesktop) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+        <View style={styles.desktopRow}>
+          <View style={styles.desktopPanel}>
+            <View style={styles.desktopBrandRow}>
+              <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
+              <Text style={styles.desktopWordmark}>
+                Haven<Text style={styles.desktopWordmarkAccent}>.ly</Text> for Sitters
+              </Text>
+            </View>
+            <Text style={styles.desktopPanelTitle}>
+              {editMode ? 'Keep your profile current.' : 'Get matched with families who actually need you.'}
+            </Text>
+            <Text style={styles.desktopPanelText}>
+              {editMode
+                ? 'Families see your profile exactly as you leave it here — availability, rate, and experience included.'
+                : "We'll review your background check before you show up in any family's recommendations."}
+            </Text>
+          </View>
+          <View style={styles.desktopFormWrap}>
+            <View style={styles.desktopFormInner}>{formShell}</View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>{formShell}</SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
@@ -579,5 +611,54 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: 16,
     fontWeight: '700',
+  },
+  desktopRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  desktopPanel: {
+    width: '38%',
+    justifyContent: 'center',
+    gap: 16,
+    paddingHorizontal: 48,
+    backgroundColor: colors.accentMuted,
+  },
+  desktopBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  desktopBrandMark: {
+    width: 22,
+    height: 22,
+  },
+  desktopWordmark: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  desktopWordmarkAccent: {
+    color: colors.accent,
+    fontStyle: 'italic',
+  },
+  desktopPanelTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.text,
+    lineHeight: 32,
+  },
+  desktopPanelText: {
+    fontSize: 15,
+    color: colors.text,
+    lineHeight: 22,
+  },
+  desktopFormWrap: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  desktopFormInner: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
   },
 });

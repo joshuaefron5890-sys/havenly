@@ -34,7 +34,8 @@ function isDesktopEligibleRoute(first: string | undefined): boolean {
     first === '(tabs)' ||
     first === '(sitter)' ||
     first === 'messages' ||
-    first === 'profile'
+    first === 'profile' ||
+    first === 'sitter-signup'
   );
 }
 

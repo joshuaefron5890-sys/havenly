@@ -38,17 +38,19 @@ export default function SittersLanding() {
     <View style={styles.screen}>
       <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} resizeMode="cover">
         <LinearGradient
-          colors={['rgba(20, 18, 16, 0.15)', 'rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.94)']}
-          locations={[0, 0.5, 1]}
+          colors={['rgba(20, 18, 16, 0.4)', 'rgba(20, 18, 16, 0.68)', 'rgba(20, 18, 16, 0.94)']}
+          locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFill}
         />
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <ScrollView contentContainerStyle={[styles.scrollContent, { minHeight: height }]} bounces={false}>
             <View style={[styles.topRow, isDesktop && styles.topRowDesktop]}>
-              <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
-              <Text style={styles.brandWordmark}>
-                Haven<Text style={styles.brandWordmarkAccent}>.ly</Text> for Sitters
-              </Text>
+              <View style={styles.brandChip}>
+                <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
+                <Text style={styles.brandWordmark}>
+                  Haven<Text style={styles.brandWordmarkAccent}>.ly</Text> for Sitters
+                </Text>
+              </View>
             </View>
 
             <View style={styles.spacer} />
@@ -114,6 +116,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
   },
+  // A backing chip rather than relying on the gradient alone — see the
+  // same fix on app/index.tsx for why.
+  brandChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(20, 18, 16, 0.45)',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
   brandMark: {
     width: 20,
     height: 20,
@@ -152,6 +165,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     lineHeight: 40,
     marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   headlineDesktop: {
     fontSize: 52,
@@ -164,6 +180,9 @@ const styles = StyleSheet.create({
   subtext: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.78)',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
     lineHeight: 23,
     marginBottom: 20,
     maxWidth: 460,

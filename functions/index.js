@@ -1538,7 +1538,7 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
         [
           firstName ? `Hi ${firstName},` : 'Hi,',
           '',
-          'Your background check cleared and your sitter profile is now live — families nearby can find and reach out to you.',
+          'Your Haven.ly application has been approved. Families nearby can now find you and reach out for playdate support.',
           '',
           `View your profile: ${APP_BASE_URL}/sitter-signup?edit=1`,
         ].join('\n')

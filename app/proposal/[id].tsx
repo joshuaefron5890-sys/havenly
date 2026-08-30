@@ -28,6 +28,7 @@ import {
   respondToProposal,
   subscribeToProposal,
 } from '../../lib/playdateProposals';
+import { goBack } from '../../lib/navigation';
 import { useIsDesktop } from '../../lib/responsive';
 import { SITTERS_ENABLED } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
@@ -268,7 +269,7 @@ export default function ProposalDetail() {
   if (proposal === null) {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        <Pressable style={styles.backAlone} onPress={() => router.back()}>
+        <Pressable style={styles.backAlone} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <View style={styles.centered}>
@@ -286,7 +287,7 @@ export default function ProposalDetail() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={[styles.header, isDesktop && styles.desktopColumn]}>
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={styles.back} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Playdate</Text>

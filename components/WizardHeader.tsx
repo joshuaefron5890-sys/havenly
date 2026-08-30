@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
+import { goBack } from '../lib/navigation';
 import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
@@ -19,10 +20,10 @@ export function WizardHeader({
   step: number;
   title: string;
   accent: string;
-  // Explicit previous-step route. Falls back to router.back() when omitted,
-  // but that's unreliable after resuming onboarding mid-wizard (which lands
-  // on a step via router.replace, so there's no real "back" in history to
-  // pop to) — every step past the first should pass this.
+  // Explicit previous-step route. Falls back to goBack() when omitted, but
+  // that's unreliable after resuming onboarding mid-wizard (which lands on
+  // a step via router.replace, so there's no real "back" in history to pop
+  // to) — every step past the first should pass this.
   backTo?: string;
   // Takes priority over backTo — for a screen that cycles through several
   // sub-steps itself (e.g. one per child), so "back" should step within the
@@ -43,7 +44,7 @@ export function WizardHeader({
     } else if (backTo) {
       router.replace(backTo as any);
     } else {
-      router.back();
+      goBack();
     }
   };
 

@@ -163,7 +163,15 @@ async function refreshGoogleAccessToken(refreshToken, clientSecret) {
   });
   const json = await res.json();
   if (!res.ok) {
-    throw new HttpsError('unknown', json.error_description || 'Could not refresh Google access token.');
+    // 'invalid_grant' is Google's code for a refresh token that's expired
+    // or been revoked (e.g. the user removed Haven.ly's access in their
+    // Google account) — surfaced as the same failed-precondition every
+    // caller here already uses for "never connected," so the client shows
+    // its existing reconnect UI instead of Google's raw OAuth error text.
+    if (json.error === 'invalid_grant') {
+      throw new HttpsError('failed-precondition', 'Google Calendar access has expired — please reconnect.');
+    }
+    throw new HttpsError('internal', 'Could not refresh Google access token.');
   }
   return json.access_token;
 }

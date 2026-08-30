@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { goBack } from '../../lib/navigation';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
@@ -88,7 +89,7 @@ export default function PodcastDetail() {
         <View style={styles.hero}>
           <Photo source={artworkUrl ? { uri: artworkUrl } : undefined} style={styles.heroImage} />
           <View style={styles.heroTopRow}>
-            <Pressable style={styles.back} onPress={() => router.back()}>
+            <Pressable style={styles.back} onPress={() => goBack()}>
               <Ionicons name="chevron-back" size={20} color={colors.text} />
             </Pressable>
             <Pressable style={styles.heartButton} onPress={toggleFavorite}>

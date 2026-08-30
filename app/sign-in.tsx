@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useState } from 'react';
 import { Image, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
@@ -172,7 +173,7 @@ export default function SignIn() {
             </View>
           </ImageBackground>
           <View style={styles.desktopCardWrap}>
-            <Pressable style={styles.desktopBack} onPress={() => router.back()}>
+            <Pressable style={styles.desktopBack} onPress={() => goBack()}>
               <Ionicons name="chevron-back" size={20} color={colors.text} />
             </Pressable>
             <View style={styles.desktopCard}>{authCard}</View>
@@ -185,7 +186,7 @@ export default function SignIn() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={styles.back} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
       </View>

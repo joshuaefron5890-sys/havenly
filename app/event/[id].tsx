@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { goBack } from '../../lib/navigation';
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
@@ -53,7 +54,7 @@ export default function EventDetail() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.hero}>
           <Photo source={imageUrl ? { uri: imageUrl } : undefined} style={styles.heroImage} variant="image" iconSize={40} />
-          <Pressable style={styles.back} onPress={() => router.back()}>
+          <Pressable style={styles.back} onPress={() => goBack()}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
         </View>

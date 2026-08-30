@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
@@ -57,7 +58,7 @@ export default function InviteFamilyMember() {
           {name} will get an email with a link to join your family on Haven.ly — once they accept, they'll see
           everything you see.
         </Text>
-        <Pressable style={styles.cta} onPress={() => router.back()}>
+        <Pressable style={styles.cta} onPress={() => goBack()}>
           <Text style={styles.ctaText}>Done</Text>
         </Pressable>
       </SafeAreaView>
@@ -67,7 +68,7 @@ export default function InviteFamilyMember() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={styles.back} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Invite a family member</Text>

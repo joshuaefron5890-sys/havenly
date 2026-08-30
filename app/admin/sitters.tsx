@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { goBack } from '../../lib/navigation';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
@@ -78,7 +79,7 @@ export default function AdminSitters() {
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        <Pressable style={styles.backAlone} onPress={() => router.back()}>
+        <Pressable style={styles.backAlone} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <View style={styles.centered}>
@@ -91,7 +92,7 @@ export default function AdminSitters() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={styles.back} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Vet sitters</Text>

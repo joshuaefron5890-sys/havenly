@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -122,7 +123,7 @@ export default function ProposePlaydate() {
   if (error) {
     return (
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        <Pressable style={styles.backAlone} onPress={() => router.back()}>
+        <Pressable style={styles.backAlone} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <View style={styles.centered}>
@@ -145,7 +146,7 @@ export default function ProposePlaydate() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable style={styles.back} onPress={() => router.back()}>
+        <Pressable style={styles.back} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Propose a playdate</Text>

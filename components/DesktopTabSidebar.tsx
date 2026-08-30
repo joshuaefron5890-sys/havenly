@@ -31,9 +31,7 @@ export function DesktopTabSidebar() {
     <View style={styles.sidebar}>
       <View style={styles.brandRow}>
         <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
-        <Text style={styles.wordmark}>
-          Opened <Text style={styles.wordmarkAccent}>Circle</Text>
-        </Text>
+        <Text style={styles.wordmark}>Opened Circle</Text>
       </View>
       <View style={styles.nav}>
         {NAV_ITEMS.map((item) => {
@@ -79,9 +77,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-  },
-  wordmarkAccent: {
-    color: colors.accent,
   },
   nav: {
     gap: 2,

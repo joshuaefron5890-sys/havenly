@@ -270,8 +270,8 @@ export type PendingSitter = RecommendedSitter & {
 };
 
 // Admin-only (see functions/index.js's admin check) — every sitter in the
-// admin's own cluster that isn't 'clear' yet, for the vetting queue
-// (app/admin/sitters.tsx).
+// admin's own cluster, at any vetting status, for the vetting queue
+// (app/admin/sitters.tsx) to split into Pending/Approved/Rejected tabs.
 export async function fetchPendingSitters(): Promise<PendingSitter[]> {
   if (!functions) throw new Error('not-configured');
   const call = httpsCallable<undefined, { sitters: PendingSitter[] }>(functions, 'getPendingSitters');

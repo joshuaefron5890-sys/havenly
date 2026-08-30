@@ -18,10 +18,11 @@ import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
-import { SquareCard } from '../../components/SquareCard';
+import { DESKTOP_CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
+import { useIsDesktop } from '../../lib/responsive';
 import {
   addFavoriteContribution,
   addFavoriteProduct,
@@ -51,6 +52,7 @@ function sortFavoritedFirst<T>(items: T[], favoriteIds: Set<string>, keyOf: (ite
 export default function Products() {
   const { user, familyUid, clusterId } = useAuth();
   const isAdmin = isSuperAdminEmail(user?.email, clusterId);
+  const isDesktop = useIsDesktop();
   const [products, setProducts] = useState<RecommendedProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteUrls, setFavoriteUrls] = useState<Set<string>>(new Set());
@@ -245,6 +247,7 @@ export default function Products() {
                 favorited={favoriteUrls.has(product.url)}
                 onToggleFavorite={() => toggleFavorite(product)}
                 onDelete={isAdmin ? () => deleteProduct(product) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',
@@ -272,6 +275,7 @@ export default function Products() {
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onDelete={isAdmin ? () => deleteProductContribution(c) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -289,6 +293,7 @@ export default function Products() {
                 favorited={favoriteUrls.has(product.url)}
                 onToggleFavorite={() => toggleFavorite(product)}
                 onDelete={isAdmin ? () => deleteProduct(product) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/product/[id]',

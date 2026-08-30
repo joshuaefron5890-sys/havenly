@@ -10,7 +10,7 @@ import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
-import { SquareCard } from '../../components/SquareCard';
+import { DESKTOP_CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
@@ -25,6 +25,7 @@ import {
   proposalStartLabel,
 } from '../../lib/playdateProposals';
 import { isSuperAdminEmail } from '../../lib/superAdmin';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 const ALL = 'All';
@@ -43,6 +44,7 @@ const SCHEMA = CONTRIBUTION_SCHEMAS.event;
 export default function Events() {
   const { user, familyUid, clusterId } = useAuth();
   const isAdmin = isSuperAdminEmail(user?.email, clusterId);
+  const isDesktop = useIsDesktop();
   const [events, setEvents] = useState<NearbyEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<PlaydateProposal[]>([]);
@@ -272,6 +274,7 @@ export default function Events() {
                   }
                   badge={p.badge}
                   badgeVariant={p.badgeVariant}
+                  size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                   onPress={() => router.push(`/proposal/${p.id}`)}
                 />
               );
@@ -285,6 +288,7 @@ export default function Events() {
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onDelete={isAdmin ? () => deleteEventContribution(c) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -302,6 +306,7 @@ export default function Events() {
                 icon={event.imageUrl ? undefined : 'calendar-outline'}
                 softFallback={!event.imageUrl}
                 onDelete={isAdmin ? () => deleteEvent(event) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/event/[id]',

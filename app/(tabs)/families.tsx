@@ -7,7 +7,7 @@ import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
-import { SquareCard } from '../../components/SquareCard';
+import { DESKTOP_CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   addFavoriteFamily,
@@ -15,6 +15,7 @@ import {
   removeFavoriteFamily,
 } from '../../lib/favorites';
 import { familyDisplayName, familyPhoto, familySubtitle, fetchSuggestedFamilies, SuggestedFamily } from '../../lib/families';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 const PAGE_BATCH = 12;
@@ -22,6 +23,7 @@ const ALL = 'All';
 
 export default function Families() {
   const { user, familyUid } = useAuth();
+  const isDesktop = useIsDesktop();
   const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteUids, setFavoriteUids] = useState<Set<string>>(new Set());
@@ -138,6 +140,7 @@ export default function Families() {
                 onToggleFavorite={() => toggleFavorite(family)}
                 matchScore={family.matchScore}
                 personFallback
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() => router.push(`/family/${family.uid}`)}
               />
             ))}
@@ -151,6 +154,7 @@ export default function Families() {
                 onToggleFavorite={favoriteUids.has(family.uid) ? () => toggleFavorite(family) : undefined}
                 matchScore={family.matchScore}
                 personFallback
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() => router.push(`/family/${family.uid}`)}
               />
             ))}

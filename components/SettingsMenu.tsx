@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Image, Modal, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Image, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
-import { MAX_CONTENT_WIDTH } from './ResponsiveContainer';
 import { useAuth } from '../contexts/AuthContext';
 import { signOutUser } from '../lib/firebase';
 import { initials } from '../lib/initials';
@@ -14,7 +13,6 @@ export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const { user, familyMemberInfo, clusterId } = useAuth();
   const isAdmin = isSuperAdminEmail(user?.email, clusterId);
-  const { width } = useWindowDimensions();
   // The Google account photo URL can fail to load (expired, blocked by
   // referrer policy, etc.) — React Native Web then renders a broken-image
   // icon instead of quietly falling back, so track load failures ourselves.
@@ -25,13 +23,21 @@ export function SettingsMenu() {
   }, [user?.photoURL, familyMemberInfo?.photoUrl]);
 
   // Modal portals straight to the browser's <body> on web, so it renders
-  // relative to the full browser window rather than ResponsiveContainer's
-  // centered phone-width column — without this, the menu lands in the gray
-  // backdrop off to the side on a wide (desktop) viewport instead of under
-  // the gear icon. This mirrors ResponsiveContainer's own centering math to
-  // land the menu back inside the visible column.
-  const isWide = width > MAX_CONTENT_WIDTH;
-  const rightInset = (isWide ? (width - MAX_CONTENT_WIDTH) / 2 : 0) + 20;
+  // relative to the full browser window rather than wherever the gear icon
+  // actually sits. Rather than guessing the icon's position from the
+  // content column width (which broke once headers started rendering
+  // full-bleed instead of clamped), measure the gear icon itself and pin
+  // the menu directly under it — correct at any screen size or layout.
+  const iconRef = useRef<View>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 60, right: 20 });
+
+  const openMenu = () => {
+    iconRef.current?.measureInWindow((x, y, iconWidth, iconHeight) => {
+      const windowWidth = Platform.OS === 'web' ? window.innerWidth : x + iconWidth;
+      setMenuPos({ top: y + iconHeight + 8, right: Math.max(windowWidth - (x + iconWidth), 0) });
+    });
+    setOpen(true);
+  };
 
   const goToProfile = () => {
     setOpen(false);
@@ -63,13 +69,16 @@ export function SettingsMenu() {
 
   return (
     <View>
-      <Pressable onPress={() => setOpen(true)} hitSlop={8}>
+      <Pressable ref={iconRef} onPress={openMenu} hitSlop={8}>
         <Ionicons name="settings-outline" size={22} color={colors.text} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.menu, { marginRight: rightInset }]} onPress={() => {}}>
+          <Pressable
+            style={[styles.menu, { position: 'absolute', top: menuPos.top, right: menuPos.right }]}
+            onPress={() => {}}
+          >
             <Pressable style={styles.item} onPress={goToProfile}>
               {(familyMemberInfo?.photoUrl || user?.photoURL) && !avatarFailed ? (
                 <Image
@@ -115,10 +124,8 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.15)',
-    alignItems: 'flex-end',
   },
   menu: {
-    marginTop: 60,
     minWidth: 170,
     backgroundColor: colors.surface,
     borderRadius: 14,

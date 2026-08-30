@@ -8,9 +8,32 @@ import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
-import { docExtensionLabel, fetchPendingSitters, isImageDocUrl, PendingSitter, setSitterVettingStatus } from '../../lib/sitters';
+import { BackgroundCheckStatus, docExtensionLabel, fetchPendingSitters, isImageDocUrl, PendingSitter, setSitterVettingStatus } from '../../lib/sitters';
 import { isSuperAdminEmail } from '../../lib/superAdmin';
 import { colors } from '../../theme/colors';
+
+const TABS: { status: BackgroundCheckStatus; label: string }[] = [
+  { status: 'pending', label: 'Pending' },
+  { status: 'clear', label: 'Approved' },
+  { status: 'flagged', label: 'Rejected' },
+];
+
+// What an admin can do to a sitter from each tab — moving them to either of
+// the other two states. Pending can go either way; Approved/Rejected only
+// offer the flip to the other of those two (undoing back to "never
+// reviewed" isn't a real workflow an admin needs).
+function actionsForStatus(status: BackgroundCheckStatus): { status: BackgroundCheckStatus; label: string }[] {
+  if (status === 'pending') {
+    return [
+      { status: 'flagged', label: 'Reject' },
+      { status: 'clear', label: 'Approve' },
+    ];
+  }
+  if (status === 'clear') {
+    return [{ status: 'flagged', label: 'Reject' }];
+  }
+  return [{ status: 'clear', label: 'Approve' }];
+}
 
 export default function AdminSitters() {
   const { user, clusterId, loading: authLoading } = useAuth();
@@ -18,6 +41,7 @@ export default function AdminSitters() {
   const [sitters, setSitters] = useState<PendingSitter[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyUid, setBusyUid] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<BackgroundCheckStatus>('pending');
 
   const load = useCallback(() => {
     if (!isAdmin) return;
@@ -28,17 +52,20 @@ export default function AdminSitters() {
 
   useFocusEffect(load);
 
-  const decide = async (uid: string, status: 'clear' | 'flagged') => {
+  const decide = async (uid: string, status: BackgroundCheckStatus) => {
     setBusyUid(uid);
     try {
       await setSitterVettingStatus(uid, status);
-      setSitters((prev) => prev?.filter((s) => s.uid !== uid) ?? null);
+      setSitters((prev) => prev?.map((s) => (s.uid === uid ? { ...s, backgroundCheckStatus: status } : s)) ?? null);
     } catch (err: any) {
       showAlert('Couldn’t update that sitter', err?.message ?? err?.code ?? 'Please try again.');
     } finally {
       setBusyUid(null);
     }
   };
+
+  const tabSitters = sitters?.filter((s) => s.backgroundCheckStatus === activeTab) ?? null;
+  const tabCounts = TABS.map((tab) => sitters?.filter((s) => s.backgroundCheckStatus === tab.status).length ?? 0);
 
   if (authLoading) {
     return (
@@ -70,23 +97,43 @@ export default function AdminSitters() {
         <Text style={styles.headerTitle}>Vet sitters</Text>
       </View>
 
+      <View style={styles.tabRow}>
+        {TABS.map((tab, i) => (
+          <Pressable
+            key={tab.status}
+            style={[styles.tab, activeTab === tab.status && styles.tabActive]}
+            onPress={() => setActiveTab(tab.status)}
+          >
+            <Text style={[styles.tabText, activeTab === tab.status && styles.tabTextActive]}>
+              {tab.label}
+              {sitters ? ` (${tabCounts[i]})` : ''}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <ScrollView contentContainerStyle={styles.content}>
         {error ? <EmptyState text={`Couldn’t load sitters (${error}).`} /> : null}
         {sitters === null && !error ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
-        {sitters?.length === 0 ? <EmptyState text="No sitters waiting on review." /> : null}
+        {tabSitters?.length === 0 ? (
+          <EmptyState
+            text={
+              activeTab === 'pending'
+                ? 'No sitters waiting on review.'
+                : activeTab === 'clear'
+                ? 'No approved sitters yet.'
+                : 'No rejected sitters.'
+            }
+          />
+        ) : null}
 
-        {sitters?.map((sitter) => (
+        {tabSitters?.map((sitter) => (
           <View key={sitter.uid} style={styles.card}>
             <View style={styles.cardHeader}>
               <Photo source={sitter.photoUrl ? { uri: sitter.photoUrl } : undefined} style={styles.avatar} variant="person" iconSize={22} />
               <View style={styles.cardHeaderText}>
                 <Text style={styles.name}>{sitter.name}</Text>
                 <Text style={styles.location}>{sitter.city ? `${sitter.city}, ${sitter.state}` : sitter.email}</Text>
-              </View>
-              <View style={[styles.statusPill, sitter.backgroundCheckStatus === 'flagged' && styles.statusPillFlagged]}>
-                <Text style={[styles.statusPillText, sitter.backgroundCheckStatus === 'flagged' && styles.statusPillTextFlagged]}>
-                  {sitter.backgroundCheckStatus === 'flagged' ? 'Flagged' : 'Pending'}
-                </Text>
               </View>
             </View>
 
@@ -117,20 +164,18 @@ export default function AdminSitters() {
             ) : null}
 
             <View style={styles.actionRow}>
-              <Pressable
-                style={[styles.actionButton, styles.flagButton]}
-                onPress={() => decide(sitter.uid, 'flagged')}
-                disabled={busyUid === sitter.uid}
-              >
-                <Text style={styles.flagButtonText}>Flag</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.actionButton, styles.approveButton]}
-                onPress={() => decide(sitter.uid, 'clear')}
-                disabled={busyUid === sitter.uid}
-              >
-                <Text style={styles.approveButtonText}>Approve</Text>
-              </Pressable>
+              {actionsForStatus(sitter.backgroundCheckStatus).map((action) => (
+                <Pressable
+                  key={action.status}
+                  style={[styles.actionButton, action.status === 'flagged' ? styles.flagButton : styles.approveButton]}
+                  onPress={() => decide(sitter.uid, action.status)}
+                  disabled={busyUid === sitter.uid}
+                >
+                  <Text style={action.status === 'flagged' ? styles.flagButtonText : styles.approveButtonText}>
+                    {action.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
         ))}
@@ -188,8 +233,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    borderRadius: 999,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: colors.border,
+  },
+  tabActive: {
+    backgroundColor: colors.accent,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  tabTextActive: {
+    color: colors.surface,
+  },
   content: {
     padding: 20,
+    paddingTop: 0,
   },
   spinner: {
     marginVertical: 12,
@@ -223,23 +293,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
-  },
-  statusPill: {
-    backgroundColor: colors.warningMuted,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusPillFlagged: {
-    backgroundColor: colors.errorMuted,
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.warning,
-  },
-  statusPillTextFlagged: {
-    color: colors.error,
   },
   field: {
     marginBottom: 8,

@@ -190,6 +190,13 @@ export function SquareCard({
 
 export const CARD_WIDTH = 76;
 
+// Every full-listing grid (Events/Podcasts/Products/Families) passes this
+// as its own `size` when useIsDesktop() is true, matching the size
+// app/(tabs)/index.tsx's Home grids land on at typical desktop widths —
+// one shared constant so a future size tweak doesn't need updating in
+// five different files.
+export const DESKTOP_CARD_WIDTH = 160;
+
 const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,

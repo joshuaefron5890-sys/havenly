@@ -18,11 +18,12 @@ import { FilterChips } from '../../components/FilterChips';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SectionHero } from '../../components/SectionHero';
-import { SquareCard } from '../../components/SquareCard';
+import { DESKTOP_CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
 import { Contribution, CONTRIBUTION_SCHEMAS, createContribution, fetchContributions } from '../../lib/contributions';
 import { fetchContributorPhotos } from '../../lib/families';
+import { useIsDesktop } from '../../lib/responsive';
 import {
   addFavoriteContribution,
   addFavoritePodcast,
@@ -43,6 +44,7 @@ const PAGE_BATCH = 12;
 export default function Podcasts() {
   const { user, familyUid, clusterId } = useAuth();
   const isAdmin = isSuperAdminEmail(user?.email, clusterId);
+  const isDesktop = useIsDesktop();
   const [podcasts, setPodcasts] = useState<PodcastSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -231,6 +233,7 @@ export default function Podcasts() {
                 favorited={favoriteIds.has(podcast.id)}
                 onToggleFavorite={() => toggleFavorite(podcast)}
                 onDelete={isAdmin ? () => deletePodcast(podcast) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',
@@ -260,6 +263,7 @@ export default function Podcasts() {
                 favorited={favoriteContributionIds.has(c.id)}
                 onToggleFavorite={() => toggleContributionFavorite(c.id)}
                 onDelete={isAdmin ? () => deletePodcastContribution(c) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/contribution/[id]',
@@ -277,6 +281,7 @@ export default function Podcasts() {
                 favorited={favoriteIds.has(podcast.id)}
                 onToggleFavorite={() => toggleFavorite(podcast)}
                 onDelete={isAdmin ? () => deletePodcast(podcast) : undefined}
+                size={isDesktop ? DESKTOP_CARD_WIDTH : undefined}
                 onPress={() =>
                   router.push({
                     pathname: '/podcast/[id]',

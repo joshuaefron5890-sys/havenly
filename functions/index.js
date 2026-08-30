@@ -1465,9 +1465,9 @@ async function isClusterAdmin(authUid, email) {
 }
 
 // Powers the vetting queue (app/admin/sitters.tsx) — every sitter in the
-// admin's own cluster that isn't cleared yet. Includes backgroundCheckStatus
-// (toPublicSitter's subset doesn't) so the queue can tell "never checked"
-// apart from "flagged."
+// admin's own cluster, at any vetting status, so the queue can split them
+// into Pending/Approved/Rejected tabs. Includes backgroundCheckStatus
+// (toPublicSitter's subset doesn't) so the queue can tell them apart.
 exports.getPendingSitters = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in required.');
@@ -1481,10 +1481,13 @@ exports.getPendingSitters = onCall(async (request) => {
 
   const snap = await admin.firestore().collection('sitters').limit(500).get();
   const sitters = snap.docs
-    .filter((doc) => clusterIdOf(doc.data()) === myClusterId && doc.data().backgroundCheckStatus !== 'clear')
+    .filter((doc) => clusterIdOf(doc.data()) === myClusterId)
     .map((doc) => ({
       ...toPublicSitter(doc.id, doc.data()),
-      backgroundCheckStatus: doc.data().backgroundCheckStatus === 'flagged' ? 'flagged' : 'pending',
+      backgroundCheckStatus:
+        doc.data().backgroundCheckStatus === 'clear' || doc.data().backgroundCheckStatus === 'flagged'
+          ? doc.data().backgroundCheckStatus
+          : 'pending',
       certificationDocUrls: Array.isArray(doc.data().certificationDocUrls)
         ? doc.data().certificationDocUrls.filter((u) => typeof u === 'string')
         : [],

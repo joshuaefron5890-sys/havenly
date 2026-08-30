@@ -1695,7 +1695,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     alignSelf: 'stretch',
-    backgroundColor: colors.positive,
+    backgroundColor: colors.accent,
     borderRadius: 999,
     paddingVertical: 13,
   },

@@ -1,6 +1,6 @@
 import { router, Stack, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WizardStepsRail } from '../../components/WizardStepsRail';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,13 @@ import { colors } from '../../theme/colors';
 // The only onboarding step reachable without an existing session — it's the
 // one that creates the account in the first place.
 const ACCOUNT_CREATION_PATH = '/onboarding/account';
+
+// Same photo used on sign-in and sitter-signup's panels — each step's own
+// screen still paints its own opaque background (none of the 10 step
+// files were touched), so this only ever shows through in the margin
+// around the width-capped form, framing it rather than sitting behind it.
+const PANEL_IMAGE =
+  'https://images.unsplash.com/photo-1607453998774-d533f65dac99?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 export default function OnboardingLayout() {
   const { user, loading: authLoading } = useAuth();
@@ -69,13 +76,19 @@ export default function OnboardingLayout() {
     return (
       <View style={styles.desktopRow}>
         <WizardStepsRail currentPath={pathname} />
-        <View style={styles.desktopMain}>
+        <ImageBackground
+          source={{ uri: PANEL_IMAGE }}
+          style={styles.desktopMain}
+          imageStyle={styles.desktopMainImage}
+          resizeMode="cover"
+        >
+          <View style={styles.desktopMainOverlay} />
           {/* Caps each step's own (still mobile-width-tuned) form at a
               readable column instead of letting it stretch edge to edge
               in whatever's left of the window next to the rail — none of
               the 10 step screens have their own body redesigned yet. */}
           <View style={styles.desktopStackWrap}>{stack}</View>
-        </View>
+        </ImageBackground>
       </View>
     );
   }
@@ -97,6 +110,21 @@ const styles = StyleSheet.create({
   desktopMain: {
     flex: 1,
     alignItems: 'center',
+  },
+  desktopMainImage: {
+    width: '100%',
+    height: '100%',
+  },
+  // A light, mostly-background-colored wash rather than nothing — keeps
+  // the photo as an ambient backdrop around the form instead of competing
+  // with it for attention.
+  desktopMainOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(244, 244, 245, 0.45)',
   },
   desktopStackWrap: {
     flex: 1,

@@ -19,6 +19,7 @@ import {
 } from '../../lib/contributions';
 import { familyDisplayName, familyPhoto, fetchFamiliesByUids, SuggestedFamily } from '../../lib/families';
 import { addFavoriteContribution, getFavoriteContributionIds, removeFavoriteContribution } from '../../lib/favorites';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 // One detail screen for every contributed content type — the fields
@@ -34,6 +35,7 @@ export default function ContributionDetail() {
     contributedByUid?: string;
   }>();
   const { user, familyUid } = useAuth();
+  const isDesktop = useIsDesktop();
 
   // Local, editable copies of what the route params passed in — updated in
   // place after a successful edit so the screen reflects the change right
@@ -139,7 +141,7 @@ export default function ContributionDetail() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.header}>
+      <View style={[styles.header, isDesktop && styles.desktopColumn]}>
         <Pressable style={styles.back} onPress={() => goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
@@ -165,7 +167,7 @@ export default function ContributionDetail() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.communityBadge}>
           <Ionicons name="people" size={14} color={colors.community} />
           <Text style={styles.communityBadgeText}>Member added</Text>
@@ -207,7 +209,7 @@ export default function ContributionDetail() {
       </ScrollView>
 
       {url ? (
-        <View style={styles.footer}>
+        <View style={[styles.footer, isDesktop && styles.desktopColumn]}>
           <Pressable style={styles.cta} onPress={() => Linking.openURL(url)}>
             <Text style={styles.ctaText}>Open link</Text>
           </Pressable>
@@ -288,6 +290,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  // This is a focused detail screen, not a nav-anchored page — no sidebar
+  // makes sense here, so "desktop-friendly" just means a comfortably wide
+  // centered reading column instead of stretching edge to edge.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   communityBadge: {
     flexDirection: 'row',

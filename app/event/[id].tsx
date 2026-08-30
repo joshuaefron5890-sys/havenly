@@ -9,6 +9,7 @@ import { AddToGoogleCalendarPrompt } from '../../components/AddToGoogleCalendarP
 import { Photo } from '../../components/Photo';
 import { addFavoriteEvent } from '../../lib/favorites';
 import { addExternalEventToGoogleCalendar } from '../../lib/googleCalendar';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 // Event data comes from a public events feed (TACA, or one of the regional
@@ -32,6 +33,7 @@ export default function EventDetail() {
       virtual?: string;
     }>();
   const [calendarPromptVisible, setCalendarPromptVisible] = useState(false);
+  const isDesktop = useIsDesktop();
 
   const dateLabel = eventDate
     ? new Date(eventDate).toLocaleDateString(undefined, {
@@ -51,7 +53,7 @@ export default function EventDetail() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.hero}>
           <Photo source={imageUrl ? { uri: imageUrl } : undefined} style={styles.heroImage} variant="image" iconSize={40} />
           <Pressable style={styles.back} onPress={() => goBack()}>
@@ -91,7 +93,7 @@ export default function EventDetail() {
         {source ? <Text style={styles.attribution}>From {source}</Text> : null}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isDesktop && styles.desktopColumn]}>
         {eventDate ? (
           <Pressable style={styles.secondaryCta} onPress={() => setCalendarPromptVisible(true)}>
             <Ionicons name="calendar-outline" size={18} color={colors.accent} />
@@ -137,6 +139,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  // This is a focused detail screen, not a nav-anchored page — no sidebar
+  // makes sense here, so "desktop-friendly" just means a comfortably wide
+  // centered reading column instead of stretching edge to edge.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   hero: {
     height: 180,

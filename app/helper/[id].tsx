@@ -5,13 +5,15 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Photo } from '../../components/Photo';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 import { images } from '../../theme/images';
 
 export default function HelperDetail() {
+  const isDesktop = useIsDesktop();
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.hero}>
           <Photo source={images.helperMarcus} style={styles.heroImage} />
           <Pressable style={styles.back} onPress={() => goBack()}>
@@ -63,7 +65,7 @@ export default function HelperDetail() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isDesktop && styles.desktopColumn]}>
         <Pressable style={styles.cta}>
           <Text style={styles.ctaText}>Request for a playdate</Text>
         </Pressable>
@@ -82,6 +84,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  // This is a focused detail screen, not a nav-anchored page — no sidebar
+  // makes sense here, so "desktop-friendly" just means a comfortably wide
+  // centered reading column instead of stretching edge to edge.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   hero: {
     height: 200,

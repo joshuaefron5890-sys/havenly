@@ -9,6 +9,7 @@ import { BlogIcon } from '../../components/BlogIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
 import { addFavoriteResource, getFavoriteResourceUrls, removeFavoriteResource } from '../../lib/favorites';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 // Article data comes from MedlinePlus's public search API (or, for a blog
@@ -31,6 +32,7 @@ export default function ArticleDetail() {
   }>();
   const attribution = source || 'MedlinePlus';
   const { user, familyUid } = useAuth();
+  const isDesktop = useIsDesktop();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
 
@@ -64,7 +66,7 @@ export default function ArticleDetail() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.topRow}>
           <Pressable style={styles.back} onPress={() => goBack()}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
@@ -109,7 +111,7 @@ export default function ArticleDetail() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isDesktop && styles.desktopColumn]}>
         <Pressable style={styles.heartOutlineButton} onPress={toggleFavorite}>
           <Ionicons
             name={favorited ? 'heart' : 'heart-outline'}
@@ -136,6 +138,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  // This is a focused detail screen, not a nav-anchored page — no sidebar
+  // makes sense here, so "desktop-friendly" just means a comfortably wide
+  // centered reading column instead of stretching edge to edge.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   topRow: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { showAlert } from '../../lib/alert';
 import { addFavoritePodcast, getFavoritePodcastIds, removeFavoritePodcast } from '../../lib/favorites';
 import { fetchPodcastDescription } from '../../lib/podcasts';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 // Podcast data is public (Apple's iTunes Search API) and already fully
@@ -31,6 +32,7 @@ export default function PodcastDetail() {
     matchedTags?: string;
   }>();
   const { user, familyUid } = useAuth();
+  const isDesktop = useIsDesktop();
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [description, setDescription] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export default function PodcastDetail() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.hero}>
           <Photo source={artworkUrl ? { uri: artworkUrl } : undefined} style={styles.heroImage} />
           <View style={styles.heroTopRow}>
@@ -129,7 +131,7 @@ export default function PodcastDetail() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isDesktop && styles.desktopColumn]}>
         <Pressable style={styles.heartOutlineButton} onPress={toggleFavorite}>
           <Ionicons
             name={favorited ? 'heart' : 'heart-outline'}
@@ -156,6 +158,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  // This is a focused detail screen, not a nav-anchored page — no sidebar
+  // makes sense here, so "desktop-friendly" just means a comfortably wide
+  // centered reading column instead of stretching edge to edge.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   hero: {
     height: 220,

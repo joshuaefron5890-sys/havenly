@@ -13,11 +13,13 @@ import { showAlert } from '../../lib/alert';
 import { addFavoriteFamily, getFavoriteFamilyUids, removeFavoriteFamily } from '../../lib/favorites';
 import { familyDisplayName, FamilyProfile, fetchFamilyProfile } from '../../lib/families';
 import { getOrCreateConversation } from '../../lib/messages';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 export default function FamilyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, familyUid } = useAuth();
+  const isDesktop = useIsDesktop();
   const [profile, setProfile] = useState<FamilyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
@@ -108,7 +110,7 @@ export default function FamilyDetail() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.hero}>
           <Photo
             source={profile.familyPhotoUrl ? { uri: profile.familyPhotoUrl } : undefined}
@@ -206,7 +208,7 @@ export default function FamilyDetail() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isDesktop && styles.desktopColumn]}>
         <Pressable style={styles.heartOutlineButton} onPress={toggleFavorite}>
           <Ionicons
             name={favorited ? 'heart' : 'heart-outline'}
@@ -237,6 +239,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  // This is a focused detail screen, not a nav-anchored page — no sidebar
+  // makes sense here, so "desktop-friendly" just means a comfortably wide
+  // centered reading column instead of stretching edge to edge.
+  desktopColumn: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   backAlone: {
     width: 36,

@@ -27,12 +27,8 @@ import {
 } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
-// Same photo already vetted for app/sitters.tsx's hero and the in-app
-// sitter promo card (app/proposal/[id].tsx's SITTER_PROMO_IMAGE) — reused
-// here for the same "Become a sitter" visual identity rather than picking
-// a new, unvetted image.
 const PANEL_IMAGE =
-  'https://images.unsplash.com/photo-1585541993027-55373d67ea86?q=80&w=1658&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+  'https://images.unsplash.com/photo-1607453998774-d533f65dac99?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 function friendlyError(code: string): string {
   switch (code) {

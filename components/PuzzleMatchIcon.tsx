@@ -1,22 +1,26 @@
-import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import Svg, { Circle, Rect } from 'react-native-svg';
 
-// Two puzzle-piece glyphs, one mirrored and slightly offset from the
-// other, standing in for "two pieces connecting" — Ionicons only ships a
-// single-piece "extension-puzzle" glyph, so this fakes the interlocking
-// look by overlapping a normal and a horizontally-flipped copy of it,
-// the same overlap idiom SquareCard's pairImages avatars already use.
-export function PuzzleMatchIcon({ size = 16, color = '#FFFFFF' }: { size?: number; color?: string }) {
-  const offset = Math.round(size * 0.34);
+// Two square puzzle pieces interlocking — a tab on the right piece sits in
+// a notch on the left piece (the notch is faked by punching a `gapColor`
+// circle out of the left piece's edge, since react-native-svg has no easy
+// boolean-subtract; `gapColor` should match whatever surface the icon
+// actually sits on so that "cut" reads as a real notch rather than a
+// mismatched dot).
+export function PuzzleMatchIcon({
+  size = 16,
+  color = '#FFFFFF',
+  gapColor,
+}: {
+  size?: number;
+  color?: string;
+  gapColor: string;
+}) {
   return (
-    <View style={{ width: size + offset, height: size }}>
-      <Ionicons name="extension-puzzle" size={size} color={color} style={{ position: 'absolute', left: 0, top: 0 }} />
-      <Ionicons
-        name="extension-puzzle"
-        size={size}
-        color={color}
-        style={{ position: 'absolute', left: offset, top: 0, transform: [{ scaleX: -1 }] }}
-      />
-    </View>
+    <Svg width={size * 1.5} height={size} viewBox="0 0 120 80">
+      <Rect x={5} y={15} width={45} height={50} rx={8} fill={color} />
+      <Rect x={70} y={15} width={45} height={50} rx={8} fill={color} />
+      <Circle cx={60} cy={40} r={12} fill={color} />
+      <Circle cx={50} cy={40} r={7} fill={gapColor} />
+    </Svg>
   );
 }

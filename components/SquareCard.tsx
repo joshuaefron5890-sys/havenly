@@ -181,7 +181,10 @@ export function SquareCard({
         ) : null}
         {matchScore != null ? (
           <View style={styles.matchScoreBadge}>
-            <PuzzleMatchIcon size={11} color={colors.surface} />
+            <PuzzleMatchIcon size={9} color={colors.accent} gapColor={colors.surface} />
+            <Text style={styles.matchScoreText} numberOfLines={1}>
+              Strong Match
+            </Text>
           </View>
         ) : null}
         {onDelete ? (
@@ -329,19 +332,31 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
-  // Two interlocking puzzle pieces rather than a percentage — a family
-  // match is shown qualitatively ("this fits"), not as a number to
-  // compare, so there's nothing here that needs room for text.
+  // Two interlocking puzzle pieces plus a short label rather than a
+  // percentage — a family match is shown qualitatively ("this fits"), not
+  // as a number to compare. A self-sizing white pill, same idiom as
+  // communityBadge above, just anchored to the opposite corner.
   matchScoreBadge: {
     position: 'absolute',
     bottom: 4,
     right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.accent,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 3,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  matchScoreText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: colors.accent,
   },
   badgePositive: {
     backgroundColor: colors.positive,

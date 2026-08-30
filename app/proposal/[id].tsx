@@ -302,7 +302,7 @@ export default function ProposalDetail() {
           <FamilyMini family={myFamily} fallbackLabel="You" />
           <View style={styles.connector}>
             {otherFamily ? (
-              <PuzzleMatchIcon size={15} color={colors.accent} />
+              <PuzzleMatchIcon size={15} color={colors.accent} gapColor={colors.surface} />
             ) : (
               <Ionicons name="people" size={16} color={colors.accent} />
             )}

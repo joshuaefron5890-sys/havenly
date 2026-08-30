@@ -141,7 +141,7 @@ export default function FamilyDetail() {
               ) : null}
             </View>
             <View style={styles.matchBadge}>
-              <PuzzleMatchIcon size={16} color={colors.accent} />
+              <PuzzleMatchIcon size={16} color={colors.accent} gapColor={colors.surface} />
               <Text style={styles.matchLabel}>Strong Match</Text>
             </View>
           </View>

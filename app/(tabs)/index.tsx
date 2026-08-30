@@ -7,6 +7,7 @@ import { Text } from '../../components/AppText';
 import { EmptyState } from '../../components/EmptyState';
 import { ListRow } from '../../components/ListRow';
 import { Photo } from '../../components/Photo';
+import { PuzzleMatchIcon } from '../../components/PuzzleMatchIcon';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SectionHero } from '../../components/SectionHero';
@@ -52,6 +53,7 @@ import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../
 import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { useIsDesktop } from '../../lib/responsive';
+import { SITTERS_ENABLED } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
 // Articles stayed a row list (see the section below) rather than joining
@@ -610,6 +612,26 @@ export default function ForYou() {
     });
   }, [confirmedProposals]);
 
+  // Full profiles (name, kids, photo) for the upcoming callout's two
+  // families — confirmedProposalPhotos above only carries a bare photo
+  // URL, not enough to show "who's coming" the way the callout needs to.
+  const [upcomingPlaydateFamilies, setUpcomingPlaydateFamilies] = useState<Record<string, SuggestedFamily>>({});
+
+  useEffect(() => {
+    if (!upcomingPlaydate) {
+      setUpcomingPlaydateFamilies({});
+      return;
+    }
+    let cancelled = false;
+    fetchFamiliesByUids([upcomingPlaydate.fromUid, upcomingPlaydate.toUid]).then((result) => {
+      if (cancelled) return;
+      setUpcomingPlaydateFamilies(Object.fromEntries(result.map((f) => [f.uid, f])));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [upcomingPlaydate]);
+
   const highlights = useMemo<Highlight[]>(() => {
     const confirmed: Highlight[] = confirmedProposals
       .filter((p) => p.id !== upcomingPlaydate?.id)
@@ -814,6 +836,18 @@ export default function ForYou() {
 
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
 
+  // Which side of the upcoming playdate is "my family" vs. the other one,
+  // so the callout can show both — same fromUid/toUid disambiguation
+  // app/proposal/[id].tsx already does.
+  const myUpcomingUid = familyUid ?? user?.uid;
+  const otherUpcomingUid = upcomingPlaydate
+    ? upcomingPlaydate.fromUid === myUpcomingUid
+      ? upcomingPlaydate.toUid
+      : upcomingPlaydate.fromUid
+    : undefined;
+  const myUpcomingFamily = myUpcomingUid ? upcomingPlaydateFamilies[myUpcomingUid] : undefined;
+  const otherUpcomingFamily = otherUpcomingUid ? upcomingPlaydateFamilies[otherUpcomingUid] : undefined;
+
   // Each preview row below caps at one row (perRow, or ARTICLE_PAGE_SIZE for
   // the article list) — community contributions get first claim on those
   // slots (per the same "community first" ordering as the dedicated tabs),
@@ -906,48 +940,97 @@ export default function ForYou() {
           description="Meet families nearby, set playdates, listen to your favorite podcast, and more. We've curated our top recommendations that fit you and your family best."
         />
         {upcomingPlaydate ? (
-          <Pressable
-            style={styles.playdateCallout}
-            onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}
-          >
-            <View style={styles.playdateCalloutTop}>
-              <View style={styles.playdateCalloutPhotos}>
-                <Photo
-                  source={
-                    confirmedProposalPhotos[upcomingPlaydate.id]?.[0]
-                      ? { uri: confirmedProposalPhotos[upcomingPlaydate.id]![0]! }
-                      : undefined
-                  }
-                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarBack]}
-                  variant="person"
-                  iconSize={20}
-                />
-                <Photo
-                  source={
-                    confirmedProposalPhotos[upcomingPlaydate.id]?.[1]
-                      ? { uri: confirmedProposalPhotos[upcomingPlaydate.id]![1]! }
-                      : undefined
-                  }
-                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarFront]}
-                  variant="person"
-                  iconSize={20}
-                />
+          <View style={styles.playdateCallout}>
+            <Pressable style={styles.playdateCalloutHeader} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
+              <View style={styles.playdateCalloutHeaderText}>
+                <Text style={styles.playdateCalloutEyebrow}>UPCOMING PLAYDATE</Text>
+                <Text style={styles.playdateCalloutTitle}>{proposalStartLabel(upcomingPlaydate)}</Text>
               </View>
               <View style={styles.playdateCalloutBadge}>
                 <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
                 <Text style={styles.playdateCalloutBadgeText}>Confirmed</Text>
               </View>
+            </Pressable>
+
+            <View style={styles.playdateCalloutFamiliesRow}>
+              <View style={styles.playdateCalloutFamily}>
+                <Photo
+                  source={myUpcomingFamily && familyPhoto(myUpcomingFamily) ? { uri: familyPhoto(myUpcomingFamily)! } : undefined}
+                  style={styles.playdateCalloutFamilyPhoto}
+                  variant="person"
+                  iconSize={22}
+                />
+                <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
+                  {myUpcomingFamily ? familyDisplayName(myUpcomingFamily) : 'Your family'}
+                </Text>
+                <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
+                  {myUpcomingFamily ? familySubtitle(myUpcomingFamily) : ''}
+                </Text>
+              </View>
+              <PuzzleMatchIcon size={18} color={colors.accent} gapColor={colors.surface} />
+              <View style={styles.playdateCalloutFamily}>
+                <Photo
+                  source={
+                    otherUpcomingFamily && familyPhoto(otherUpcomingFamily) ? { uri: familyPhoto(otherUpcomingFamily)! } : undefined
+                  }
+                  style={styles.playdateCalloutFamilyPhoto}
+                  variant="person"
+                  iconSize={22}
+                />
+                <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
+                  {otherUpcomingFamily ? familyDisplayName(otherUpcomingFamily) : '…'}
+                </Text>
+                <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
+                  {otherUpcomingFamily ? familySubtitle(otherUpcomingFamily) : ''}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.playdateCalloutTitle}>Upcoming playdate</Text>
-            <Text style={styles.playdateCalloutSubtitle}>
-              {proposalStartLabel(upcomingPlaydate)}
-              {upcomingPlaydate.venue ? ` · ${upcomingPlaydate.venue}` : ''}
-            </Text>
-            <View style={styles.playdateCalloutCta}>
+
+            {upcomingPlaydate.venue ? (
+              <View style={styles.playdateCalloutInfoRow}>
+                <Ionicons name="location" size={15} color={colors.accent} />
+                <Text style={styles.playdateCalloutInfoText}>{upcomingPlaydate.venue}</Text>
+              </View>
+            ) : null}
+
+            {SITTERS_ENABLED && upcomingPlaydate.sitter ? (
+              <View style={styles.playdateCalloutSitterRow}>
+                <Photo
+                  source={upcomingPlaydate.sitter.photoUrl ? { uri: upcomingPlaydate.sitter.photoUrl } : undefined}
+                  style={styles.playdateCalloutSitterPhoto}
+                  variant="person"
+                  iconSize={16}
+                />
+                <View style={styles.playdateCalloutSitterInfo}>
+                  <Text style={styles.playdateCalloutSitterName} numberOfLines={1}>
+                    {upcomingPlaydate.sitter.name}
+                  </Text>
+                  <Text style={styles.playdateCalloutSitterMeta}>
+                    {upcomingPlaydate.sitter.confirmationStatus === 'confirmed'
+                      ? 'Sitter confirmed'
+                      : upcomingPlaydate.sitter.confirmationStatus === 'declined'
+                      ? 'Sitter declined — find another'
+                      : 'Sitter added — pending confirmation'}
+                  </Text>
+                </View>
+              </View>
+            ) : SITTERS_ENABLED ? (
+              <Pressable
+                style={styles.playdateCalloutSitterCta}
+                onPress={() =>
+                  router.push(`/find-sitter?proposalId=${upcomingPlaydate.id}&date=${encodeURIComponent(upcomingPlaydate.date)}`)
+                }
+              >
+                <Ionicons name="heart-outline" size={15} color={colors.accent} />
+                <Text style={styles.playdateCalloutSitterCtaText}>Find a sitter for this playdate</Text>
+              </Pressable>
+            ) : null}
+
+            <Pressable style={styles.playdateCalloutCta} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
               <Text style={styles.playdateCalloutCtaText}>View details</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.surface} />
-            </View>
-          </Pressable>
+            </Pressable>
+          </View>
         ) : null}
         {forYouLoading ? (
           <ActivityIndicator color={colors.accent} />
@@ -1440,43 +1523,39 @@ const styles = StyleSheet.create({
   // the single most actionable thing on the dashboard, so it gets its own
   // real estate instead of a one-line strip that duplicated the same
   // playdate's own Highlights card right below it (that card is now
-  // filtered out of Highlights whenever this callout is showing it).
+  // filtered out of Highlights whenever this callout is showing it). A
+  // plain white card rather than a full green wash — the two families'
+  // own photos are the visual interest here, not a color fill.
   playdateCallout: {
-    backgroundColor: colors.positiveMuted,
+    backgroundColor: colors.surface,
     borderRadius: 20,
-    padding: 20,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  playdateCalloutHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 16,
   },
-  playdateCalloutTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+  playdateCalloutHeaderText: {
+    flex: 1,
   },
-  playdateCalloutPhotos: {
-    flexDirection: 'row',
-    width: 56,
-    height: 44,
-  },
-  playdateCalloutAvatar: {
-    position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: colors.positiveMuted,
-  },
-  playdateCalloutAvatarBack: {
-    left: 0,
-  },
-  playdateCalloutAvatarFront: {
-    left: 20,
+  playdateCalloutEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
   playdateCalloutBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.positiveMuted,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1487,16 +1566,98 @@ const styles = StyleSheet.create({
     color: colors.positive,
   },
   playdateCalloutTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.2,
   },
-  playdateCalloutSubtitle: {
-    fontSize: 15,
+  // The two families, side by side around the match icon — the visual
+  // heart of the callout (per-family photo/name/kids) rather than a
+  // number or a color fill.
+  playdateCalloutFamiliesRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 14,
+  },
+  playdateCalloutFamily: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  playdateCalloutFamilyPhoto: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginBottom: 6,
+  },
+  playdateCalloutFamilyName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  playdateCalloutFamilyKids: {
+    fontSize: 11,
     color: colors.textMuted,
-    marginTop: 4,
-    marginBottom: 18,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  playdateCalloutInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  playdateCalloutInfoText: {
+    fontSize: 14,
+    color: colors.text,
+  },
+  playdateCalloutSitterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 14,
+  },
+  playdateCalloutSitterPhoto: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  playdateCalloutSitterInfo: {
+    flex: 1,
+  },
+  playdateCalloutSitterName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  playdateCalloutSitterMeta: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  playdateCalloutSitterCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 11,
+    marginBottom: 14,
+  },
+  playdateCalloutSitterCtaText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.accent,
   },
   playdateCalloutCta: {
     flexDirection: 'row',

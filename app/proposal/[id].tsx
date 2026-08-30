@@ -401,7 +401,7 @@ export default function ProposalDetail() {
             <View style={styles.sitterPromoIcon}>
               <Ionicons name="heart" size={22} color={colors.accent} />
             </View>
-            <Text style={styles.sitterPromoTitle}>Want to actually enjoy this one?</Text>
+            <Text style={styles.sitterPromoTitle}>Want someone to help with the kids?</Text>
             <Text style={styles.sitterPromoText}>
               Bring in an experienced local sitter with an open slot for this exact time, so you can relax and
               connect with the other parents instead of watching the kids.

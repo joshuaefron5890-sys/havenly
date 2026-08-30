@@ -939,93 +939,102 @@ export default function ForYou() {
           description="Meet families nearby, set playdates, listen to your favorite podcast, and more. We've curated our top recommendations that fit you and your family best."
         />
         {upcomingPlaydate ? (
-          <View style={styles.playdateCallout}>
-            <Pressable style={styles.playdateCalloutHeader} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
-              <View style={styles.playdateCalloutHeaderText}>
-                <Text style={styles.playdateCalloutEyebrow}>UPCOMING PLAYDATE</Text>
-                <Text style={styles.playdateCalloutTitle}>{proposalStartLabel(upcomingPlaydate)}</Text>
-              </View>
-              <View style={styles.playdateCalloutBadge}>
-                <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
-                <Text style={styles.playdateCalloutBadgeText}>Confirmed</Text>
-              </View>
-            </Pressable>
+          <View style={[styles.playdateCallout, isDesktop && styles.playdateCalloutDesktop]}>
+            <View style={styles.playdateCalloutMain}>
+              <Pressable style={styles.playdateCalloutHeader} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
+                <View style={styles.playdateCalloutHeaderText}>
+                  <Text style={styles.playdateCalloutEyebrow}>UPCOMING PLAYDATE</Text>
+                  <Text style={styles.playdateCalloutTitle}>{proposalStartLabel(upcomingPlaydate)}</Text>
+                </View>
+                <View style={styles.playdateCalloutBadge}>
+                  <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
+                  <Text style={styles.playdateCalloutBadgeText}>Confirmed</Text>
+                </View>
+              </Pressable>
 
-            <View style={styles.playdateCalloutFamiliesRow}>
-              <View style={styles.playdateCalloutPhotos}>
-                <Photo
-                  source={myUpcomingFamily && familyPhoto(myUpcomingFamily) ? { uri: familyPhoto(myUpcomingFamily)! } : undefined}
-                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarBack]}
-                  variant="person"
-                  iconSize={26}
-                />
-                <Photo
-                  source={
-                    otherUpcomingFamily && familyPhoto(otherUpcomingFamily) ? { uri: familyPhoto(otherUpcomingFamily)! } : undefined
-                  }
-                  style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarFront]}
-                  variant="person"
-                  iconSize={26}
-                />
-              </View>
-              <View style={styles.playdateCalloutFamilyNames}>
-                <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
-                  {(myUpcomingFamily ? familyDisplayName(myUpcomingFamily) : 'Your family') +
-                    ' & ' +
-                    (otherUpcomingFamily ? familyDisplayName(otherUpcomingFamily) : '…')}
-                </Text>
-                <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
-                  {[myUpcomingFamily ? familySubtitle(myUpcomingFamily) : '', otherUpcomingFamily ? familySubtitle(otherUpcomingFamily) : '']
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              </View>
-            </View>
-
-            {upcomingPlaydate.venue ? (
-              <View style={styles.playdateCalloutInfoRow}>
-                <Ionicons name="location" size={15} color={colors.accent} />
-                <Text style={styles.playdateCalloutInfoText}>{upcomingPlaydate.venue}</Text>
-              </View>
-            ) : null}
-
-            {SITTERS_ENABLED && upcomingPlaydate.sitter ? (
-              <View style={styles.playdateCalloutSitterRow}>
-                <Photo
-                  source={upcomingPlaydate.sitter.photoUrl ? { uri: upcomingPlaydate.sitter.photoUrl } : undefined}
-                  style={styles.playdateCalloutSitterPhoto}
-                  variant="person"
-                  iconSize={16}
-                />
-                <View style={styles.playdateCalloutSitterInfo}>
-                  <Text style={styles.playdateCalloutSitterName} numberOfLines={1}>
-                    {upcomingPlaydate.sitter.name}
+              <View style={styles.playdateCalloutFamiliesRow}>
+                <View style={styles.playdateCalloutPhotos}>
+                  <Photo
+                    source={myUpcomingFamily && familyPhoto(myUpcomingFamily) ? { uri: familyPhoto(myUpcomingFamily)! } : undefined}
+                    style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarBack]}
+                    variant="person"
+                    iconSize={26}
+                  />
+                  <Photo
+                    source={
+                      otherUpcomingFamily && familyPhoto(otherUpcomingFamily) ? { uri: familyPhoto(otherUpcomingFamily)! } : undefined
+                    }
+                    style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarFront]}
+                    variant="person"
+                    iconSize={26}
+                  />
+                </View>
+                <View style={styles.playdateCalloutFamilyNames}>
+                  <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
+                    {(myUpcomingFamily ? familyDisplayName(myUpcomingFamily) : 'Your family') +
+                      ' & ' +
+                      (otherUpcomingFamily ? familyDisplayName(otherUpcomingFamily) : '…')}
                   </Text>
-                  <Text style={styles.playdateCalloutSitterMeta}>
-                    {upcomingPlaydate.sitter.confirmationStatus === 'confirmed'
-                      ? 'Sitter confirmed'
-                      : upcomingPlaydate.sitter.confirmationStatus === 'declined'
-                      ? 'Sitter declined — find another'
-                      : 'Sitter added — pending confirmation'}
+                  <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
+                    {[
+                      myUpcomingFamily ? familySubtitle(myUpcomingFamily) : '',
+                      otherUpcomingFamily ? familySubtitle(otherUpcomingFamily) : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Text>
                 </View>
               </View>
-            ) : SITTERS_ENABLED ? (
-              <Pressable
-                style={styles.playdateCalloutSitterCta}
-                onPress={() =>
-                  router.push(`/find-sitter?proposalId=${upcomingPlaydate.id}&date=${encodeURIComponent(upcomingPlaydate.date)}`)
-                }
-              >
-                <Ionicons name="heart-outline" size={15} color={colors.accent} />
-                <Text style={styles.playdateCalloutSitterCtaText}>Find a sitter for this playdate</Text>
-              </Pressable>
-            ) : null}
 
-            <Pressable style={styles.playdateCalloutCta} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
-              <Text style={styles.playdateCalloutCtaText}>View details</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.surface} />
-            </Pressable>
+              {upcomingPlaydate.venue ? (
+                <View style={styles.playdateCalloutInfoRow}>
+                  <Ionicons name="location" size={15} color={colors.accent} />
+                  <Text style={styles.playdateCalloutInfoText}>{upcomingPlaydate.venue}</Text>
+                </View>
+              ) : null}
+
+              {SITTERS_ENABLED && upcomingPlaydate.sitter ? (
+                <View style={styles.playdateCalloutSitterRow}>
+                  <Photo
+                    source={upcomingPlaydate.sitter.photoUrl ? { uri: upcomingPlaydate.sitter.photoUrl } : undefined}
+                    style={styles.playdateCalloutSitterPhoto}
+                    variant="person"
+                    iconSize={16}
+                  />
+                  <View style={styles.playdateCalloutSitterInfo}>
+                    <Text style={styles.playdateCalloutSitterName} numberOfLines={1}>
+                      {upcomingPlaydate.sitter.name}
+                    </Text>
+                    <Text style={styles.playdateCalloutSitterMeta}>
+                      {upcomingPlaydate.sitter.confirmationStatus === 'confirmed'
+                        ? 'Sitter confirmed'
+                        : upcomingPlaydate.sitter.confirmationStatus === 'declined'
+                        ? 'Sitter declined — find another'
+                        : 'Sitter added — pending confirmation'}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={[styles.playdateCalloutActions, isDesktop && styles.playdateCalloutActionsDesktop]}>
+              {SITTERS_ENABLED && !upcomingPlaydate.sitter ? (
+                <Pressable
+                  style={styles.playdateCalloutSitterCta}
+                  onPress={() =>
+                    router.push(`/find-sitter?proposalId=${upcomingPlaydate.id}&date=${encodeURIComponent(upcomingPlaydate.date)}`)
+                  }
+                >
+                  <Ionicons name="heart-outline" size={15} color={colors.accent} />
+                  <Text style={styles.playdateCalloutSitterCtaText}>Find a sitter for this playdate</Text>
+                </Pressable>
+              ) : null}
+
+              <Pressable style={styles.playdateCalloutCta} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
+                <Text style={styles.playdateCalloutCtaText}>View details</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.surface} />
+              </Pressable>
+            </View>
           </View>
         ) : null}
         {forYouLoading ? (
@@ -1529,6 +1538,25 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  // On desktop, the info column doesn't come close to using the card's
+  // full width — rather than leave that as bare white space, the CTAs
+  // move into their own column alongside it instead of stacking full-width
+  // underneath.
+  playdateCalloutDesktop: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 24,
+  },
+  playdateCalloutMain: {
+    flex: 1,
+  },
+  playdateCalloutActions: {
+    justifyContent: 'flex-end',
+  },
+  playdateCalloutActionsDesktop: {
+    width: 260,
+    justifyContent: 'center',
   },
   playdateCalloutHeader: {
     flexDirection: 'row',

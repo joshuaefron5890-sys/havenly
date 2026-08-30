@@ -50,6 +50,7 @@ import {
 import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
 import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
+import { useIsDesktop } from '../../lib/responsive';
 import { colors } from '../../theme/colors';
 
 // Articles stayed a row list (see the section below) rather than joining
@@ -64,6 +65,12 @@ const GRID_GAP = 10;
 // than leaving it just out of reach.
 const MIN_CARD_SIZE = 70;
 const MAX_CARD_SIZE = 92;
+// Desktop gets meaningfully bigger cards, not just more of the same small
+// ones — the mobile range above was still being applied verbatim on a wide
+// desktop window, capping every thumbnail at 92px regardless of how much
+// space was actually available.
+const MIN_CARD_SIZE_DESKTOP = 120;
+const MAX_CARD_SIZE_DESKTOP = 200;
 
 // Every square-card grid on Home is exactly one row, sized to fill its own
 // measured width edge to edge — not a fixed CARD_WIDTH with whatever
@@ -74,17 +81,20 @@ const MAX_CARD_SIZE = 92;
 // first whose resulting per-card size lands in the comfortable range —
 // biased toward more, smaller cards, so a device that can fit 5 shows 5
 // instead of capping at a fixed-width 4.
-function computeGridLayout(gridWidth: number | null): { perRow: number; cardSize: number } {
-  if (!gridWidth) return { perRow: 4, cardSize: CARD_WIDTH };
+function computeGridLayout(gridWidth: number | null, isDesktop: boolean): { perRow: number; cardSize: number } {
+  const minSize = isDesktop ? MIN_CARD_SIZE_DESKTOP : MIN_CARD_SIZE;
+  const maxSize = isDesktop ? MAX_CARD_SIZE_DESKTOP : MAX_CARD_SIZE;
+  const fallbackWidth = isDesktop ? MIN_CARD_SIZE_DESKTOP : CARD_WIDTH;
+  if (!gridWidth) return { perRow: 4, cardSize: fallbackWidth };
   for (let n = 6; n >= 3; n--) {
     const cardSize = (gridWidth - (n - 1) * GRID_GAP) / n;
-    if (cardSize >= MIN_CARD_SIZE && cardSize <= MAX_CARD_SIZE) {
+    if (cardSize >= minSize && cardSize <= maxSize) {
       return { perRow: n, cardSize };
     }
   }
   // Neither bound fit any of 3-6 columns (a very narrow or very wide
   // screen) — fall back to whatever's closest to the default card size.
-  const n = Math.max(1, Math.round(gridWidth / (CARD_WIDTH + GRID_GAP)));
+  const n = Math.max(1, Math.round(gridWidth / (fallbackWidth + GRID_GAP)));
   return { perRow: n, cardSize: (gridWidth - (n - 1) * GRID_GAP) / n };
 }
 
@@ -127,7 +137,8 @@ export default function ForYou() {
   // same padded content container), and is what determines how many cards
   // make up "one row" below.
   const [gridWidth, setGridWidth] = useState<number | null>(null);
-  const { perRow, cardSize } = computeGridLayout(gridWidth);
+  const isDesktop = useIsDesktop();
+  const { perRow, cardSize } = computeGridLayout(gridWidth, isDesktop);
 
   // Shared across every section below — event/product/podcast/article
   // contributions all live in the same 'contributions' collection and
@@ -947,6 +958,7 @@ export default function ForYou() {
                   personFallback={h.personFallback}
                   favorited={h.favorited}
                   onToggleFavorite={h.onToggleFavorite}
+                  size={isDesktop ? cardSize : undefined}
                   onPress={h.onPress}
                 />
               ))}

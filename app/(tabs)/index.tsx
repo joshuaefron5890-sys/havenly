@@ -934,7 +934,7 @@ export default function ForYou() {
         />
 
         <SectionHero
-          imageUrl="https://picsum.photos/seed/havenly-for-you/800/450"
+          imageUrl="https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?q=80&w=1654&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           title={firstName ? `For You, ${firstName}` : 'For You'}
           description="Meet families nearby, set playdates, listen to your favorite podcast, and more. We've curated our top recommendations that fit you and your family best."
         />

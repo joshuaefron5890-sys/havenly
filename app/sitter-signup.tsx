@@ -293,31 +293,14 @@ export default function SitterSignup() {
                 </View>
               </View>
             ) : (
-              <>
-                <FieldInput
-                  label="Email"
-                  placeholder="jordan@email.com"
-                  value={profile.email}
-                  onChangeText={(email) => patch({ email })}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                <FieldInput
-                  label="Password"
-                  placeholder="6+ characters"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
-                <FieldInput
-                  label="Referral code"
-                  placeholder="e.g. CHRISTINA5H2"
-                  optional
-                  value={referralCodeInput}
-                  onChangeText={setReferralCodeInput}
-                  autoCapitalize="characters"
-                />
-              </>
+              <FieldInput
+                label="Email"
+                placeholder="jordan@email.com"
+                value={profile.email}
+                onChangeText={(email) => patch({ email })}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
             )}
           </View>
 
@@ -334,6 +317,26 @@ export default function SitterSignup() {
           </View>
         </View>
         <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
+
+        {!editMode ? (
+          <>
+            <FieldInput
+              label="Password"
+              placeholder="6+ characters"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            <FieldInput
+              label="Referral code"
+              placeholder="e.g. CHRISTINA5H2"
+              optional
+              value={referralCodeInput}
+              onChangeText={setReferralCodeInput}
+              autoCapitalize="characters"
+            />
+          </>
+        ) : null}
 
         <FieldInput
           label="Phone"

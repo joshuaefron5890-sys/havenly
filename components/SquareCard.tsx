@@ -94,13 +94,33 @@ export function SquareCard({
 }) {
   const cardSize = size ?? CARD_WIDTH;
   const thumbnailSize = { width: cardSize, height: cardSize };
+  // Everything drawn *inside* the thumbnail (the pair-avatar photos, the
+  // centered community type icon, the icon-fallback glyph) was sized for
+  // the old fixed CARD_WIDTH — without this they stay pinned at their
+  // mobile pixel size even as the thumbnail itself grows on desktop,
+  // leaving a big box around a small picture. Scale them with the card.
+  const scale = cardSize / CARD_WIDTH;
+  const pairAvatarSize = { width: 44 * scale, height: 44 * scale, borderRadius: 22 * scale };
+  const pairAvatarBackPos = { top: 8 * scale, left: 4 * scale };
+  const pairAvatarFrontPos = { bottom: 8 * scale, right: 4 * scale };
+  const communityTypeIconSize = { width: 56 * scale, height: 56 * scale, borderRadius: 28 * scale, marginTop: -28 * scale, marginLeft: -28 * scale };
   return (
     <Pressable style={[styles.card, { width: cardSize }]} onPress={onPress}>
       <View style={styles.thumbnailWrap}>
         {pairImages ? (
           <View style={[styles.thumbnail, thumbnailSize, styles.pairThumbnail]}>
-            <Photo source={pairImages[0]} style={[styles.pairAvatar, styles.pairAvatarBack]} variant="person" iconSize={20} />
-            <Photo source={pairImages[1]} style={[styles.pairAvatar, styles.pairAvatarFront]} variant="person" iconSize={20} />
+            <Photo
+              source={pairImages[0]}
+              style={[styles.pairAvatar, pairAvatarSize, pairAvatarBackPos]}
+              variant="person"
+              iconSize={20 * scale}
+            />
+            <Photo
+              source={pairImages[1]}
+              style={[styles.pairAvatar, pairAvatarSize, pairAvatarFrontPos]}
+              variant="person"
+              iconSize={20 * scale}
+            />
           </View>
         ) : !image && community ? (
           // A community contribution with no photo of its own gets a
@@ -111,17 +131,22 @@ export function SquareCard({
           <View style={[styles.thumbnail, thumbnailSize]}>
             <Photo source={images.communityContribution} style={[styles.thumbnail, thumbnailSize]} />
             {icon ? (
-              <View style={styles.communityTypeIcon}>
-                <Ionicons name={icon} size={32} color={colors.surface} />
+              <View style={[styles.communityTypeIcon, communityTypeIconSize]}>
+                <Ionicons name={icon} size={32 * scale} color={colors.surface} />
               </View>
             ) : null}
           </View>
         ) : !image && icon ? (
           <View style={[styles.thumbnail, thumbnailSize, softFallback ? styles.softIconThumbnail : styles.iconThumbnail]}>
-            <Ionicons name={icon} size={22} color={softFallback ? colors.textMuted : colors.surface} />
+            <Ionicons name={icon} size={22 * scale} color={softFallback ? colors.textMuted : colors.surface} />
           </View>
         ) : (
-          <Photo source={image} style={[styles.thumbnail, thumbnailSize]} variant={personFallback ? 'person' : undefined} iconSize={28} />
+          <Photo
+            source={image}
+            style={[styles.thumbnail, thumbnailSize]}
+            variant={personFallback ? 'person' : undefined}
+            iconSize={28 * scale}
+          />
         )}
         {community ? (
           <View style={styles.communityBadge}>

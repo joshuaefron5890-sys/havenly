@@ -57,13 +57,14 @@ export function SettingsMenu() {
   const logOut = async () => {
     setOpen(false);
     await signOutUser();
-    // A plain router.replace('/') can land back on the tabs' own index
-    // screen instead of the true landing page, since both resolve to "/" —
-    // a full reload sidesteps that ambiguity and guarantees a clean state.
+    // A plain router.replace('/sign-in') can leave stale tab-screen state
+    // mounted behind it — a full reload sidesteps that and guarantees a
+    // clean state, landing on sign-in (not the splash page) so a returning
+    // user can get straight back in.
     if (Platform.OS === 'web') {
-      window.location.href = '/';
+      window.location.href = '/sign-in';
     } else {
-      router.replace('/');
+      router.replace('/sign-in');
     }
   };
 

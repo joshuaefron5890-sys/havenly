@@ -240,7 +240,14 @@ export default function Profile() {
 
   const logOut = async () => {
     await signOutUser();
-    goHome();
+    // Signing out (as opposed to deleting the account below) lands on
+    // sign-in rather than the splash page, so a returning user can get
+    // straight back in.
+    if (Platform.OS === 'web') {
+      window.location.href = '/sign-in';
+    } else {
+      router.replace('/sign-in');
+    }
   };
 
   const [deleting, setDeleting] = useState(false);

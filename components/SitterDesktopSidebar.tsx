@@ -25,9 +25,9 @@ export function SitterDesktopSidebar() {
   const logOut = async () => {
     await signOutUser();
     if (Platform.OS === 'web') {
-      window.location.href = '/';
+      window.location.href = '/sign-in';
     } else {
-      router.replace('/');
+      router.replace('/sign-in');
     }
   };
 

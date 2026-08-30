@@ -15,12 +15,16 @@ export function PuzzleMatchIcon({
   color?: string;
   gapColor: string;
 }) {
+  // A real gap between the two rects (not just touching) — the tab
+  // protrudes from the right piece only, reaching to (not past) the
+  // notch bitten out of the left piece, so the two shapes stay visually
+  // distinct instead of fusing into one blob at small render sizes.
   return (
     <Svg width={size * 1.5} height={size} viewBox="0 0 120 80">
-      <Rect x={5} y={15} width={45} height={50} rx={8} fill={color} />
-      <Rect x={70} y={15} width={45} height={50} rx={8} fill={color} />
-      <Circle cx={60} cy={40} r={12} fill={color} />
-      <Circle cx={50} cy={40} r={7} fill={gapColor} />
+      <Rect x={5} y={15} width={42} height={50} rx={8} fill={color} />
+      <Rect x={73} y={15} width={42} height={50} rx={8} fill={color} />
+      <Circle cx={63} cy={40} r={10} fill={color} />
+      <Circle cx={47} cy={40} r={6} fill={gapColor} />
     </Svg>
   );
 }

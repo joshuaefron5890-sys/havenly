@@ -1569,11 +1569,12 @@ const styles = StyleSheet.create({
   // Grouped with the CTAs in playdateCalloutActions rather than up in the
   // header — it used to float alone to the left of the buttons once they
   // moved into their own column on desktop, disconnected from everything
-  // else in that column.
+  // else in that column. Right-aligned (flex-end) to sit flush with the
+  // CTAs' own right edge rather than hanging off their left.
   playdateCalloutBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
     gap: 4,
     backgroundColor: colors.positiveMuted,
     borderRadius: 999,

@@ -18,13 +18,13 @@ export const MAX_CONTENT_WIDTH = 480;
 const MAX_DESKTOP_CONTENT_WIDTH = 1440;
 
 // Only these top-level route groups have an actual desktop layout built
-// (see each screen's own useIsDesktop() branch) — everything else (
-// messages, profile, admin, family/[id], the sitter portal, etc.) keeps
-// today's narrow, centered mobile column at any window width, since it
-// was never designed to stretch wider. useSegments() (not usePathname())
-// on purpose — segments keep the '(tabs)'/'(sitter)' group markers that
-// the URL itself collapses away, which is what actually disambiguates
-// "tabs home" from "splash" (both would otherwise read as the same '/').
+// (see each screen's own useIsDesktop() branch) — everything else (admin,
+// family/[id], propose-playdate, etc.) keeps today's narrow, centered
+// mobile column at any window width, since it was never designed to
+// stretch wider. useSegments() (not usePathname()) on purpose — segments
+// keep the '(tabs)'/'(sitter)' group markers that the URL itself collapses
+// away, which is what actually disambiguates "tabs home" from "splash"
+// (both would otherwise read as the same '/').
 function isDesktopEligibleRoute(first: string | undefined): boolean {
   return (
     first === undefined ||
@@ -32,7 +32,9 @@ function isDesktopEligibleRoute(first: string | undefined): boolean {
     first === 'sitters' ||
     first === 'onboarding' ||
     first === '(tabs)' ||
-    first === '(sitter)'
+    first === '(sitter)' ||
+    first === 'messages' ||
+    first === 'profile'
   );
 }
 

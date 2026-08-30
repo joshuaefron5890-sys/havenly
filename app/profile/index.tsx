@@ -2,22 +2,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from '../components/AppText';
+import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Photo } from '../components/Photo';
-import { useAuth } from '../contexts/AuthContext';
-import { useOnboarding } from '../contexts/OnboardingContext';
-import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
-import { showAlert, showConfirm } from '../lib/alert';
-import { FamilyMember, getFamilyMembers, PendingFamilyInvite } from '../lib/familyMembers';
-import { deleteMyAccount, signOutUser } from '../lib/firebase';
-import { getGoogleFreeBusy } from '../lib/googleCalendar';
-import { initials } from '../lib/initials';
-import { numSiblings } from '../lib/onboardingFlow';
-import { loadOnboardingProgress, saveOnboardingStep } from '../lib/onboardingProgress';
-import { colors } from '../theme/colors';
-import { images } from '../theme/images';
-import { INTERESTS } from '../theme/interests';
+import { Photo } from '../../components/Photo';
+import { useAuth } from '../../contexts/AuthContext';
+import { useOnboarding } from '../../contexts/OnboardingContext';
+import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../../lib/availabilityWindows';
+import { showAlert, showConfirm } from '../../lib/alert';
+import { FamilyMember, getFamilyMembers, PendingFamilyInvite } from '../../lib/familyMembers';
+import { deleteMyAccount, signOutUser } from '../../lib/firebase';
+import { getGoogleFreeBusy } from '../../lib/googleCalendar';
+import { initials } from '../../lib/initials';
+import { numSiblings } from '../../lib/onboardingFlow';
+import { loadOnboardingProgress, saveOnboardingStep } from '../../lib/onboardingProgress';
+import { colors } from '../../theme/colors';
+import { images } from '../../theme/images';
+import { INTERESTS } from '../../theme/interests';
 
 function SectionCard({ title, editHref, children }: { title: string; editHref: string; children: ReactNode }) {
   return (

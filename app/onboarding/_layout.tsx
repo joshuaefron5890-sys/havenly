@@ -2,7 +2,6 @@ import { router, Stack, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ImageBackground, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WizardStepsRail } from '../../components/WizardStepsRail';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { loadOnboardingProgress } from '../../lib/onboardingProgress';
@@ -74,24 +73,16 @@ export default function OnboardingLayout() {
 
   if (isDesktop) {
     return (
-      <View style={styles.desktopRow}>
-        <WizardStepsRail currentPath={pathname} />
-        <View style={styles.desktopFormArea}>
+      <ImageBackground source={{ uri: PANEL_IMAGE }} style={styles.desktopBackground} resizeMode="cover">
+        <View style={styles.desktopOverlay} />
+        <View style={styles.desktopCenterWrap}>
           {/* Caps each step's own (still mobile-width-tuned) form at a
-              readable column instead of letting it stretch edge to edge
-              in whatever's left of the window next to the rail — none of
-              the 10 step screens have their own body redesigned yet. */}
-          <View style={styles.desktopStackWrap}>{stack}</View>
+              readable column, floating as a card over the full-bleed
+              photo — none of the 10 step screens have their own body
+              redesigned yet. */}
+          <View style={styles.desktopCard}>{stack}</View>
         </View>
-        <ImageBackground
-          source={{ uri: PANEL_IMAGE }}
-          style={styles.desktopPanel}
-          imageStyle={styles.desktopPanelImage}
-          resizeMode="cover"
-        >
-          <View style={styles.desktopPanelOverlay} />
-        </ImageBackground>
-      </View>
+      </ImageBackground>
     );
   }
 
@@ -105,45 +96,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  desktopRow: {
+  // Full-bleed photo behind the entire screen — no rail, no split panel;
+  // the form floats on top of it as its own card (desktopCard below)
+  // instead of the photo being confined to one side.
+  desktopBackground: {
     flex: 1,
-    flexDirection: 'row',
   },
-  // The form's own white background, flush against the steps rail — no
-  // photo margin on this side (see desktopPanel below for where the photo
-  // still shows).
-  desktopFormArea: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  desktopStackWrap: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 560,
-  },
-  // A fixed-width photo panel on the far right only — mirrors sign-in.tsx/
-  // sitter-signup.tsx's split-panel treatment (image confined to one side)
-  // rather than the old full-bleed background that bled through as a
-  // second, redundant photo margin on the rail side of the form too.
-  desktopPanel: {
-    width: '30%',
-    minWidth: 260,
-    backgroundColor: colors.accentMuted,
-  },
-  desktopPanelImage: {
-    width: '100%',
-    height: '100%',
-  },
-  // A dark tint (not a light wash — nothing sits on top of the photo here
-  // that needs a lighter backdrop, unlike the sign-in/sitter-signup hero
-  // panels) so the photo reads a bit moodier/richer instead of washed out.
-  desktopPanelOverlay: {
+  desktopOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(20, 18, 16, 0.35)',
+    backgroundColor: 'rgba(20, 18, 16, 0.45)',
+  },
+  // No justifyContent: 'center' here — the card fills the available
+  // height (like the old rail-adjacent form column did) so each step's
+  // own internal ScrollView still handles long content correctly,
+  // instead of a vertically-centered card clipping anything taller than
+  // the viewport.
+  desktopCenterWrap: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 40,
+  },
+  desktopCard: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: colors.background,
+    borderRadius: 24,
+    overflow: 'hidden',
   },
 });

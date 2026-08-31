@@ -48,9 +48,9 @@ export function WizardHeader({
     }
   };
 
-  // On desktop, WizardStepsRail (app/onboarding/_layout.tsx) already shows
-  // every step at once alongside this screen — repeating the progress
-  // bar/step count/eyebrow here would just be the same information twice.
+  // No step progress bar/count on desktop — app/onboarding/_layout.tsx's
+  // full-bleed photo card treatment has no room for it, and it wasn't
+  // asked for there.
   const isDesktop = useIsDesktop();
   const showProgress = !editMode && !isDesktop;
 

@@ -233,13 +233,18 @@ export default function SittersLanding() {
           ))}
         </View>
 
-        {/* Role section */}
+        {/* Role section — full-bleed white background wrapping a
+            capped/centered inner content row, same split used by
+            howSection/applySection below: roleSectionDesktop caps its own
+            width, so painting the background there would stop it short
+            of the viewport edges on wide screens. */}
         <View
-          style={[styles.roleSection, isDesktop && styles.roleSectionDesktop]}
+          style={styles.roleSectionOuter}
           onLayout={(e) => {
             roleY.current = e.nativeEvent.layout.y;
           }}
         >
+        <View style={[styles.roleSection, isDesktop && styles.roleSectionDesktop]}>
           <View style={[styles.roleIntro, isDesktop && styles.roleIntroDesktop]}>
             <Text style={styles.kicker}>A DIFFERENT KIND OF SUPPORT</Text>
             <Text style={styles.h2}>Help children feel at ease.</Text>
@@ -272,6 +277,7 @@ export default function SittersLanding() {
               connection with kids.
             </Text>
           </View>
+        </View>
         </View>
 
         {/* How it works */}
@@ -795,6 +801,9 @@ const styles = StyleSheet.create({
   },
 
   // Role section
+  roleSectionOuter: {
+    backgroundColor: colors.surface,
+  },
   roleSection: {
     paddingHorizontal: 20,
     paddingVertical: 40,

@@ -17,12 +17,12 @@ export const SITTERS_ENABLED = true;
 // holds, not a population they have experience with, so the two are kept
 // as separate fields/lists rather than one merged list.
 export const SITTER_CERTIFICATIONS = [
-  'CPR Certified',
-  'First Aid Certified',
-  'Special Education Background',
-  'Early Childhood Education',
-  'Nursing/Medical Background',
   'Behavioral Therapy Experience (ABA, etc.)',
+  'CPR Certified',
+  'Early Childhood Education',
+  'First Aid Certified',
+  'Nursing/Medical Background',
+  'Special Education Background',
 ];
 
 // certificationDocUrls only ever stores plain download URLs (see

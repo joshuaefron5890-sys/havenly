@@ -27,6 +27,11 @@ import {
 } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
+// NEURODIVERGENCE_OPTIONS' own order is deliberate for where else it's
+// used (app/onboarding/child.tsx) — sorted only here, for this screen's
+// "Experience with" list, rather than reordering the shared source array.
+const SORTED_NEURODIVERGENCE_OPTIONS = [...NEURODIVERGENCE_OPTIONS].sort((a, b) => a.localeCompare(b));
+
 const PANEL_IMAGE =
   'https://images.unsplash.com/photo-1607453998774-d533f65dac99?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
@@ -205,6 +210,26 @@ export default function SitterSignup() {
       setError('Add your zip code to continue — it’s how families near you can find you.');
       return;
     }
+    if (!pendingPhotoPreviewUri && !profile.photoUrl) {
+      setError('Add a photo to continue.');
+      return;
+    }
+    if (!profile.phone.trim()) {
+      setError('Add your phone number to continue.');
+      return;
+    }
+    if (!profile.bio.trim()) {
+      setError('Tell families a bit about yourself to continue.');
+      return;
+    }
+    if (!profile.yearsExperience.trim()) {
+      setError('Add your years of experience to continue.');
+      return;
+    }
+    if (!profile.hourlyRate.trim()) {
+      setError('Add your hourly rate to continue.');
+      return;
+    }
 
     if (editMode) {
       setSubmitting(true);
@@ -307,7 +332,7 @@ export default function SitterSignup() {
           <View style={[styles.topPhoto, isDesktop && styles.topPhotoDesktop]}>
             <AddPhotoCircle
               label="Your photo"
-              caption="Tap to add · optional"
+              caption="Tap to add"
               imageUri={pendingPhotoPreviewUri ?? profile.photoUrl}
               uploading={pickingPhoto}
               onPress={handlePickPhoto}
@@ -341,7 +366,6 @@ export default function SitterSignup() {
         <FieldInput
           label="Phone"
           placeholder="(555) 123-4567"
-          optional
           value={profile.phone}
           onChangeText={(phone) => patch({ phone })}
           keyboardType="phone-pad"
@@ -349,7 +373,6 @@ export default function SitterSignup() {
         <FieldInput
           label="About you"
           placeholder="Your experience, what you love about sitting…"
-          optional
           multiline
           value={profile.bio}
           onChangeText={(bio) => patch({ bio })}
@@ -359,7 +382,6 @@ export default function SitterSignup() {
             <FieldInput
               label="Years of experience"
               placeholder="3"
-              optional
               value={profile.yearsExperience}
               onChangeText={(yearsExperience) => patch({ yearsExperience })}
               keyboardType="number-pad"
@@ -369,7 +391,6 @@ export default function SitterSignup() {
             <FieldInput
               label="Hourly rate"
               placeholder="$20/hr"
-              optional
               value={profile.hourlyRate}
               onChangeText={(hourlyRate) => patch({ hourlyRate })}
             />
@@ -385,7 +406,7 @@ export default function SitterSignup() {
 
         <Text style={styles.label}>EXPERIENCE WITH · SELECT ANY</Text>
         <View style={styles.chips}>
-          {NEURODIVERGENCE_OPTIONS.map((option) => (
+          {SORTED_NEURODIVERGENCE_OPTIONS.map((option) => (
             <Chip
               key={option}
               label={option}

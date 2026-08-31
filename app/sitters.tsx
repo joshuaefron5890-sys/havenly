@@ -489,9 +489,11 @@ const styles = StyleSheet.create({
   // rather than blending them.
   hero: {
     backgroundColor: colors.surface,
-    marginTop: 18,
+    // paddingTop (not marginTop) so the nav-to-hero gap is filled with
+    // this section's own white background instead of the screen's cream
+    // showing through behind it — 12 (original) + 18 (added separation).
+    paddingTop: 30,
     paddingHorizontal: 20,
-    paddingTop: 12,
     paddingBottom: 32,
     gap: 32,
   },
@@ -546,9 +548,9 @@ const styles = StyleSheet.create({
   // sizes since RN's fontSize can't take a CSS clamp() expression.
   headline: {
     fontFamily: 'Georgia, "Times New Roman", serif',
-    fontWeight: '700',
+    fontWeight: '500',
     fontSize: 58,
-    color: colors.heading,
+    color: '#24382F',
     lineHeight: 55,
     letterSpacing: -2.61,
     marginBottom: 24,

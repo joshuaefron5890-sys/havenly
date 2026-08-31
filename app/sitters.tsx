@@ -612,11 +612,11 @@ const styles = StyleSheet.create({
   },
   floatCardPay: {
     top: 2,
-    right: -8,
+    left: -8,
   },
   floatCardFit: {
     bottom: 8,
-    left: -8,
+    right: -8,
   },
   floatCardLabel: {
     fontSize: 10.5,

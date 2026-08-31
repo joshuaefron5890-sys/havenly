@@ -491,8 +491,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     // paddingTop (not marginTop) so the nav-to-hero gap is filled with
     // this section's own white background instead of the screen's cream
-    // showing through behind it — 12 (original) + 18 (added separation).
-    paddingTop: 30,
+    // showing through behind it — 12 (original) + 30 (separation from nav).
+    paddingTop: 42,
     paddingHorizontal: 20,
     paddingBottom: 32,
     gap: 32,

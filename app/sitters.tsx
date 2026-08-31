@@ -139,13 +139,13 @@ export default function SittersLanding() {
               </Pressable>
               <Pressable onPress={scrollToForm} style={styles.navCta}>
                 <Text style={styles.navCtaText}>Sign Up</Text>
-                <Ionicons name="arrow-forward" size={14} color={colors.surface} />
+                <Ionicons name="arrow-forward" size={16} color={colors.surface} />
               </Pressable>
             </View>
           ) : (
             <Pressable onPress={scrollToForm} style={styles.navCta}>
               <Text style={styles.navCtaText}>Sign Up</Text>
-              <Ionicons name="arrow-forward" size={13} color={colors.surface} />
+              <Ionicons name="arrow-forward" size={15} color={colors.surface} />
             </Pressable>
           )}
         </View>
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   },
   navDesktop: {
     paddingHorizontal: 48,
-    paddingVertical: 20,
+    paddingVertical: 22,
   },
   brandRow: {
     flexDirection: 'row',
@@ -456,11 +456,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brandMark: {
-    width: 26,
-    height: 26,
+    width: 30,
+    height: 30,
   },
   brandWordmark: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.heading,
   },
@@ -470,21 +470,21 @@ const styles = StyleSheet.create({
     gap: 28,
   },
   navLink: {
-    fontSize: 14,
+    fontSize: 15.5,
     fontWeight: '500',
     color: colors.text,
   },
   navCta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     backgroundColor: ACCENT,
     borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 20,
   },
   navCtaText: {
-    fontSize: 13.5,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.surface,
   },
@@ -515,7 +515,11 @@ const styles = StyleSheet.create({
     maxWidth: 1280,
     alignSelf: 'center',
     paddingHorizontal: 48,
-    paddingTop: 24,
+    // This overrides hero's own paddingTop entirely in the style merge
+    // (it's later in the array) — the 30px nav-separation addition has
+    // to be applied here too, not just on the base style, or desktop
+    // silently keeps the old spacing regardless of what hero sets.
+    paddingTop: 54,
     paddingBottom: 64,
     gap: 56,
   },

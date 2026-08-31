@@ -60,6 +60,7 @@ export default function SittersLanding() {
   const isDesktop = useIsDesktop();
   const scrollRef = useRef<ScrollView>(null);
   const roleY = useRef(0);
+  const howY = useRef(0);
   const formY = useRef(0);
 
   const [name, setName] = useState('');
@@ -71,6 +72,7 @@ export default function SittersLanding() {
   const [submitted, setSubmitted] = useState(false);
 
   const scrollToRole = () => scrollRef.current?.scrollTo({ y: roleY.current, animated: true });
+  const scrollToHow = () => scrollRef.current?.scrollTo({ y: howY.current, animated: true });
   const scrollToForm = () => scrollRef.current?.scrollTo({ y: formY.current, animated: true });
 
   // Not wired to any backend yet — just a local confirmation state,
@@ -98,6 +100,9 @@ export default function SittersLanding() {
             <View style={styles.navLinks}>
               <Pressable onPress={scrollToRole}>
                 <Text style={styles.navLink}>The role</Text>
+              </Pressable>
+              <Pressable onPress={scrollToHow}>
+                <Text style={styles.navLink}>How it works</Text>
               </Pressable>
               <Pressable onPress={scrollToForm} style={styles.navCta}>
                 <Text style={styles.navCtaText}>Sign Up</Text>
@@ -151,14 +156,18 @@ export default function SittersLanding() {
             </View>
 
             <View style={[styles.floatCard, styles.floatCardPay]}>
-              <Ionicons name="cash-outline" size={20} color={colors.accent} />
+              <View style={styles.floatCardIconWrap}>
+                <Ionicons name="cash-outline" size={17} color={colors.accent} />
+              </View>
               <View>
                 <Text style={styles.floatCardLabel}>You set your rate</Text>
                 <Text style={styles.floatCardValue}>$30–$45+ / hour</Text>
               </View>
             </View>
             <View style={[styles.floatCard, styles.floatCardFit]}>
-              <Ionicons name="checkmark-circle-outline" size={20} color={colors.accent} />
+              <View style={styles.floatCardIconWrap}>
+                <Ionicons name="checkmark-circle-outline" size={17} color={colors.accent} />
+              </View>
               <View>
                 <Text style={styles.floatCardLabel}>A family match</Text>
                 <Text style={styles.floatCardValue}>Based on your experience</Text>
@@ -169,12 +178,15 @@ export default function SittersLanding() {
 
         {/* Trust strip */}
         <View style={[styles.trustStrip, isDesktop && styles.trustStripDesktop]}>
-          {TRUST_ITEMS.map((item) => (
-            <View key={item.bold + item.rest} style={styles.trustItem}>
-              <Ionicons name={item.icon} size={20} color={colors.accent} />
-              <Text style={styles.trustText}>
-                <Text style={styles.trustBold}>{item.bold}</Text> {item.rest}
-              </Text>
+          {TRUST_ITEMS.map((item, i) => (
+            <View key={item.bold + item.rest} style={styles.trustItemWrap}>
+              {i > 0 && isDesktop ? <View style={styles.trustDivider} /> : null}
+              <View style={styles.trustItem}>
+                <Ionicons name={item.icon} size={20} color={colors.accent} />
+                <Text style={styles.trustText}>
+                  <Text style={styles.trustBold}>{item.bold}</Text> {item.rest}
+                </Text>
+              </View>
             </View>
           ))}
         </View>
@@ -207,7 +219,9 @@ export default function SittersLanding() {
             <Text style={styles.cardLabel}>Experience comes in many forms.</Text>
             {EXPERIENCE_ITEMS.map((item) => (
               <View key={item} style={styles.experienceRow}>
-                <Ionicons name="checkmark" size={16} color={colors.accent} />
+                <View style={styles.experienceCheck}>
+                  <Ionicons name="checkmark" size={13} color={colors.surface} />
+                </View>
                 <Text style={styles.experienceText}>{item}</Text>
               </View>
             ))}
@@ -219,17 +233,27 @@ export default function SittersLanding() {
         </View>
 
         {/* How it works */}
-        <View style={styles.howSection}>
+        <View
+          style={styles.howSection}
+          onLayout={(e) => {
+            howY.current = e.nativeEvent.layout.y;
+          }}
+        >
           <View style={styles.centerHeading}>
             <Text style={styles.kicker}>HOW IT WORKS</Text>
             <Text style={styles.h2}>Three steps to get started.</Text>
           </View>
           <View style={[styles.stepsGrid, isDesktop && styles.stepsGridDesktop]}>
-            {STEPS.map((step) => (
-              <View key={step.number} style={[styles.stepCard, isDesktop && styles.stepCardDesktop]}>
-                <Text style={styles.stepNumber}>{step.number}</Text>
-                <Text style={styles.stepTitle}>{step.title}</Text>
-                <Text style={styles.stepBody}>{step.body}</Text>
+            {STEPS.map((step, i) => (
+              <View key={step.number} style={[styles.stepItemWrap, isDesktop && styles.stepItemWrapDesktop]}>
+                {i > 0 && isDesktop ? <View style={styles.stepConnector} /> : null}
+                <View style={styles.stepCard}>
+                  <View style={styles.stepNumberCircle}>
+                    <Text style={styles.stepNumber}>{step.number}</Text>
+                  </View>
+                  <Text style={styles.stepTitle}>{step.title}</Text>
+                  <Text style={styles.stepBody}>{step.body}</Text>
+                </View>
               </View>
             ))}
           </View>
@@ -352,7 +376,7 @@ export default function SittersLanding() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.textOnDark,
   },
   scroll: {
     flexGrow: 1,
@@ -448,18 +472,17 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   headline: {
-    fontSize: 34,
-    fontWeight: '700',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 38,
     color: colors.heading,
-    lineHeight: 40,
-    marginBottom: 14,
+    lineHeight: 44,
+    marginBottom: 18,
   },
   headlineDesktop: {
-    fontSize: 50,
-    lineHeight: 55,
+    fontSize: 66,
+    lineHeight: 70,
   },
   headlineAccent: {
-    fontStyle: 'italic',
     color: colors.accent,
   },
   lede: {
@@ -566,6 +589,14 @@ const styles = StyleSheet.create({
     elevation: 5,
     maxWidth: 220,
   },
+  floatCardIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.accentMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   floatCardPay: {
     top: 2,
     right: -8,
@@ -599,6 +630,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
     justifyContent: 'center',
     gap: 48,
+  },
+  trustItemWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trustDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: colors.border,
+    marginRight: 48,
   },
   trustItem: {
     flexDirection: 'row',
@@ -641,9 +682,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   h2: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 34,
     color: colors.heading,
+    lineHeight: 40,
     marginBottom: 14,
   },
   body: {
@@ -679,16 +721,25 @@ const styles = StyleSheet.create({
     maxWidth: 440,
   },
   cardLabel: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 19,
     color: colors.heading,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   experienceRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 14,
+  },
+  experienceCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
   },
   experienceText: {
     flex: 1,
@@ -714,27 +765,49 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   stepsGrid: {
-    gap: 20,
+    gap: 28,
   },
   stepsGridDesktop: {
     flexDirection: 'row',
     maxWidth: 960,
     alignSelf: 'center',
+    gap: 0,
   },
-  stepCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 22,
-  },
-  stepCardDesktop: {
+  stepItemWrap: {
     flex: 1,
   },
+  stepItemWrapDesktop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  // A dashed line bridging one step's number circle to the next — sits
+  // as a row-sibling before the card, offset down to roughly the
+  // circle's vertical center (28px radius + card's own top padding).
+  stepConnector: {
+    width: 28,
+    marginTop: 26,
+    marginRight: -8,
+    borderTopWidth: 1,
+    borderStyle: 'dashed',
+    borderTopColor: colors.textMuted,
+  },
+  stepCard: {
+    flex: 1,
+    padding: 12,
+  },
+  stepNumberCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
   stepNumber: {
-    fontFamily: 'DMMono_400Regular',
-    fontSize: 13,
-    fontWeight: '700',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 17,
     color: colors.accent,
-    marginBottom: 10,
   },
   stepTitle: {
     fontSize: 16,
@@ -777,10 +850,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   h2Light: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 32,
     color: colors.textOnDark,
-    lineHeight: 32,
+    lineHeight: 38,
     marginBottom: 14,
   },
   applyBody: {
@@ -805,10 +878,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   formTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 24,
     color: colors.heading,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   formSubtitle: {
     fontSize: 13.5,
@@ -877,8 +950,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   confirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: 'Lora_700Bold',
+    fontSize: 22,
     color: colors.heading,
   },
   confirmBody: {

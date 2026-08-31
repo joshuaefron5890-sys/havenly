@@ -6,6 +6,11 @@ import {
   DMSans_700Bold_Italic,
 } from '@expo-google-fonts/dm-sans';
 import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
+// A display serif, used only on app/sitters.tsx's headline-heavy sections
+// (per the reference page it was built to match) — every other screen's
+// headings stay on DM Sans via resolveFontFamily below, so this is loaded
+// but not part of that resolution.
+import { Lora_600SemiBold, Lora_700Bold } from '@expo-google-fonts/lora';
 
 // DM Sans is loaded as discrete per-weight files (see app/_layout.tsx's
 // useFonts call below), not a single variable-weight family — React
@@ -23,6 +28,8 @@ export const FONT_FILES = {
   DMSans_700Bold,
   DMSans_700Bold_Italic,
   DMMono_400Regular,
+  Lora_600SemiBold,
+  Lora_700Bold,
 } as const;
 
 export const FONT_FAMILY = {

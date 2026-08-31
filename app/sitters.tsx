@@ -52,7 +52,7 @@ export default function SittersLanding() {
               </View>
             </View>
 
-            <View style={styles.spacer} />
+            <View style={[styles.spacer, isDesktop && styles.spacerDesktop]} />
 
             <View style={[styles.bottomCluster, isDesktop && styles.bottomClusterDesktop]}>
               <Text style={styles.eyebrow}>FOR SITTERS, NANNIES &amp; THERAPISTS</Text>
@@ -138,9 +138,17 @@ const styles = StyleSheet.create({
   brandWordmarkAccent: {
     color: colors.accent,
   },
+  // Only a fraction of the leftover space, not all of it — a full flex:1
+  // here pins the text cluster to the very bottom edge, leaving a big
+  // empty gap above it on tall mobile viewports. Desktop keeps the old
+  // full-push-to-bottom behavior (spacerDesktop below), since its wider,
+  // shorter viewport doesn't have the same excess vertical space.
   spacer: {
-    flex: 1,
+    flex: 0.45,
     minHeight: 24,
+  },
+  spacerDesktop: {
+    flex: 1,
   },
   bottomCluster: {
     paddingBottom: 8,

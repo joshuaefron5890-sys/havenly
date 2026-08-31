@@ -261,70 +261,72 @@ export default function SittersLanding() {
 
         {/* Apply / interest form */}
         <View
-          style={[styles.applySection, isDesktop && styles.applySectionDesktop]}
+          style={styles.applySection}
           onLayout={(e) => {
             formY.current = e.nativeEvent.layout.y;
           }}
         >
-          <View style={[styles.applyCopy, isDesktop && styles.applyCopyDesktop]}>
-            <Text style={styles.kickerLight}>FOUNDING PROVIDER NETWORK</Text>
-            <Text style={styles.h2Light}>Help us build the village families have been looking for.</Text>
-            <Text style={styles.applyBody}>
-              Join our first providers in and around Hillsborough and help shape what comes next.
-            </Text>
-          </View>
+          <View style={[styles.applyInner, isDesktop && styles.applyInnerDesktop]}>
+            <View style={[styles.applyCopy, isDesktop && styles.applyCopyDesktop]}>
+              <Text style={styles.kickerLight}>FOUNDING PROVIDER NETWORK</Text>
+              <Text style={styles.h2Light}>Help us build the village families have been looking for.</Text>
+              <Text style={styles.applyBody}>
+                Join our first providers in and around Hillsborough and help shape what comes next.
+              </Text>
+            </View>
 
-          <View style={[styles.leadCard, isDesktop && styles.leadCardDesktop]}>
-            {submitted ? (
-              <View style={styles.confirmWrap}>
-                <Ionicons name="checkmark-circle" size={32} color={colors.accent} />
-                <Text style={styles.confirmTitle}>You’re on the list.</Text>
-                <Text style={styles.confirmBody}>
-                  We’ll send the full application and launch details to {email}.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
-                <Text style={styles.formTitle}>Join the interest list</Text>
-                <Text style={styles.formSubtitle}>We’ll send you the full application and launch details.</Text>
-
-                <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
-                <FieldInput
-                  label="Email"
-                  placeholder="you@email.com"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                <FieldInput
-                  label="ZIP code"
-                  placeholder="94010"
-                  value={zip}
-                  onChangeText={setZip}
-                  keyboardType="number-pad"
-                />
-
-                <Text style={styles.selectLabel}>Your background</Text>
-                <Pressable style={styles.selectField} onPress={() => setPickerOpen(true)}>
-                  <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
-                    {background ?? 'Select the closest fit'}
+            <View style={[styles.leadCard, isDesktop && styles.leadCardDesktop]}>
+              {submitted ? (
+                <View style={styles.confirmWrap}>
+                  <Ionicons name="checkmark-circle" size={32} color={colors.accent} />
+                  <Text style={styles.confirmTitle}>You’re on the list.</Text>
+                  <Text style={styles.confirmBody}>
+                    We’ll send the full application and launch details to {email}.
                   </Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-                </Pressable>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
+                  <Text style={styles.formTitle}>Join the interest list</Text>
+                  <Text style={styles.formSubtitle}>We’ll send you the full application and launch details.</Text>
 
-                {error ? <Text style={styles.formError}>{error}</Text> : null}
+                  <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
+                  <FieldInput
+                    label="Email"
+                    placeholder="you@email.com"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <FieldInput
+                    label="ZIP code"
+                    placeholder="94010"
+                    value={zip}
+                    onChangeText={setZip}
+                    keyboardType="number-pad"
+                  />
 
-                <Pressable style={styles.submitButton} onPress={handleSubmit}>
-                  <Text style={styles.submitButtonText}>I’m interested</Text>
-                  <Ionicons name="arrow-forward" size={16} color={colors.surface} />
-                </Pressable>
-                <Text style={styles.privacyNote}>
-                  We’ll only use your information to contact you about the provider network.
-                </Text>
-              </>
-            )}
+                  <Text style={styles.selectLabel}>Your background</Text>
+                  <Pressable style={styles.selectField} onPress={() => setPickerOpen(true)}>
+                    <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
+                      {background ?? 'Select the closest fit'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                  </Pressable>
+
+                  {error ? <Text style={styles.formError}>{error}</Text> : null}
+
+                  <Pressable style={styles.submitButton} onPress={handleSubmit}>
+                    <Text style={styles.submitButtonText}>I’m interested</Text>
+                    <Ionicons name="arrow-forward" size={16} color={colors.surface} />
+                  </Pressable>
+                  <Text style={styles.privacyNote}>
+                    We’ll only use your information to contact you about the provider network.
+                  </Text>
+                </>
+              )}
+            </View>
           </View>
         </View>
 
@@ -440,9 +442,17 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 32,
   },
+  // Capped and centered — without this, the row just stretches to fill
+  // whatever the viewport is (paddingHorizontal alone doesn't bound it),
+  // so on a wide monitor the two capped-width columns end up pinned to
+  // opposite edges with excess space between them, and the floating
+  // badges' negative offsets can spill past the visible area entirely.
   heroDesktop: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
     paddingHorizontal: 48,
     paddingTop: 24,
     paddingBottom: 64,
@@ -537,9 +547,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 4,
   },
+  // A fixed height made this look landscape on wide desktop columns
+  // (this container can grow up to 440px wide) — aspectRatio keeps it a
+  // taller portrait crop, matching the reference, at any width.
   portraitImage: {
     width: '100%',
-    height: 320,
+    aspectRatio: 1.05,
   },
   portraitCaption: {
     flexDirection: 'row',
@@ -663,6 +676,9 @@ const styles = StyleSheet.create({
   },
   roleSectionDesktop: {
     flexDirection: 'row',
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
     paddingHorizontal: 48,
     paddingVertical: 72,
     gap: 56,
@@ -822,14 +838,22 @@ const styles = StyleSheet.create({
   },
 
   // Apply section
+  // Full-bleed dark background — stays uncapped so the color reaches the
+  // screen edges; applyInner below is what actually gets width-capped
+  // and centered, same split as howSection/stepsGrid already uses.
   applySection: {
     backgroundColor: colors.heading,
+  },
+  applyInner: {
     paddingHorizontal: 20,
     paddingVertical: 40,
     gap: 32,
   },
-  applySectionDesktop: {
+  applyInnerDesktop: {
     flexDirection: 'row',
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
     paddingHorizontal: 48,
     paddingVertical: 72,
     gap: 56,

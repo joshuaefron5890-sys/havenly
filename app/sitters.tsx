@@ -169,7 +169,7 @@ export default function SittersLanding() {
                 <Text style={styles.primaryButtonText}>Become a founding provider</Text>
                 <Ionicons name="arrow-forward" size={16} color={colors.surface} />
               </Pressable>
-              <Pressable onPress={scrollToRole}>
+              <Pressable style={styles.secondaryLinkWrap} onPress={scrollToRole}>
                 <Text style={styles.secondaryLink}>See what the role involves</Text>
               </Pressable>
             </View>
@@ -484,8 +484,11 @@ const styles = StyleSheet.create({
   },
 
   // Hero
+  // Deliberately whiter than the nav above it (colors.surface, not the
+  // nav's cream #FAF9F3) — the reference keeps the two visibly distinct
+  // rather than blending them.
   hero: {
-    backgroundColor: '#FAF9F3',
+    backgroundColor: colors.surface,
     marginTop: 18,
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -574,8 +577,9 @@ const styles = StyleSheet.create({
     maxWidth: 440,
   },
   heroActions: {
-    gap: 14,
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 28,
   },
   primaryButton: {
     flexDirection: 'row',
@@ -591,11 +595,18 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     fontWeight: '700',
   },
+  // A detached border-bottom rather than text-decoration:underline — the
+  // reference shows a clean line with a gap beneath the text, not one
+  // sitting tight against the descenders.
+  secondaryLinkWrap: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.textMuted,
+    paddingBottom: 4,
+  },
   secondaryLink: {
     fontSize: 14.5,
     fontWeight: '600',
     color: colors.text,
-    textDecorationLine: 'underline',
   },
 
   // Hero visual

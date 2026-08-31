@@ -425,6 +425,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   navDesktop: {
     paddingHorizontal: 48,

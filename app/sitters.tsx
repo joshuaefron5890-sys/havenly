@@ -431,6 +431,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    // Matches the reference's own nav-shell background exactly (pulled
+    // from its inspector) — without this it fell back to the screen's
+    // plain #FAF8F3, one shade off from the hero's #FAF9F3 below it.
+    backgroundColor: '#FAF9F3F5',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,

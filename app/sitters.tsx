@@ -486,6 +486,7 @@ const styles = StyleSheet.create({
   // Hero
   hero: {
     backgroundColor: '#FAF9F3',
+    marginTop: 18,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 32,
@@ -557,8 +558,11 @@ const styles = StyleSheet.create({
   // h1 em in the reference: font-style normal (not the browser default
   // italic), a specific green, and a lighter 500 weight than the rest of
   // the bold headline.
+  // Exact em color from the reference's own inspector (#1B6B56) — very
+  // close to this page's ACCENT but measured directly off the em itself
+  // rather than estimated.
   headlineAccent: {
-    color: ACCENT,
+    color: '#1B6B56',
     fontStyle: 'normal',
     fontWeight: '500',
   },

@@ -1,250 +1,976 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Image, ImageBackground, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { Text } from '../components/AppText';
+import { FieldInput } from '../components/FieldInput';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
 // Same photo already vetted for the in-app sitter promo card
 // (app/proposal/[id].tsx's SITTER_PROMO_IMAGE) — reused here rather than
-// picking a new, unvetted Unsplash image.
+// picking a new, unvetted Unsplash image, standing in for the reference
+// design's AI-generated illustration.
 const HERO_IMAGE =
   'https://images.unsplash.com/photo-1585541993027-55373d67ea86?q=80&w=1658&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-const PILLARS: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { icon: 'calendar-outline', label: 'You set your availability' },
-  { icon: 'sparkles-outline', label: 'We find you families in need' },
+const BACKGROUND_OPTIONS = [
+  'Registered behavior technician (RBT) or behavior technician',
+  'Special education teacher or classroom aide',
+  'Paraeducator or inclusion aide',
+  'Speech-language pathology, occupational therapy, psychology, or education student',
+  'Respite care or adaptive recreation worker',
+  'Experienced nanny or caregiver',
+  'Sibling or volunteer with experience supporting neurodivergent children and/or children with disabilities',
+  'Other relevant experience',
 ];
 
-function applyNow() {
-  router.push('/sitter-signup');
-}
+const EXPERIENCE_ITEMS = [
+  'Behavior technicians, special educators, and classroom or inclusion aides',
+  'Students in speech-language pathology, OT, psychology, or education',
+  'Respite workers, adaptive recreation staff, nannies, and caregivers',
+  'Siblings and volunteers with experience supporting neurodivergent children',
+];
+
+const STEPS = [
+  { number: '01', title: 'Tell us about yourself', body: 'Share your experience and the children you feel comfortable supporting.' },
+  { number: '02', title: 'Complete the screening process', body: 'We’ll review your experience, references, identity, and standard safety checks.' },
+  { number: '03', title: 'Find work that fits your life', body: 'Set your availability and choose opportunities that fit your life.' },
+];
+
+const TRUST_ITEMS: { icon: keyof typeof Ionicons.glyphMap; bold: string; rest: string }[] = [
+  { icon: 'time-outline', bold: 'Flexible', rest: 'evenings & weekends' },
+  { icon: 'location-outline', bold: 'Local', rest: 'Peninsula families' },
+  { icon: 'cash-outline', bold: '100%', rest: 'of your hourly rate' },
+];
 
 function signIn() {
   router.push('/sign-in');
 }
 
-// One full-bleed hero, edge to edge — a splash page, not a scrolling
-// brochure. Everything sits on top of a single photo + gradient scrim;
-// there's no separate "how it works" or feature-grid section below it.
 export default function SittersLanding() {
   const isDesktop = useIsDesktop();
-  const { height } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
+  const roleY = useRef(0);
+  const formY = useRef(0);
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [zip, setZip] = useState('');
+  const [background, setBackground] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const scrollToRole = () => scrollRef.current?.scrollTo({ y: roleY.current, animated: true });
+  const scrollToForm = () => scrollRef.current?.scrollTo({ y: formY.current, animated: true });
+
+  // Not wired to any backend yet — just a local confirmation state,
+  // per the ask to host this page while the real interest-list workflow
+  // (where these entries actually go) still gets figured out.
+  const handleSubmit = () => {
+    setError(null);
+    if (!name.trim() || !email.trim() || !zip.trim() || !background) {
+      setError('Fill in every field to join the interest list.');
+      return;
+    }
+    setSubmitted(true);
+  };
 
   return (
-    <View style={styles.screen}>
-      <ImageBackground source={{ uri: HERO_IMAGE }} style={styles.hero} resizeMode="cover">
-        <LinearGradient
-          colors={['rgba(20, 18, 16, 0.55)', 'rgba(20, 18, 16, 0.78)', 'rgba(20, 18, 16, 0.95)']}
-          locations={[0, 0.4, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-          <ScrollView contentContainerStyle={[styles.scrollContent, { minHeight: height }]} bounces={false}>
-            <View style={[styles.topRow, isDesktop && styles.topRowDesktop]}>
-              <View style={styles.brandChip}>
-                <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
-                <Text style={styles.brandWordmark}>
-                  Opened <Text style={styles.brandWordmarkAccent}>Circle</Text> for Sitters
-                </Text>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Nav */}
+        <View style={[styles.nav, isDesktop && styles.navDesktop]}>
+          <Pressable style={styles.brandRow} onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}>
+            <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
+            <Text style={styles.brandWordmark}>Opened Circle</Text>
+          </Pressable>
+          {isDesktop ? (
+            <View style={styles.navLinks}>
+              <Pressable onPress={scrollToRole}>
+                <Text style={styles.navLink}>The role</Text>
+              </Pressable>
+              <Pressable onPress={scrollToForm} style={styles.navCta}>
+                <Text style={styles.navCtaText}>Sign Up</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.surface} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable onPress={scrollToForm} style={styles.navCta}>
+              <Text style={styles.navCtaText}>Sign Up</Text>
+              <Ionicons name="arrow-forward" size={13} color={colors.surface} />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Hero */}
+        <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
+          <View style={[styles.heroCopy, isDesktop && styles.heroCopyDesktop]}>
+            <View style={styles.eyebrow}>
+              <Ionicons name="location-outline" size={13} color={colors.accent} />
+              <Text style={styles.eyebrowText}>Now forming in the Bay Area</Text>
+            </View>
+            <Text style={[styles.headline, isDesktop && styles.headlineDesktop]}>
+              You can open <Text style={styles.headlineAccent}>a child’s world.</Text>
+            </Text>
+            <Text style={styles.lede}>
+              Find flexible, well-paid opportunities helping neurodivergent children build connections through
+              everyday experiences.
+            </Text>
+            <View style={styles.heroActions}>
+              <Pressable style={styles.primaryButton} onPress={scrollToForm}>
+                <Text style={styles.primaryButtonText}>Become a founding provider</Text>
+                <Ionicons name="arrow-forward" size={16} color={colors.surface} />
+              </Pressable>
+              <Pressable onPress={scrollToRole}>
+                <Text style={styles.secondaryLink}>See what the role involves</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={[styles.heroVisual, isDesktop && styles.heroVisualDesktop]}>
+            <View style={styles.portraitCard}>
+              <Image source={{ uri: HERO_IMAGE }} style={styles.portraitImage} resizeMode="cover" />
+              <View style={styles.portraitCaption}>
+                <View style={styles.statusDot} />
+                <View style={styles.portraitCaptionText}>
+                  <Text style={styles.exampleLabel}>EXAMPLE OPPORTUNITY</Text>
+                  <Text style={styles.portraitTitle}>Saturday playdate support</Text>
+                  <Text style={styles.portraitSubtitle}>Hillsborough – Vista Park · 10am–12:00pm</Text>
+                </View>
               </View>
             </View>
 
-            <View style={[styles.spacer, isDesktop && styles.spacerDesktop]} />
-
-            <View style={[styles.bottomCluster, isDesktop && styles.bottomClusterDesktop]}>
-              <Text style={styles.eyebrow}>FOR SITTERS, NANNIES &amp; THERAPISTS</Text>
-              <Text style={[styles.headline, isDesktop && styles.headlineDesktop]}>
-                Get matched with families who <Text style={styles.headlineAccent}>actually need you.</Text>
-              </Text>
-              <Text style={styles.subtext}>
-                Opened Circle connects experienced sitters with local families raising neurodivergent kids.
-              </Text>
-
-              <View style={styles.pillarsRow}>
-                {PILLARS.map((p) => (
-                  <View key={p.label} style={styles.pillar}>
-                    <Ionicons name={p.icon} size={13} color="#FFFFFF" />
-                    <Text style={styles.pillarText}>{p.label}</Text>
-                  </View>
-                ))}
+            <View style={[styles.floatCard, styles.floatCardPay]}>
+              <Ionicons name="cash-outline" size={20} color={colors.accent} />
+              <View>
+                <Text style={styles.floatCardLabel}>You set your rate</Text>
+                <Text style={styles.floatCardValue}>$30–$45+ / hour</Text>
               </View>
-
-              <Pressable style={[styles.cta, isDesktop && styles.ctaDesktop]} onPress={applyNow}>
-                <Text style={styles.ctaText}>Apply to become a sitter</Text>
-              </Pressable>
-              <Pressable onPress={signIn}>
-                <Text style={styles.signIn}>
-                  Already registered? <Text style={styles.signInAccent}>Sign in</Text>
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => router.push('/')}>
-                <Text style={styles.familyLink}>Looking for a sitter instead? Go to Opened Circle for families</Text>
-              </Pressable>
             </View>
-          </ScrollView>
-        </SafeAreaView>
-      </ImageBackground>
-    </View>
+            <View style={[styles.floatCard, styles.floatCardFit]}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={colors.accent} />
+              <View>
+                <Text style={styles.floatCardLabel}>A family match</Text>
+                <Text style={styles.floatCardValue}>Based on your experience</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Trust strip */}
+        <View style={[styles.trustStrip, isDesktop && styles.trustStripDesktop]}>
+          {TRUST_ITEMS.map((item) => (
+            <View key={item.bold + item.rest} style={styles.trustItem}>
+              <Ionicons name={item.icon} size={20} color={colors.accent} />
+              <Text style={styles.trustText}>
+                <Text style={styles.trustBold}>{item.bold}</Text> {item.rest}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Role section */}
+        <View
+          style={[styles.roleSection, isDesktop && styles.roleSectionDesktop]}
+          onLayout={(e) => {
+            roleY.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <View style={[styles.roleIntro, isDesktop && styles.roleIntroDesktop]}>
+            <Text style={styles.kicker}>A DIFFERENT KIND OF SUPPORT</Text>
+            <Text style={styles.h2}>Help children feel at ease.</Text>
+            <Text style={styles.body}>
+              Opened Circle connects families of neurodivergent children for playdates and matches them with
+              providers like you to come along. You’ll help children feel comfortable joining in while parents get
+              to know one another.
+            </Text>
+            <View style={styles.notTherapy}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
+              <Text style={styles.notTherapyText}>
+                <Text style={styles.notTherapyBold}>This isn’t a clinical role. </Text>
+                You’ll support play and participation—not deliver therapy or follow a treatment plan.
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.experienceCard, isDesktop && styles.experienceCardDesktop]}>
+            <Text style={styles.cardLabel}>Experience comes in many forms.</Text>
+            {EXPERIENCE_ITEMS.map((item) => (
+              <View key={item} style={styles.experienceRow}>
+                <Ionicons name="checkmark" size={16} color={colors.accent} />
+                <Text style={styles.experienceText}>{item}</Text>
+              </View>
+            ))}
+            <Text style={styles.experienceNote}>
+              Professional training and lived experience both count. We value good judgement, warmth, and a genuine
+              connection with kids.
+            </Text>
+          </View>
+        </View>
+
+        {/* How it works */}
+        <View style={styles.howSection}>
+          <View style={styles.centerHeading}>
+            <Text style={styles.kicker}>HOW IT WORKS</Text>
+            <Text style={styles.h2}>Three steps to get started.</Text>
+          </View>
+          <View style={[styles.stepsGrid, isDesktop && styles.stepsGridDesktop]}>
+            {STEPS.map((step) => (
+              <View key={step.number} style={[styles.stepCard, isDesktop && styles.stepCardDesktop]}>
+                <Text style={styles.stepNumber}>{step.number}</Text>
+                <Text style={styles.stepTitle}>{step.title}</Text>
+                <Text style={styles.stepBody}>{step.body}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Apply / interest form */}
+        <View
+          style={[styles.applySection, isDesktop && styles.applySectionDesktop]}
+          onLayout={(e) => {
+            formY.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <View style={[styles.applyCopy, isDesktop && styles.applyCopyDesktop]}>
+            <Text style={styles.kickerLight}>FOUNDING PROVIDER NETWORK</Text>
+            <Text style={styles.h2Light}>Help us build the village families have been looking for.</Text>
+            <Text style={styles.applyBody}>
+              Join our first providers in and around Hillsborough and help shape what comes next.
+            </Text>
+          </View>
+
+          <View style={[styles.leadCard, isDesktop && styles.leadCardDesktop]}>
+            {submitted ? (
+              <View style={styles.confirmWrap}>
+                <Ionicons name="checkmark-circle" size={32} color={colors.accent} />
+                <Text style={styles.confirmTitle}>You’re on the list.</Text>
+                <Text style={styles.confirmBody}>
+                  We’ll send the full application and launch details to {email}.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
+                <Text style={styles.formTitle}>Join the interest list</Text>
+                <Text style={styles.formSubtitle}>We’ll send you the full application and launch details.</Text>
+
+                <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
+                <FieldInput
+                  label="Email"
+                  placeholder="you@email.com"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <FieldInput
+                  label="ZIP code"
+                  placeholder="94010"
+                  value={zip}
+                  onChangeText={setZip}
+                  keyboardType="number-pad"
+                />
+
+                <Text style={styles.selectLabel}>Your background</Text>
+                <Pressable style={styles.selectField} onPress={() => setPickerOpen(true)}>
+                  <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
+                    {background ?? 'Select the closest fit'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                </Pressable>
+
+                {error ? <Text style={styles.formError}>{error}</Text> : null}
+
+                <Pressable style={styles.submitButton} onPress={handleSubmit}>
+                  <Text style={styles.submitButtonText}>I’m interested</Text>
+                  <Ionicons name="arrow-forward" size={16} color={colors.surface} />
+                </Pressable>
+                <Text style={styles.privacyNote}>
+                  We’ll only use your information to contact you about the provider network.
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View style={styles.brandRow}>
+            <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
+            <Text style={styles.footerWordmark}>Opened Circle</Text>
+          </View>
+          <Text style={styles.footerTagline}>Belonging, shaped differently.</Text>
+          <Text style={styles.footerLaunch}>Launching in Hillsborough, California</Text>
+          <Pressable onPress={signIn}>
+            <Text style={styles.footerSignIn}>
+              Already registered? <Text style={styles.footerSignInAccent}>Sign in</Text>
+            </Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/')}>
+            <Text style={styles.footerFamilyLink}>Looking for a sitter instead? Go to Opened Circle for families</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+
+      <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
+        <Pressable style={styles.pickerScrim} onPress={() => setPickerOpen(false)}>
+          <View style={styles.pickerSheet}>
+            <Text style={styles.pickerTitle}>Your background</Text>
+            <ScrollView style={styles.pickerList}>
+              {BACKGROUND_OPTIONS.map((option) => (
+                <Pressable
+                  key={option}
+                  style={styles.pickerRow}
+                  onPress={() => {
+                    setBackground(option);
+                    setPickerOpen(false);
+                  }}
+                >
+                  <View style={[styles.radio, background === option && styles.radioSelected]} />
+                  <Text style={styles.pickerRowText}>{option}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#141210',
+    backgroundColor: colors.background,
   },
-  hero: {
-    flex: 1,
-  },
-  safe: {
-    flex: 1,
-  },
-  scrollContent: {
+  scroll: {
     flexGrow: 1,
-    padding: 24,
   },
-  topRow: {
+
+  // Nav
+  nav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  navDesktop: {
+    paddingHorizontal: 48,
+    paddingVertical: 20,
+  },
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  topRowDesktop: {
-    paddingHorizontal: 24,
+  brandMark: {
+    width: 26,
+    height: 26,
+  },
+  brandWordmark: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.heading,
+  },
+  navLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 28,
+  },
+  navLink: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+  },
+  navCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+  },
+  navCtaText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: colors.surface,
+  },
+
+  // Hero
+  hero: {
+    paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 32,
+    gap: 32,
   },
-  // A backing chip rather than relying on the gradient alone — see the
-  // same fix on app/index.tsx for why.
-  brandChip: {
+  heroDesktop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(20, 18, 16, 0.45)',
+    paddingHorizontal: 48,
+    paddingTop: 24,
+    paddingBottom: 64,
+    gap: 56,
+  },
+  heroCopy: {
+    gap: 4,
+  },
+  heroCopyDesktop: {
+    flex: 1,
+    maxWidth: 520,
+  },
+  eyebrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.accentMuted,
+    alignSelf: 'flex-start',
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 12,
+    marginBottom: 16,
   },
-  brandMark: {
-    width: 20,
-    height: 20,
-  },
-  brandWordmark: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  brandWordmarkAccent: {
-    color: colors.accent,
-  },
-  // Only a fraction of the leftover space, not all of it — a full flex:1
-  // here pins the text cluster to the very bottom edge, leaving a big
-  // empty gap above it on tall mobile viewports. Desktop keeps the old
-  // full-push-to-bottom behavior (spacerDesktop below), since its wider,
-  // shorter viewport doesn't have the same excess vertical space.
-  spacer: {
-    flex: 0.45,
-    minHeight: 24,
-  },
-  spacerDesktop: {
-    flex: 1,
-  },
-  bottomCluster: {
-    paddingBottom: 8,
-  },
-  bottomClusterDesktop: {
-    maxWidth: 620,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  eyebrow: {
+  eyebrowText: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.accent,
-    letterSpacing: 1.4,
-    marginBottom: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
   },
   headline: {
     fontSize: 34,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.heading,
     lineHeight: 40,
-    marginBottom: 12,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 10,
+    marginBottom: 14,
   },
   headlineDesktop: {
-    fontSize: 52,
-    lineHeight: 58,
+    fontSize: 50,
+    lineHeight: 55,
   },
   headlineAccent: {
     fontStyle: 'italic',
     color: colors.accent,
   },
-  subtext: {
+  lede: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.85)',
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
-    lineHeight: 23,
-    marginBottom: 20,
-    maxWidth: 460,
+    color: colors.textMuted,
+    lineHeight: 24,
+    marginBottom: 24,
+    maxWidth: 440,
   },
-  pillarsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 26,
+  heroActions: {
+    gap: 14,
+    alignItems: 'flex-start',
   },
-  pillar: {
+  primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-  },
-  pillarText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  cta: {
+    gap: 8,
     backgroundColor: colors.accent,
     borderRadius: 999,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    marginBottom: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 26,
   },
-  ctaDesktop: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 36,
-  },
-  ctaText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  primaryButtonText: {
+    color: colors.surface,
+    fontSize: 15.5,
     fontWeight: '700',
   },
-  signIn: {
-    color: 'rgba(255, 255, 255, 0.78)',
-    fontSize: 14,
-    marginBottom: 14,
-  },
-  signInAccent: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  secondaryLink: {
+    fontSize: 14.5,
+    fontWeight: '600',
+    color: colors.text,
     textDecorationLine: 'underline',
   },
-  familyLink: {
-    color: 'rgba(255, 255, 255, 0.5)',
+
+  // Hero visual
+  heroVisual: {
+    position: 'relative',
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  heroVisualDesktop: {
+    flex: 1,
+    maxWidth: 440,
+  },
+  portraitCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 4,
+  },
+  portraitImage: {
+    width: '100%',
+    height: 320,
+  },
+  portraitCaption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 16,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+  },
+  portraitCaptionText: {
+    flex: 1,
+  },
+  exampleLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.caption,
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  portraitTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.heading,
+  },
+  portraitSubtitle: {
+    fontSize: 12.5,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  floatCard: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+    maxWidth: 220,
+  },
+  floatCardPay: {
+    top: 2,
+    right: -8,
+  },
+  floatCardFit: {
+    bottom: 8,
+    left: -8,
+  },
+  floatCardLabel: {
+    fontSize: 10.5,
+    color: colors.textMuted,
+  },
+  floatCardValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.heading,
+  },
+
+  // Trust strip
+  trustStrip: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  trustStripDesktop: {
+    paddingHorizontal: 48,
+    justifyContent: 'center',
+    gap: 48,
+  },
+  trustItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  trustText: {
+    fontSize: 13.5,
+    color: colors.textMuted,
+  },
+  trustBold: {
+    fontWeight: '700',
+    color: colors.text,
+  },
+
+  // Role section
+  roleSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+    gap: 32,
+  },
+  roleSectionDesktop: {
+    flexDirection: 'row',
+    paddingHorizontal: 48,
+    paddingVertical: 72,
+    gap: 56,
+  },
+  roleIntro: {
+    gap: 4,
+  },
+  roleIntroDesktop: {
+    flex: 1,
+    maxWidth: 480,
+  },
+  kicker: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accent,
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  h2: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.heading,
+    marginBottom: 14,
+  },
+  body: {
+    fontSize: 15.5,
+    color: colors.textMuted,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  notTherapy: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: colors.accentMuted,
+    borderRadius: 16,
+    padding: 16,
+  },
+  notTherapyText: {
+    flex: 1,
+    fontSize: 13.5,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  notTherapyBold: {
+    fontWeight: '700',
+  },
+  experienceCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    gap: 4,
+  },
+  experienceCardDesktop: {
+    flex: 1,
+    maxWidth: 440,
+  },
+  cardLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.heading,
+    marginBottom: 14,
+  },
+  experienceRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 12,
+  },
+  experienceText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  experienceNote: {
+    fontSize: 12.5,
+    color: colors.textMuted,
+    lineHeight: 19,
+    marginTop: 8,
+  },
+
+  // How it works
+  howSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+    backgroundColor: colors.accentMuted,
+  },
+  centerHeading: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  stepsGrid: {
+    gap: 20,
+  },
+  stepsGridDesktop: {
+    flexDirection: 'row',
+    maxWidth: 960,
+    alignSelf: 'center',
+  },
+  stepCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 22,
+  },
+  stepCardDesktop: {
+    flex: 1,
+  },
+  stepNumber: {
+    fontFamily: 'DMMono_400Regular',
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.accent,
+    marginBottom: 10,
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.heading,
+    marginBottom: 8,
+  },
+  stepBody: {
+    fontSize: 13.5,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+
+  // Apply section
+  applySection: {
+    backgroundColor: colors.heading,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+    gap: 32,
+  },
+  applySectionDesktop: {
+    flexDirection: 'row',
+    paddingHorizontal: 48,
+    paddingVertical: 72,
+    gap: 56,
+    alignItems: 'center',
+  },
+  applyCopy: {
+    gap: 4,
+  },
+  applyCopyDesktop: {
+    flex: 1,
+    maxWidth: 420,
+  },
+  kickerLight: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accentMuted,
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  h2Light: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.textOnDark,
+    lineHeight: 32,
+    marginBottom: 14,
+  },
+  applyBody: {
+    fontSize: 15,
+    color: 'rgba(250, 248, 243, 0.75)',
+    lineHeight: 23,
+  },
+  leadCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 24,
+  },
+  leadCardDesktop: {
+    flex: 1,
+    maxWidth: 440,
+  },
+  formTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.accent,
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.heading,
+    marginBottom: 4,
+  },
+  formSubtitle: {
+    fontSize: 13.5,
+    color: colors.textMuted,
+    marginBottom: 20,
+    lineHeight: 19,
+  },
+  selectLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 6,
+  },
+  selectField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+    gap: 8,
+  },
+  selectValue: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+  },
+  selectPlaceholder: {
+    color: colors.textMuted,
+  },
+  formError: {
+    fontSize: 12.5,
+    color: colors.error,
+    marginBottom: 12,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingVertical: 15,
+    marginTop: 4,
+  },
+  submitButtonText: {
+    color: colors.surface,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  privacyNote: {
     fontSize: 11.5,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 16,
+  },
+  confirmWrap: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 10,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.heading,
+  },
+  confirmBody: {
+    fontSize: 13.5,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+    gap: 6,
+  },
+  footerWordmark: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.heading,
+  },
+  footerTagline: {
+    fontSize: 13.5,
+    color: colors.textMuted,
+    marginTop: 8,
+  },
+  footerLaunch: {
+    fontSize: 12,
+    color: colors.caption,
+    marginBottom: 12,
+  },
+  footerSignIn: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 8,
+  },
+  footerSignInAccent: {
+    color: colors.accent,
+    fontWeight: '700',
+  },
+  footerFamilyLink: {
+    fontSize: 11.5,
+    color: colors.caption,
+    marginTop: 6,
+  },
+
+  // Background picker modal
+  pickerScrim: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 61, 59, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '75%',
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.heading,
+    marginBottom: 12,
+  },
+  pickerList: {
+    maxHeight: 420,
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.border,
+    marginTop: 1,
+  },
+  radioSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
+  },
+  pickerRowText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
   },
 });

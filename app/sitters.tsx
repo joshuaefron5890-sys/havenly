@@ -176,35 +176,43 @@ export default function SittersLanding() {
           </View>
 
           <View style={[styles.heroVisual, isDesktop && styles.heroVisualDesktop]}>
-            <View style={styles.heroGlow} />
-            <View style={styles.portraitCard}>
-              <Image source={{ uri: HERO_IMAGE }} style={styles.portraitImage} resizeMode="cover" />
-              <View style={styles.portraitCaption}>
-                <View style={styles.statusDot} />
-                <View style={styles.portraitCaptionText}>
-                  <Text style={styles.exampleLabel}>EXAMPLE OPPORTUNITY</Text>
-                  <Text style={styles.portraitTitle}>Saturday playdate support</Text>
-                  <Text style={styles.portraitSubtitle}>Hillsborough – Vista Park · 10am–12:00pm</Text>
+            {/* Sized to portraitCard exactly (nothing else in normal flow
+                here) so the glow and both floating badges below can be
+                positioned relative to the CARD's real edges instead of
+                heroVisual's padding box — anchoring them to the padding
+                box is what previously let the badges drift deep into the
+                photo/caption instead of mostly floating outside the card. */}
+            <View style={styles.heroCardWrap}>
+              <View style={styles.heroGlow} />
+              <View style={styles.portraitCard}>
+                <Image source={{ uri: HERO_IMAGE }} style={styles.portraitImage} resizeMode="cover" />
+                <View style={styles.portraitCaption}>
+                  <View style={styles.statusDot} />
+                  <View style={styles.portraitCaptionText}>
+                    <Text style={styles.exampleLabel}>EXAMPLE OPPORTUNITY</Text>
+                    <Text style={styles.portraitTitle}>Saturday playdate support</Text>
+                    <Text style={styles.portraitSubtitle}>Hillsborough – Vista Park · 10am–12:00pm</Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <View style={[styles.floatCard, styles.floatCardPay]}>
-              <View style={styles.floatCardIconWrap}>
-                <Ionicons name="cash-outline" size={17} color={ACCENT} />
+              <View style={[styles.floatCard, styles.floatCardPay]}>
+                <View style={styles.floatCardIconWrap}>
+                  <Ionicons name="cash-outline" size={17} color={ACCENT} />
+                </View>
+                <View>
+                  <Text style={styles.floatCardLabel}>You set your rate</Text>
+                  <Text style={styles.floatCardValue}>$30–$45+ / hour</Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.floatCardLabel}>You set your rate</Text>
-                <Text style={styles.floatCardValue}>$30–$45+ / hour</Text>
-              </View>
-            </View>
-            <View style={[styles.floatCard, styles.floatCardFit]}>
-              <View style={styles.floatCardIconWrap}>
-                <Ionicons name="checkmark-circle-outline" size={17} color={ACCENT} />
-              </View>
-              <View>
-                <Text style={styles.floatCardLabel}>A family match</Text>
-                <Text style={styles.floatCardValue}>Based on your experience</Text>
+              <View style={[styles.floatCard, styles.floatCardFit]}>
+                <View style={styles.floatCardIconWrap}>
+                  <Ionicons name="checkmark-circle-outline" size={17} color={ACCENT} />
+                </View>
+                <View>
+                  <Text style={styles.floatCardLabel}>A family match</Text>
+                  <Text style={styles.floatCardValue}>Based on your experience</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -497,9 +505,12 @@ const styles = StyleSheet.create({
   heroCopy: {
     gap: 4,
   },
+  // 690 matches the reference h1's own max-width — heroVisualDesktop is a
+  // fixed 380, so this still fits inside the 1280 row cap with the 56 gap
+  // and 48px side padding to spare.
   heroCopyDesktop: {
     flex: 1,
-    maxWidth: 520,
+    maxWidth: 690,
   },
   eyebrow: {
     flexDirection: 'row',
@@ -513,19 +524,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: ACCENT,
   },
+  // Matches the reference's actual h1 rule set (pulled from its own
+  // devtools Styles pane): Georgia/Times New Roman serif rather than
+  // Lora, a much larger clamp(58px,7vw,92px) size, 0.95 line-height, and
+  // -0.045em letter-spacing — approximated here as fixed mobile/desktop
+  // sizes since RN's fontSize can't take a CSS clamp() expression.
   headline: {
-    fontFamily: 'Lora_700Bold',
-    fontSize: 38,
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontWeight: '700',
+    fontSize: 58,
     color: colors.heading,
-    lineHeight: 44,
-    marginBottom: 18,
+    lineHeight: 55,
+    letterSpacing: -2.61,
+    marginBottom: 24,
   },
   headlineDesktop: {
-    fontSize: 66,
-    lineHeight: 70,
+    fontSize: 88,
+    lineHeight: 84,
+    letterSpacing: -3.96,
   },
+  // h1 em in the reference: font-style normal (not the browser default
+  // italic), a specific green, and a lighter 500 weight than the rest of
+  // the bold headline.
   headlineAccent: {
     color: ACCENT,
+    fontStyle: 'normal',
+    fontWeight: '500',
   },
   lede: {
     fontSize: 16,
@@ -561,7 +585,6 @@ const styles = StyleSheet.create({
 
   // Hero visual
   heroVisual: {
-    position: 'relative',
     paddingTop: 20,
     paddingBottom: 40,
   },
@@ -572,10 +595,22 @@ const styles = StyleSheet.create({
   heroVisualDesktop: {
     width: 380,
   },
+  // Wraps just the card (nothing else sits in normal flow here), so it's
+  // sized to exactly the card's box — the glow and both floating badges
+  // below are positioned against THIS, not heroVisual's padding box, so
+  // their offsets describe distance from the card's real edges.
+  heroCardWrap: {
+    position: 'relative',
+  },
   portraitCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
+    borderRadius: 28,
     backgroundColor: colors.surface,
+    // Insets the photo on 3 sides so a white frame shows around it,
+    // matching the reference — the caption row below intentionally
+    // ignores this (own padding instead) so its text still runs the
+    // full card width.
+    paddingTop: 14,
+    paddingHorizontal: 14,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowRadius: 40,
@@ -585,29 +620,35 @@ const styles = StyleSheet.create({
   // A soft ambient shape behind the card, peeking out past its edges —
   // approximates the reference's blurred background glow (React Native
   // has no cheap true gaussian blur, so this is a large, low-opacity
-  // solid circle instead).
+  // solid circle instead). Offsets are relative to heroCardWrap, i.e. the
+  // card's own box, so this scales with the card instead of drifting.
   heroGlow: {
     position: 'absolute',
-    top: -30,
-    left: -40,
-    right: -40,
-    bottom: -30,
+    top: -40,
+    left: -56,
+    right: -56,
+    bottom: -40,
     backgroundColor: ACCENT_MUTED,
-    opacity: 0.5,
+    opacity: 0.55,
     borderRadius: 999,
   },
   // A fixed height made this look landscape on wide desktop columns
   // (this container can grow up to 440px wide) — aspectRatio keeps it a
-  // taller portrait crop, matching the reference, at any width.
+  // taller portrait crop, matching the reference, at any width. Rounded
+  // on its own now that it's inset inside the card's padding rather than
+  // flush with (and clipped by) the card's own corners.
   portraitImage: {
     width: '100%',
     aspectRatio: 1.05,
+    borderRadius: 16,
   },
   portraitCaption: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 18,
   },
   statusDot: {
     width: 8,
@@ -649,7 +690,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
-    maxWidth: 220,
+    maxWidth: 230,
   },
   floatCardIconWrap: {
     width: 32,
@@ -659,18 +700,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Offsets are relative to heroCardWrap (the card's own box): a badge
+  // roughly 54px tall sitting at top:-36 has ~18px overlapping down into
+  // the card (fine — that lands on the photo, not text) while most of it
+  // floats above and to the left, outside the card entirely.
   floatCardPay: {
-    top: 2,
-    left: -8,
+    top: -36,
+    left: -28,
   },
-  // bottom is measured from heroVisual's own bottom edge (its nearest
-  // positioned ancestor), not from portraitCard directly — portraitCard
-  // sits pinned against heroVisual's 40px paddingBottom, so this needs to
-  // land the badge low enough that it clears the caption's address line
-  // (in the card's own bottom padding strip) instead of covering it.
+  // Mirrors floatCardPay from the bottom-right corner. bottom:-44 keeps
+  // the overlap into the card to ~10px — inside portraitCaption's 18px
+  // bottom padding, short of the address line above it — so the badge
+  // hangs mostly below the card instead of covering that text.
   floatCardFit: {
-    bottom: -4,
-    right: -8,
+    bottom: -44,
+    right: -24,
   },
   floatCardLabel: {
     fontSize: 10.5,

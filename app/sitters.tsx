@@ -520,10 +520,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 16,
   },
+  // Pulled directly from the reference's own inspector: a system sans
+  // stack (not this page's usual Geist), a specific green, and uppercase
+  // with a bit of tracking — rather than an already-caps source string.
   eyebrowText: {
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
     fontSize: 12,
     fontWeight: '700',
-    color: ACCENT,
+    color: '#1B6B56',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   // Matches the reference's actual h1 rule set (pulled from its own
   // devtools Styles pane): Georgia/Times New Roman serif rather than

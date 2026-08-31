@@ -565,9 +565,12 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 40,
   },
+  // A fixed width (not flex + maxWidth) — flex:1 let this column grow to
+  // fill whatever space heroCopy didn't claim, which on a wide viewport
+  // meant a much wider card than intended and, since portraitImage's
+  // height is tied to its width via aspectRatio, a much taller photo too.
   heroVisualDesktop: {
-    flex: 1,
-    maxWidth: 440,
+    width: 380,
   },
   portraitCard: {
     borderRadius: 24,
@@ -660,8 +663,13 @@ const styles = StyleSheet.create({
     top: 2,
     left: -8,
   },
+  // bottom is measured from heroVisual's own bottom edge (its nearest
+  // positioned ancestor), not from portraitCard directly — portraitCard
+  // sits pinned against heroVisual's 40px paddingBottom, so this needs to
+  // land the badge low enough that it clears the caption's address line
+  // (in the card's own bottom padding strip) instead of covering it.
   floatCardFit: {
-    bottom: 8,
+    bottom: -4,
     right: -8,
   },
   floatCardLabel: {

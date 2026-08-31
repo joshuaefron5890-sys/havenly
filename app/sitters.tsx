@@ -868,6 +868,8 @@ const styles = StyleSheet.create({
   experienceCard: {
     backgroundColor: colors.surface,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: 24,
     gap: 4,
   },

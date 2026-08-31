@@ -22,6 +22,15 @@ import { colors } from '../theme/colors';
 const HERO_IMAGE =
   'https://images.unsplash.com/photo-1585541993027-55373d67ea86?q=80&w=1658&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
+// The reference page's accent reads as a deeper forest green than this
+// app's own brighter colors.accent (#2A9D8F — deliberately brightened
+// earlier for legibility on a photo background elsewhere). #196C54 is
+// the exact hex given for this page — used here instead of the global
+// token so this one page matches the reference precisely without
+// touching the accent everywhere else in the app.
+const ACCENT = '#196C54';
+const ACCENT_MUTED = '#D6E5E0';
+
 const BACKGROUND_OPTIONS = [
   'Registered behavior technician (RBT) or behavior technician',
   'Special education teacher or classroom aide',
@@ -121,7 +130,7 @@ export default function SittersLanding() {
         <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <View style={[styles.heroCopy, isDesktop && styles.heroCopyDesktop]}>
             <View style={styles.eyebrow}>
-              <Ionicons name="location-outline" size={13} color={colors.accent} />
+              <Ionicons name="location-outline" size={13} color={ACCENT} />
               <Text style={styles.eyebrowText}>Now forming in the Bay Area</Text>
             </View>
             <Text style={[styles.headline, isDesktop && styles.headlineDesktop]}>
@@ -143,6 +152,7 @@ export default function SittersLanding() {
           </View>
 
           <View style={[styles.heroVisual, isDesktop && styles.heroVisualDesktop]}>
+            <View style={styles.heroGlow} />
             <View style={styles.portraitCard}>
               <Image source={{ uri: HERO_IMAGE }} style={styles.portraitImage} resizeMode="cover" />
               <View style={styles.portraitCaption}>
@@ -157,7 +167,7 @@ export default function SittersLanding() {
 
             <View style={[styles.floatCard, styles.floatCardPay]}>
               <View style={styles.floatCardIconWrap}>
-                <Ionicons name="cash-outline" size={17} color={colors.accent} />
+                <Ionicons name="cash-outline" size={17} color={ACCENT} />
               </View>
               <View>
                 <Text style={styles.floatCardLabel}>You set your rate</Text>
@@ -166,7 +176,7 @@ export default function SittersLanding() {
             </View>
             <View style={[styles.floatCard, styles.floatCardFit]}>
               <View style={styles.floatCardIconWrap}>
-                <Ionicons name="checkmark-circle-outline" size={17} color={colors.accent} />
+                <Ionicons name="checkmark-circle-outline" size={17} color={ACCENT} />
               </View>
               <View>
                 <Text style={styles.floatCardLabel}>A family match</Text>
@@ -182,7 +192,7 @@ export default function SittersLanding() {
             <View key={item.bold + item.rest} style={styles.trustItemWrap}>
               {i > 0 && isDesktop ? <View style={styles.trustDivider} /> : null}
               <View style={styles.trustItem}>
-                <Ionicons name={item.icon} size={20} color={colors.accent} />
+                <Ionicons name={item.icon} size={20} color={ACCENT} />
                 <Text style={styles.trustText}>
                   <Text style={styles.trustBold}>{item.bold}</Text> {item.rest}
                 </Text>
@@ -207,7 +217,7 @@ export default function SittersLanding() {
               to know one another.
             </Text>
             <View style={styles.notTherapy}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
+              <Ionicons name="shield-checkmark-outline" size={20} color={ACCENT} />
               <Text style={styles.notTherapyText}>
                 <Text style={styles.notTherapyBold}>This isn’t a clinical role. </Text>
                 You’ll support play and participation—not deliver therapy or follow a treatment plan.
@@ -278,7 +288,7 @@ export default function SittersLanding() {
             <View style={[styles.leadCard, isDesktop && styles.leadCardDesktop]}>
               {submitted ? (
                 <View style={styles.confirmWrap}>
-                  <Ionicons name="checkmark-circle" size={32} color={colors.accent} />
+                  <Ionicons name="checkmark-circle" size={32} color={ACCENT} />
                   <Text style={styles.confirmTitle}>You’re on the list.</Text>
                   <Text style={styles.confirmBody}>
                     We’ll send the full application and launch details to {email}.
@@ -424,7 +434,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.accent,
+    backgroundColor: ACCENT,
     borderRadius: 999,
     paddingVertical: 9,
     paddingHorizontal: 16,
@@ -469,17 +479,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.accentMuted,
     alignSelf: 'flex-start',
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
     marginBottom: 16,
   },
   eyebrowText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.accent,
+    color: ACCENT,
   },
   headline: {
     fontFamily: 'Lora_700Bold',
@@ -493,7 +499,7 @@ const styles = StyleSheet.create({
     lineHeight: 70,
   },
   headlineAccent: {
-    color: colors.accent,
+    color: ACCENT,
   },
   lede: {
     fontSize: 16,
@@ -510,7 +516,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.accent,
+    backgroundColor: ACCENT,
     borderRadius: 999,
     paddingVertical: 15,
     paddingHorizontal: 26,
@@ -542,10 +548,24 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surface,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 4,
+    shadowOpacity: 0.18,
+    shadowRadius: 40,
+    shadowOffset: { width: 0, height: 20 },
+    elevation: 8,
+  },
+  // A soft ambient shape behind the card, peeking out past its edges —
+  // approximates the reference's blurred background glow (React Native
+  // has no cheap true gaussian blur, so this is a large, low-opacity
+  // solid circle instead).
+  heroGlow: {
+    position: 'absolute',
+    top: -30,
+    left: -40,
+    right: -40,
+    bottom: -30,
+    backgroundColor: ACCENT_MUTED,
+    opacity: 0.5,
+    borderRadius: 999,
   },
   // A fixed height made this look landscape on wide desktop columns
   // (this container can grow up to 440px wide) — aspectRatio keeps it a
@@ -564,7 +584,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.accent,
+    backgroundColor: ACCENT,
   },
   portraitCaptionText: {
     flex: 1,
@@ -596,17 +616,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
     maxWidth: 220,
   },
   floatCardIconWrap: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: colors.accentMuted,
+    backgroundColor: ACCENT_MUTED,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -693,7 +713,7 @@ const styles = StyleSheet.create({
   kicker: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.accent,
+    color: ACCENT,
     letterSpacing: 1.2,
     marginBottom: 10,
   },
@@ -713,7 +733,7 @@ const styles = StyleSheet.create({
   notTherapy: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: colors.accentMuted,
+    backgroundColor: ACCENT_MUTED,
     borderRadius: 16,
     padding: 16,
   },
@@ -752,7 +772,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.accent,
+    backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
@@ -774,7 +794,7 @@ const styles = StyleSheet.create({
   howSection: {
     paddingHorizontal: 20,
     paddingVertical: 40,
-    backgroundColor: colors.accentMuted,
+    backgroundColor: ACCENT_MUTED,
   },
   centerHeading: {
     alignItems: 'center',
@@ -823,7 +843,7 @@ const styles = StyleSheet.create({
   stepNumber: {
     fontFamily: 'Lora_700Bold',
     fontSize: 17,
-    color: colors.accent,
+    color: ACCENT,
   },
   stepTitle: {
     fontSize: 16,
@@ -869,7 +889,7 @@ const styles = StyleSheet.create({
   kickerLight: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.accentMuted,
+    color: ACCENT_MUTED,
     letterSpacing: 1.2,
     marginBottom: 10,
   },
@@ -897,7 +917,7 @@ const styles = StyleSheet.create({
   formTag: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.accent,
+    color: ACCENT,
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -951,7 +971,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.accent,
+    backgroundColor: ACCENT,
     borderRadius: 999,
     paddingVertical: 15,
     marginTop: 4,
@@ -1013,7 +1033,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   footerSignInAccent: {
-    color: colors.accent,
+    color: ACCENT,
     fontWeight: '700',
   },
   footerFamilyLink: {
@@ -1061,8 +1081,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   radioSelected: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
+    borderColor: ACCENT,
+    backgroundColor: ACCENT,
   },
   pickerRowText: {
     flex: 1,

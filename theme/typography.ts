@@ -11,6 +11,18 @@ import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
 // headings stay on DM Sans via resolveFontFamily below, so this is loaded
 // but not part of that resolution.
 import { Lora_600SemiBold, Lora_700Bold } from '@expo-google-fonts/lora';
+// app/sitters.tsx's body/UI font (Geist, per the same reference) — also
+// loaded here but, like Lora above, not part of resolveFontFamily's
+// app-wide DM Sans resolution; that page wraps AppText's Text locally to
+// use these instead.
+import {
+  Geist_400Regular,
+  Geist_400Regular_Italic,
+  Geist_500Medium,
+  Geist_500Medium_Italic,
+  Geist_700Bold,
+  Geist_700Bold_Italic,
+} from '@expo-google-fonts/geist';
 
 // DM Sans is loaded as discrete per-weight files (see app/_layout.tsx's
 // useFonts call below), not a single variable-weight family — React
@@ -30,6 +42,12 @@ export const FONT_FILES = {
   DMMono_400Regular,
   Lora_600SemiBold,
   Lora_700Bold,
+  Geist_400Regular,
+  Geist_400Regular_Italic,
+  Geist_500Medium,
+  Geist_500Medium_Italic,
+  Geist_700Bold,
+  Geist_700Bold_Italic,
 } as const;
 
 export const FONT_FAMILY = {

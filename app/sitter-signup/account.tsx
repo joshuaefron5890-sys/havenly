@@ -1,17 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
-import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { FieldInput } from '../../components/FieldInput';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
-import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth, firebaseConfigured, signInWithGoogleIdToken } from '../../lib/firebase';
-import { pickImageFile, pickNativePhoto, uploadPhotoBlob } from '../../lib/photoUpload';
 import { fetchMySitterProfile, saveMySitterProfile } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
@@ -41,31 +37,35 @@ function friendlyGoogleError(reason: string): string | null {
   }
 }
 
-// Step 1 of 3 — the only step reachable without an existing account,
-// since it's the one that creates it (see _layout.tsx). A visitor who
-// already has one (resumed via back-navigation, or a returning sitter
-// whose earlier session got this far) sees a "connected" state instead of
-// the signup form — same reasoning as app/onboarding/account.tsx's
-// connectedGmail/editMode branch.
+function splitName(name: string): [string, string] {
+  const [first, ...rest] = name.trim().split(/\s+/);
+  return [first ?? '', rest.join(' ')];
+}
+
+// Step 1 of 3 — mirrors app/onboarding/account.tsx's own account-creation
+// step (same first/last name split, same Google sign-in option) rather
+// than a sitter-specific layout. The photo picker lives on step 2 instead
+// — account creation itself doesn't need it, and every other field here
+// (name/email/password) is exactly what onboarding/account.tsx collects
+// too. A visitor who already has an account (resumed via back-navigation,
+// or a returning sitter whose earlier session got this far) sees a
+// "connected" state instead of the signup form — same reasoning as that
+// screen's connectedGmail branch.
 export default function SitterSignupAccount() {
   // Carried over from the sitters splash page's interest-list form, if
   // that's where this visit came from (via /sitter-signup's redirect —
-  // see that file). name still lands in this step's own field below; zip
-  // has nowhere to show yet (that's step 3), so it rides along silently
-  // in the saved profile and step 3 picks it up from there.
+  // see that file). zip has nowhere to show yet (that's step 3), so it
+  // rides along silently in the saved profile and step 3 picks it up
+  // from there.
   const { name: prefillName, zip: prefillZip } = useLocalSearchParams<{ name?: string; zip?: string }>();
   const { user, loading: authLoading } = useAuth();
   const [loadingExisting, setLoadingExisting] = useState(true);
-  const [name, setName] = useState(prefillName ?? '');
+  const [prefillFirst, prefillLast] = splitName(prefillName ?? '');
+  const [firstName, setFirstName] = useState(prefillFirst);
+  const [lastName, setLastName] = useState(prefillLast);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [referralCodeInput, setReferralCodeInput] = useState('');
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
-  const [pendingPhotoBlob, setPendingPhotoBlob] = useState<Blob | null>(null);
-  const [pendingPhotoPreviewUri, setPendingPhotoPreviewUri] = useState<string | null>(null);
-  const [pickingPhoto, setPickingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
@@ -84,49 +84,15 @@ export default function SitterSignupAccount() {
     let cancelled = false;
     fetchMySitterProfile().then((profile) => {
       if (cancelled) return;
-      setName(profile?.name || user.displayName || '');
-      setPhotoUrl(profile?.photoUrl ?? null);
+      const [first, last] = splitName(profile?.name || user.displayName || '');
+      setFirstName((prev) => prev || first);
+      setLastName((prev) => prev || last);
       setLoadingExisting(false);
     });
     return () => {
       cancelled = true;
     };
   }, [authLoading, user]);
-
-  const uploadErrorMessage = (err: any, fallback: string): string => {
-    if (err?.code) return friendlyError(err.code);
-    if (err instanceof Error && err.message) return err.message;
-    return fallback;
-  };
-
-  // Same deferred-upload reasoning as the old single-page flow: picking
-  // (and, on web, cropping) is purely local, no account needed yet.
-  const handlePickPhoto = async () => {
-    setPhotoError(null);
-    if (Platform.OS === 'web') {
-      const file = await pickImageFile();
-      if (file) setPickedPhoto(file);
-      return;
-    }
-    setPickingPhoto(true);
-    try {
-      const picked = await pickNativePhoto();
-      if (picked) {
-        setPendingPhotoBlob(picked.blob);
-        setPendingPhotoPreviewUri(picked.uri);
-      }
-    } catch (err) {
-      setPhotoError(uploadErrorMessage(err, 'Couldn’t open your photo library — check its permission and try again.'));
-    } finally {
-      setPickingPhoto(false);
-    }
-  };
-
-  const handleCropConfirm = (blob: Blob) => {
-    setPickedPhoto(null);
-    setPendingPhotoBlob(blob);
-    setPendingPhotoPreviewUri(URL.createObjectURL(blob));
-  };
 
   const handleGoogleCredential = async (idToken: string) => {
     setError(null);
@@ -137,7 +103,9 @@ export default function SitterSignupAccount() {
     setGoogleSubmitting(true);
     try {
       const credential = await signInWithGoogleIdToken(idToken);
-      setName((prev) => prev || credential.user.displayName || '');
+      const [first, last] = splitName(credential.user.displayName ?? '');
+      setFirstName((prev) => prev || first);
+      setLastName((prev) => prev || last);
       setEmail(credential.user.email ?? '');
     } catch (err: any) {
       const message = friendlyGoogleError(err?.message ?? err?.code ?? '');
@@ -154,8 +122,9 @@ export default function SitterSignupAccount() {
 
   const handleContinue = async () => {
     setError(null);
-    if (!name.trim()) {
-      setError('Add your name to continue.');
+    const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Add your first and last name to continue.');
       return;
     }
     if (!connected && !auth?.currentUser) {
@@ -176,28 +145,21 @@ export default function SitterSignupAccount() {
     setSubmitting(true);
     try {
       // A retry after an earlier failed attempt (e.g. the account got
-      // created but the photo upload or save below failed) would
-      // otherwise throw auth/email-already-in-use here — only create it
-      // if that didn't already happen, same reasoning as the old
-      // single-page flow.
+      // created but the save below failed) would otherwise throw
+      // auth/email-already-in-use here — only create it if that didn't
+      // already happen, same reasoning as onboarding/account.tsx.
       if (!auth?.currentUser) {
         const credential = await createUserWithEmailAndPassword(auth!, email.trim(), password);
-        await updateProfile(credential.user, { displayName: name.trim() });
-      } else if (auth.currentUser.displayName !== name.trim()) {
-        await updateProfile(auth.currentUser, { displayName: name.trim() });
-      }
-
-      let finalPhotoUrl = photoUrl;
-      if (pendingPhotoBlob) {
-        finalPhotoUrl = await uploadPhotoBlob(pendingPhotoBlob, 'sitter-photo.jpg');
+        await updateProfile(credential.user, { displayName: name });
+      } else if (auth.currentUser.displayName !== name) {
+        await updateProfile(auth.currentUser, { displayName: name });
       }
 
       const isNew = !connected;
       await saveMySitterProfile(
         {
-          name: name.trim(),
+          name,
           email: auth?.currentUser?.email ?? email.trim(),
-          photoUrl: finalPhotoUrl,
           ...(isNew && prefillZip ? { zipCode: prefillZip } : {}),
           signupStep: '/sitter-signup/experience',
           signupComplete: false,
@@ -207,7 +169,7 @@ export default function SitterSignupAccount() {
       );
       router.push('/sitter-signup/experience');
     } catch (err: any) {
-      setError(uploadErrorMessage(err, 'Something went wrong saving your info. Please try again.'));
+      setError(err?.code ? friendlyError(err.code) : err instanceof Error ? err.message : 'Something went wrong saving your info. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -223,49 +185,37 @@ export default function SitterSignupAccount() {
 
   return (
     <View style={styles.screen}>
-      <WizardHeader step={1} totalSteps={3} title="Become a" accent="provider." backTo="/" />
+      <WizardHeader step={1} totalSteps={3} title="Create your" accent="account." backTo="/" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
           Register to be listed for families on Opened Circle looking for a sitter. We’ll review your background
           check before you show up in any recommendations.
         </Text>
 
-        <View style={styles.topSection}>
-          <FieldInput label="Your name" placeholder="Jordan Lee" value={name} onChangeText={setName} />
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <FieldInput label="First name" placeholder="Jamie" value={firstName} onChangeText={setFirstName} />
+          </View>
+          <View style={styles.half}>
+            <FieldInput label="Last name" placeholder="Chen" value={lastName} onChangeText={setLastName} />
+          </View>
+        </View>
 
-          {connected ? (
-            <View style={styles.connectedRow}>
-              <Ionicons name="mail-outline" size={22} color={colors.positive} />
-              <View style={styles.connectedTextWrap}>
-                <Text style={styles.connectedTitle}>Signed in</Text>
-                <Text style={styles.connectedEmail}>{user?.email}</Text>
-              </View>
-            </View>
-          ) : (
+        {connected ? (
+          <View style={styles.connectedRow}>
+            <Text style={styles.connectedTitle}>Signed in</Text>
+            <Text style={styles.connectedEmail}>{user?.email}</Text>
+          </View>
+        ) : (
+          <>
             <FieldInput
               label="Email"
-              placeholder="jordan@email.com"
+              placeholder="jamie@email.com"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
-          )}
-
-          <AddPhotoCircle
-            label="Your photo"
-            caption="Tap to add"
-            imageUri={pendingPhotoPreviewUri ?? photoUrl}
-            uploading={pickingPhoto}
-            onPress={handlePickPhoto}
-            align="flex-start"
-          />
-          {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
-        </View>
-        <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
-
-        {!connected ? (
-          <>
             <FieldInput
               label="Password"
               placeholder="6+ characters"
@@ -282,7 +232,7 @@ export default function SitterSignupAccount() {
               autoCapitalize="characters"
             />
           </>
-        ) : null}
+        )}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -321,28 +271,22 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
   },
-  topSection: {
-    gap: 0,
+  row: {
+    flexDirection: 'row',
+    gap: 10,
   },
-  photoError: {
-    fontSize: 12,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: -12,
-    marginBottom: 16,
+  half: {
+    flex: 1,
   },
   connectedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: colors.positiveMuted,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 16,
-  },
-  connectedTextWrap: {
-    flex: 1,
   },
   connectedTitle: {
     fontSize: 15,
@@ -352,7 +296,6 @@ const styles = StyleSheet.create({
   connectedEmail: {
     fontSize: 13,
     color: colors.textMuted,
-    marginTop: 2,
   },
   error: {
     fontSize: 13,

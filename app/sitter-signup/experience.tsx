@@ -1,12 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
+import { AddPhotoCircle } from '../../components/AddPhotoCircle';
 import { Chip } from '../../components/Chip';
 import { FieldInput } from '../../components/FieldInput';
+import { PhotoCropperModal } from '../../components/PhotoCropperModal';
 import { WizardHeader } from '../../components/WizardHeader';
-import { extensionFromDocumentAsset, pickDocument, PickedDocument, uploadPhotoBlob } from '../../lib/photoUpload';
+import {
+  extensionFromDocumentAsset,
+  pickDocument,
+  pickImageFile,
+  pickNativePhoto,
+  PickedDocument,
+  uploadPhotoBlob,
+} from '../../lib/photoUpload';
 import { NEURODIVERGENCE_OPTIONS } from '../../lib/neurodivergence';
 import {
   docExtensionLabel,
@@ -34,6 +43,14 @@ function friendlyError(err: any, fallback: string): string {
 export default function SitterSignupExperience() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<SitterProfile>(emptySitterProfile);
+  const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
+  // Picked locally but not yet uploaded — uploading waits for
+  // handleContinue, same deferred-upload reasoning as the old
+  // single-page flow (nothing pending is lost if they never finish).
+  const [pendingPhotoBlob, setPendingPhotoBlob] = useState<Blob | null>(null);
+  const [pendingPhotoPreviewUri, setPendingPhotoPreviewUri] = useState<string | null>(null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [pendingDocs, setPendingDocs] = useState<PickedDocument[]>([]);
   const [pickingDoc, setPickingDoc] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
@@ -53,6 +70,35 @@ export default function SitterSignupExperience() {
   }, []);
 
   const patch = (fields: Partial<SitterProfile>) => setProfile((prev) => ({ ...prev, ...fields }));
+
+  // Same deferred-upload reasoning as pendingDocs below — picking (and, on
+  // web, cropping) is purely local, no network needed yet.
+  const handlePickPhoto = async () => {
+    setPhotoError(null);
+    if (Platform.OS === 'web') {
+      const file = await pickImageFile();
+      if (file) setPickedPhoto(file);
+      return;
+    }
+    setPickingPhoto(true);
+    try {
+      const picked = await pickNativePhoto();
+      if (picked) {
+        setPendingPhotoBlob(picked.blob);
+        setPendingPhotoPreviewUri(picked.uri);
+      }
+    } catch (err) {
+      setPhotoError(friendlyError(err, 'Couldn’t open your photo library — check its permission and try again.'));
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
+
+  const handleCropConfirm = (blob: Blob) => {
+    setPickedPhoto(null);
+    setPendingPhotoBlob(blob);
+    setPendingPhotoPreviewUri(URL.createObjectURL(blob));
+  };
 
   const toggleFromList = (key: 'specialties' | 'certifications', option: string) => {
     setProfile((prev) => ({
@@ -84,6 +130,10 @@ export default function SitterSignupExperience() {
 
   const handleContinue = async () => {
     setError(null);
+    if (!pendingPhotoPreviewUri && !profile.photoUrl) {
+      setError('Add a photo to continue.');
+      return;
+    }
     if (!profile.phone.trim()) {
       setError('Add your phone number to continue.');
       return;
@@ -95,6 +145,11 @@ export default function SitterSignupExperience() {
 
     setSubmitting(true);
     try {
+      let photoUrl = profile.photoUrl;
+      if (pendingPhotoBlob) {
+        photoUrl = await uploadPhotoBlob(pendingPhotoBlob, 'sitter-photo.jpg');
+      }
+
       let certificationDocUrls = profile.certificationDocUrls;
       if (pendingDocs.length) {
         const uploadedUrls = await Promise.all(
@@ -108,6 +163,7 @@ export default function SitterSignupExperience() {
 
       await saveMySitterProfile(
         {
+          photoUrl,
           phone: profile.phone.trim(),
           yearsExperience: profile.yearsExperience.trim(),
           specialties: profile.specialties,
@@ -138,6 +194,17 @@ export default function SitterSignupExperience() {
     <View style={styles.screen}>
       <WizardHeader step={2} totalSteps={3} title="Your" accent="experience." backTo="/sitter-signup/account" />
       <ScrollView contentContainerStyle={styles.content}>
+        <AddPhotoCircle
+          label="Your photo"
+          caption="Tap to add"
+          imageUri={pendingPhotoPreviewUri ?? profile.photoUrl}
+          uploading={pickingPhoto}
+          onPress={handlePickPhoto}
+          align="flex-start"
+        />
+        {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+        <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
+
         <FieldInput
           label="Phone"
           placeholder="(555) 123-4567"
@@ -252,6 +319,13 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
+  },
+  photoError: {
+    fontSize: 12,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 16,
   },
   label: {
     fontSize: 12,

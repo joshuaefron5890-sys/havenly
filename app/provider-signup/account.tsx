@@ -101,6 +101,22 @@ export default function SitterSignupAccount() {
       const [first, last] = splitName(profile?.name || user.displayName || '');
       setFirstName((prev) => prev || first);
       setLastName((prev) => prev || last);
+      // An EXISTING sitter doc with a real name already on file means
+      // there's genuinely nothing left to fill in here — skip straight to
+      // wherever they actually belong instead of showing (and briefly
+      // flashing through, while this profile fetch was pending) a "review
+      // your name" screen with nothing to review. A fresh Google
+      // connection made just now on this very screen (handleGoogleCredential
+      // below) has no saved doc yet — profile is null — so it still falls
+      // through to the normal form, since handleContinue is what actually
+      // creates that doc.
+      if (profile && first && last) {
+        const step = profile.signupComplete
+          ? '/(sitter)'
+          : (profile.signupStep?.replace(/^\/sitter-signup\b/, '/provider-signup') ?? '/provider-signup/experience');
+        router.replace(step as any);
+        return;
+      }
       setLoadingExisting(false);
     });
     return () => {

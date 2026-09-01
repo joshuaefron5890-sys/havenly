@@ -187,7 +187,7 @@ export default function SitterSignupAccount() {
     <View style={styles.screen}>
       <WizardHeader step={1} totalSteps={3} title="Create your" accent="account." backTo="/" />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>Register to be listed for families on Opened Circle looking for a sitter.</Text>
+        <Text style={styles.intro}>Register to be listed for families on Opened Circle looking for a provider.</Text>
 
         <View style={styles.row}>
           <View style={styles.half}>

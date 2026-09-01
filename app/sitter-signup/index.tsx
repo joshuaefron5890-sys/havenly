@@ -416,7 +416,7 @@ export default function SitterSignup() {
                 <View style={styles.desktopBrandRow}>
                   <Image source={require('../../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
                   <Text style={styles.desktopWordmark}>
-                    Opened <Text style={styles.desktopWordmarkAccent}>Circle</Text> for Sitters
+                    Opened <Text style={styles.desktopWordmarkAccent}>Circle</Text> for Providers
                   </Text>
                 </View>
               </View>

@@ -115,7 +115,8 @@ export default function SittersLanding() {
   const howY = useRef(0);
   const formY = useRef(0);
 
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [zip, setZip] = useState('');
   const [background, setBackground] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -134,13 +135,14 @@ export default function SittersLanding() {
   // to wait on.
   const handleSubmit = () => {
     setError(null);
-    if (!name.trim() || !zip.trim() || !background) {
+    if (!firstName.trim() || !lastName.trim() || !zip.trim() || !background) {
       setError('Fill in every field to join the interest list.');
       return;
     }
     setSubmitting(true);
     setTimeout(() => {
-      router.push({ pathname: '/sitter-signup', params: { name: name.trim(), zip: zip.trim() } });
+      const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+      router.push({ pathname: '/sitter-signup', params: { name, zip: zip.trim() } });
     }, 500);
   };
 
@@ -354,7 +356,14 @@ export default function SittersLanding() {
               <Text style={styles.formTitle}>Join our provider community</Text>
               <Text style={styles.formSubtitle}>Let’s first make sure you’re eligible for our first launch.</Text>
 
-              <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
+              <View style={styles.formNameRow}>
+                <View style={styles.formNameHalf}>
+                  <FieldInput label="First name" placeholder="Jamie" value={firstName} onChangeText={setFirstName} />
+                </View>
+                <View style={styles.formNameHalf}>
+                  <FieldInput label="Last name" placeholder="Chen" value={lastName} onChangeText={setLastName} />
+                </View>
+              </View>
               <FieldInput
                 label="ZIP code"
                 placeholder="94010"
@@ -527,16 +536,13 @@ const styles = StyleSheet.create({
   },
 
   // Hero
-  // Full-bleed white background, wrapping the capped/centered hero
-  // below — same split as roleSectionOuter/howSection/applySection.
-  // heroDesktop caps its own width to 1280, so painting the background
-  // there (like before) left the screen's cream showing through on
-  // either side on a wide viewport instead of reaching the edges.
-  // Deliberately whiter than the nav above it (colors.surface, not the
-  // nav's cream #FAF9F3) — the reference keeps the two visibly distinct
-  // rather than blending them.
+  // Full-bleed background, wrapping the capped/centered hero below —
+  // same split as roleSectionOuter/howSection/applySection. heroDesktop
+  // caps its own width to 1280, so painting the background there (like
+  // before) left the screen's cream showing through on either side on a
+  // wide viewport instead of reaching the edges.
   heroOuter: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#FAF9F3',
   },
   hero: {
     // paddingTop (not marginTop) so the nav-to-hero gap is filled with
@@ -1138,6 +1144,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginBottom: 20,
     lineHeight: 19,
+  },
+  formNameRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  formNameHalf: {
+    flex: 1,
   },
   selectLabel: {
     fontSize: 12,

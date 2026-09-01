@@ -72,6 +72,17 @@ html { scroll-behavior: smooth; }
   background: #faf9f3;
   color: #24382f;
   font-family: 'Geist', Arial, sans-serif;
+  /* React Native Web resets <body> to height:100vh + overflow:hidden,
+     since RN screens normally bring their own ScrollView instead of
+     relying on document scroll — this page has no ScrollView (it's
+     real HTML relying on the page itself scrolling), so without this
+     the whole page is inert: content renders but the viewport can
+     never move. Making .kp-root its own scroll container sidesteps
+     that instead of touching the shared, app-wide <body> reset. */
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
 
   * { box-sizing: border-box; }
   a { color: inherit; text-decoration: none; }

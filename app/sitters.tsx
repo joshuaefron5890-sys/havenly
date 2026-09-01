@@ -293,9 +293,8 @@ export default function SittersLanding() {
             <Text style={styles.h2}>Three steps to get started.</Text>
           </View>
           <View style={[styles.stepsGrid, isDesktop && styles.stepsGridDesktop]}>
-            {STEPS.map((step, i) => (
+            {STEPS.map((step) => (
               <View key={step.number} style={[styles.stepItemWrap, isDesktop && styles.stepItemWrapDesktop]}>
-                {i > 0 && isDesktop ? <View style={styles.stepConnector} /> : null}
                 <View style={styles.stepCard}>
                   <View style={styles.stepNumberCircle}>
                     <Text style={styles.stepNumber}>{step.number}</Text>
@@ -975,17 +974,6 @@ const styles = StyleSheet.create({
   stepItemWrapDesktop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  // A dashed line bridging one step's number circle to the next — sits
-  // as a row-sibling before the card, offset down to roughly the
-  // circle's vertical center (28px radius + card's own top padding).
-  stepConnector: {
-    width: 28,
-    marginTop: 26,
-    marginRight: -8,
-    borderTopWidth: 1,
-    borderStyle: 'dashed',
-    borderTopColor: colors.textMuted,
   },
   stepCard: {
     flex: 1,

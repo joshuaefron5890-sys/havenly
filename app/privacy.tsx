@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
 // Public, unauthenticated route (App Store Connect's "Privacy Policy URL"
@@ -97,6 +98,7 @@ const SECTIONS: Section[] = [
 ];
 
 export default function PrivacyPolicy() {
+  const isDesktop = useIsDesktop();
   const goBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -109,28 +111,28 @@ export default function PrivacyPolicy() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <View style={styles.header}>
+      <View style={[styles.header, isDesktop && styles.headerDesktop]}>
         <Pressable style={styles.back} onPress={goBack} hitSlop={8}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Privacy Policy</Text>
+        <Text style={[styles.headerTitle, isDesktop && styles.headerTitleDesktop]}>Privacy Policy</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.contentDesktop]}>
         <Text style={styles.effectiveDate}>Effective {EFFECTIVE_DATE}</Text>
 
         {SECTIONS.map((section) => (
           <Fragment key={section.heading}>
-            <Text style={styles.sectionHeading}>{section.heading}</Text>
+            <Text style={[styles.sectionHeading, isDesktop && styles.sectionHeadingDesktop]}>{section.heading}</Text>
             {section.paragraphs.map((p) => (
-              <Text key={p} style={styles.paragraph}>
+              <Text key={p} style={[styles.paragraph, isDesktop && styles.paragraphDesktop]}>
                 {p}
               </Text>
             ))}
             {section.bullets?.map((b) => (
               <View key={b} style={styles.bulletRow}>
                 <Text style={styles.bulletDot}>{'•'}</Text>
-                <Text style={styles.bulletText}>{b}</Text>
+                <Text style={[styles.bulletText, isDesktop && styles.paragraphDesktop]}>{b}</Text>
               </View>
             ))}
           </Fragment>
@@ -152,6 +154,16 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 12,
   },
+  // Capped/centered to line up with content's own reading column below,
+  // instead of the back button sitting flush against the wide desktop
+  // viewport's edge while the text column starts much further in.
+  headerDesktop: {
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
+    paddingHorizontal: 0,
+    paddingTop: 32,
+  },
   back: {
     width: 36,
     height: 36,
@@ -165,10 +177,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
+  headerTitleDesktop: {
+    fontSize: 20,
+  },
   content: {
     padding: 20,
     paddingBottom: 48,
     maxWidth: 680,
+  },
+  // width:'100%' + alignSelf:'center' is what actually centers the
+  // maxWidth column on a wide viewport — maxWidth alone just left-aligns
+  // it, leaving a large empty gap on the right.
+  contentDesktop: {
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 0,
+    paddingTop: 32,
+    paddingBottom: 80,
   },
   effectiveDate: {
     fontSize: 13,
@@ -182,11 +207,20 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
   },
+  sectionHeadingDesktop: {
+    fontSize: 19,
+    marginTop: 28,
+    marginBottom: 10,
+  },
   paragraph: {
     fontSize: 14,
     color: colors.text,
     lineHeight: 21,
     marginBottom: 10,
+  },
+  paragraphDesktop: {
+    fontSize: 15,
+    lineHeight: 24,
   },
   bulletRow: {
     flexDirection: 'row',

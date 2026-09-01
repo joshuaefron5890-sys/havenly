@@ -44,7 +44,8 @@ function isDesktopEligibleRoute(first: string | undefined): boolean {
     first === 'family' ||
     first === 'contribution' ||
     first === 'helper' ||
-    first === 'find-sitter'
+    first === 'find-sitter' ||
+    first === 'privacy'
   );
 }
 

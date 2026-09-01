@@ -175,6 +175,7 @@ export default function SittersLanding() {
         </View>
 
         {/* Hero */}
+        <View style={styles.heroOuter}>
         <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <View style={[styles.heroCopy, isDesktop && styles.heroCopyDesktop]}>
             <View style={styles.eyebrow}>
@@ -240,6 +241,7 @@ export default function SittersLanding() {
               </View>
             </View>
           </View>
+        </View>
         </View>
 
         {/* Trust strip */}
@@ -525,11 +527,18 @@ const styles = StyleSheet.create({
   },
 
   // Hero
+  // Full-bleed white background, wrapping the capped/centered hero
+  // below — same split as roleSectionOuter/howSection/applySection.
+  // heroDesktop caps its own width to 1280, so painting the background
+  // there (like before) left the screen's cream showing through on
+  // either side on a wide viewport instead of reaching the edges.
   // Deliberately whiter than the nav above it (colors.surface, not the
   // nav's cream #FAF9F3) — the reference keeps the two visibly distinct
   // rather than blending them.
-  hero: {
+  heroOuter: {
     backgroundColor: colors.surface,
+  },
+  hero: {
     // paddingTop (not marginTop) so the nav-to-hero gap is filled with
     // this section's own white background instead of the screen's cream
     // showing through behind it — 12 (original) + 30 (separation from nav).

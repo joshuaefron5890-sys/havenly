@@ -224,10 +224,11 @@ export default function SittersLanding() {
             <View key={item.bold + item.rest} style={styles.trustItemWrap}>
               {i > 0 && isDesktop ? <View style={styles.trustDivider} /> : null}
               <View style={styles.trustItem}>
-                <Ionicons name={item.icon} size={20} color={ACCENT} />
-                <Text style={styles.trustText}>
-                  <Text style={styles.trustBold}>{item.bold}</Text> {item.rest}
-                </Text>
+                <Ionicons name={item.icon} size={26} color={ACCENT} />
+                <View>
+                  <Text style={styles.trustBold}>{item.bold}</Text>
+                  <Text style={styles.trustText}>{item.rest}</Text>
+                </View>
               </View>
             </View>
           ))}
@@ -247,8 +248,8 @@ export default function SittersLanding() {
         <View style={[styles.roleSection, isDesktop && styles.roleSectionDesktop]}>
           <View style={[styles.roleIntro, isDesktop && styles.roleIntroDesktop]}>
             <Text style={styles.kicker}>A DIFFERENT KIND OF SUPPORT</Text>
-            <Text style={styles.h2}>Help children feel at ease.</Text>
-            <Text style={styles.body}>
+            <Text style={styles.roleHeading}>Help children feel at ease.</Text>
+            <Text style={styles.roleBody}>
               Opened Circle connects families of neurodivergent children for playdates and matches them with
               providers like you to come along. You’ll help children feel comfortable joining in while parents get
               to know one another.
@@ -793,13 +794,16 @@ const styles = StyleSheet.create({
   trustItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   trustText: {
     fontSize: 13.5,
     color: colors.textMuted,
   },
+  // The bold word and its subtext render as two separate lines (icon,
+  // then a stacked label + caption) instead of one wrapped sentence.
   trustBold: {
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text,
   },
@@ -849,12 +853,33 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 20,
   },
+  // Distinct from h2/body above (which "Three steps to get started"
+  // still uses) — pulled from the reference's own inspector for this
+  // specific heading/paragraph pair.
+  roleHeading: {
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontWeight: '700',
+    fontSize: 48,
+    color: '#24382F',
+    lineHeight: 46,
+    letterSpacing: -2.16,
+    marginTop: 17,
+    marginBottom: 22,
+  },
+  roleBody: {
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    fontSize: 17,
+    color: '#61756B',
+    lineHeight: 27,
+    marginBottom: 20,
+  },
   notTherapy: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: ACCENT_MUTED,
+    backgroundColor: '#EDF5EF',
     borderRadius: 16,
-    padding: 16,
+    marginTop: 22,
+    padding: 18,
   },
   notTherapyText: {
     flex: 1,
@@ -878,10 +903,11 @@ const styles = StyleSheet.create({
     maxWidth: 440,
   },
   cardLabel: {
-    fontFamily: 'Lora_700Bold',
-    fontSize: 19,
-    color: colors.heading,
-    marginBottom: 16,
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    fontWeight: '700',
+    fontSize: 16,
+    color: '#394F44',
+    marginBottom: 23,
   },
   experienceRow: {
     flexDirection: 'row',
@@ -900,15 +926,20 @@ const styles = StyleSheet.create({
   },
   experienceText: {
     flex: 1,
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
     fontSize: 14,
-    color: colors.text,
+    color: '#53675E',
     lineHeight: 20,
   },
+  // marginTop combines the reference's own 20px margin + 16px padding
+  // above this paragraph (no border/bg here to make the two visually
+  // distinct, so one combined value reads the same).
   experienceNote: {
-    fontSize: 12.5,
-    color: colors.textMuted,
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    fontSize: 12,
+    color: '#61756B',
     lineHeight: 19,
-    marginTop: 8,
+    marginTop: 36,
   },
 
   // How it works

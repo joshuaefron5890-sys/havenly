@@ -190,7 +190,7 @@ export default function SittersLanding() {
             </Text>
             <View style={styles.heroActions}>
               <Pressable style={styles.primaryButton} onPress={scrollToForm}>
-                <Text style={styles.primaryButtonText}>Become a founding provider</Text>
+                <Text style={styles.primaryButtonText}>Become a Provider</Text>
                 <Ionicons name="arrow-forward" size={16} color={colors.surface} />
               </Pressable>
               <Pressable style={styles.secondaryLinkWrap} onPress={scrollToRole}>

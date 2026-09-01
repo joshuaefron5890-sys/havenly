@@ -97,7 +97,6 @@ export default function SittersLanding() {
   const formY = useRef(0);
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [zip, setZip] = useState('');
   const [background, setBackground] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -113,7 +112,7 @@ export default function SittersLanding() {
   // (where these entries actually go) still gets figured out.
   const handleSubmit = () => {
     setError(null);
-    if (!name.trim() || !email.trim() || !zip.trim() || !background) {
+    if (!name.trim() || !zip.trim() || !background) {
       setError('Fill in every field to join the interest list.');
       return;
     }
@@ -329,7 +328,7 @@ export default function SittersLanding() {
                   <Ionicons name="checkmark-circle" size={32} color={ACCENT} />
                   <Text style={styles.confirmTitle}>You’re on the list.</Text>
                   <Text style={styles.confirmBody}>
-                    We’ll send the full application and launch details to {email}.
+                    We’ll be in touch with the full application and launch details.
                   </Text>
                 </View>
               ) : (
@@ -339,14 +338,6 @@ export default function SittersLanding() {
                   <Text style={styles.formSubtitle}>We’ll send you the full application and launch details.</Text>
 
                   <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
-                  <FieldInput
-                    label="Email"
-                    placeholder="you@email.com"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
                   <FieldInput
                     label="ZIP code"
                     placeholder="94010"
@@ -369,9 +360,6 @@ export default function SittersLanding() {
                     <Text style={styles.submitButtonText}>I’m interested</Text>
                     <Ionicons name="arrow-forward" size={16} color={colors.surface} />
                   </Pressable>
-                  <Text style={styles.privacyNote}>
-                    We’ll only use your information to contact you about the provider network.
-                  </Text>
                 </>
               )}
             </View>
@@ -1030,6 +1018,10 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     gap: 32,
   },
+  // justifyContent:'space-between' — applyCopy and leadCard both cap out
+  // (maxWidth 420/440) well before they'd fill this row's 1280 width, so
+  // with the default flex-start that leftover space just trailed behind
+  // leadCard instead of separating the two columns.
   applyInnerDesktop: {
     flexDirection: 'row',
     width: '100%',
@@ -1039,6 +1031,7 @@ const styles = StyleSheet.create({
     paddingVertical: 72,
     gap: 56,
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   applyCopy: {
     gap: 4,
@@ -1143,13 +1136,6 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontSize: 15,
     fontWeight: '700',
-  },
-  privacyNote: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 16,
   },
   confirmWrap: {
     alignItems: 'center',

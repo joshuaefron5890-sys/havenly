@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { forwardRef, useRef, useState } from 'react';
 import {
   Image,
@@ -365,15 +366,19 @@ export default function SittersLanding() {
         <View style={styles.footer}>
           <View style={[styles.footerTopRow, isDesktop && styles.footerTopRowDesktop]}>
             <View style={styles.brandRow}>
-              <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
+              <Image
+                source={require('../assets/logo-mark.png')}
+                style={[styles.brandMark, styles.footerBrandMark]}
+                resizeMode="contain"
+              />
               <Text style={styles.footerWordmark}>Opened Circle</Text>
             </View>
             <Text style={[styles.footerTagline, isDesktop && styles.footerTaglineDesktop]}>
               Belonging, shaped differently.
             </Text>
-            <Text style={[styles.footerLaunch, isDesktop && styles.footerLaunchDesktop]}>
-              Launching in Hillsborough, California
-            </Text>
+            <Pressable onPress={() => router.push('/privacy')}>
+              <Text style={[styles.footerLaunch, isDesktop && styles.footerLaunchDesktop]}>Privacy Policy</Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>
@@ -1160,6 +1165,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
+  },
+  // Overrides brandMark's 30x30 (shared with the nav, left untouched)
+  // for a bigger footer mark specifically.
+  footerBrandMark: {
+    width: 40,
+    height: 40,
   },
   footerWordmark: {
     fontSize: 15,

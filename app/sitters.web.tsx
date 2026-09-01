@@ -64,6 +64,33 @@ const PAGE_CSS = `
   font-display: swap;
   src: url('/fonts/Geist-Variable.woff2') format('woff2');
 }
+/* The headline/heading font-family below leads with the system font
+   Georgia (matching the reference exactly), which looks right on the
+   platforms that actually ship it (macOS, iOS, Windows) — but plenty
+   of Android/Linux browsers don't have Georgia OR "Times New Roman"
+   installed at all, silently falling all the way back to a generic
+   serif with completely different letter widths, which is what the
+   tight -0.045em letter-spacing below was tuned for and reads as
+   "wrong spacing/weight" once it's a different face. Tinos is Google's
+   own open, metric-compatible substitute for Georgia (same letter
+   widths/proportions) — self-hosting it here as a fallback (kept
+   AFTER Georgia in the stack, so real Georgia still wins wherever
+   it's available) guarantees the same look everywhere instead of
+   leaving it to whatever generic serif a given OS happens to have. */
+@font-face {
+  font-family: 'Tinos';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/Tinos-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Tinos';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/Tinos-Bold.woff2') format('woff2');
+}
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
@@ -90,7 +117,7 @@ html { scroll-behavior: smooth; }
   a { color: inherit; text-decoration: none; }
   button, input, select { font: inherit; }
   h1, h2, h3, p { margin-top: 0; }
-  h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -0.045em; }
+  h1, h2 { font-family: Georgia, Tinos, "Times New Roman", serif; font-weight: 500; letter-spacing: -0.045em; }
 
   .nav-shell { height: 82px; max-width: 1240px; margin: auto; padding: 0 34px; display: flex; align-items: center; justify-content: space-between; }
   .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 750; letter-spacing: -0.02em; }
@@ -150,7 +177,7 @@ html { scroll-behavior: smooth; }
   .steps-grid { max-width: 1090px; margin: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px; }
   .steps-grid article { position: relative; padding: 0 20px; }
   .steps-grid article:not(:last-child):after { content: ''; position: absolute; right: -23px; top: 30px; width: 46px; border-top: 1px dashed #aabbaf; }
-  .step-number { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 23px; border-radius: 50%; background: #fff; color: #1b6b56; font-family: Georgia, serif; font-size: 19px; box-shadow: 0 10px 25px #3e5c4e14; }
+  .step-number { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 23px; border-radius: 50%; background: #fff; color: #1b6b56; font-family: Georgia, Tinos, serif; font-size: 19px; box-shadow: 0 10px 25px #3e5c4e14; }
   .steps-grid h3 { margin-bottom: 10px; font-size: 17px; }
   .steps-grid p { color: #687b72; font-size: 14px; line-height: 1.7; }
 
@@ -160,7 +187,7 @@ html { scroll-behavior: smooth; }
   .apply-copy > p { max-width: 620px; color: #c9ddd5; font-size: 16px; line-height: 1.7; }
   .lead-card { min-height: 535px; padding: 34px; border-radius: 27px; background: #fff; color: #2d4339; box-shadow: 0 30px 80px #0d3e3538; }
   .lead-card form { display: grid; gap: 16px; }
-  .lead-card h3 { margin: 7px 0 5px; font-family: Georgia, serif; font-size: 29px; font-weight: 500; }
+  .lead-card h3 { margin: 7px 0 5px; font-family: Georgia, Tinos, serif; font-size: 29px; font-weight: 500; }
   .lead-card form > div > p { color: #75847d; font-size: 13px; }
   .form-tag { color: #1b6b56; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
   .lead-card label { display: grid; gap: 6px; color: #42584e; font-size: 12px; font-weight: 700; }

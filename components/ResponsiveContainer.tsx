@@ -29,7 +29,6 @@ function isDesktopEligibleRoute(first: string | undefined): boolean {
   return (
     first === undefined ||
     first === 'sign-in' ||
-    first === 'sitters' ||
     first === 'onboarding' ||
     first === '(tabs)' ||
     first === '(sitter)' ||
@@ -54,6 +53,15 @@ export function ResponsiveContainer({ children }: PropsWithChildren) {
   const segments = useSegments();
   const isDesktop = Platform.OS === 'web' && width >= DESKTOP_BREAKPOINT && isDesktopEligibleRoute(segments[0]);
   const isWide = width > MAX_CONTENT_WIDTH;
+
+  // app/sitters.web.tsx is a pixel-accurate reproduction of an external
+  // reference site with its own real CSS media queries (900px/620px) —
+  // this app's 480/1440 phone-column wrapping would fight that at every
+  // width in between, so this route renders completely unwrapped and
+  // owns its full-bleed responsive layout end to end.
+  if (Platform.OS === 'web' && segments[0] === 'sitters') {
+    return <>{children}</>;
+  }
 
   if (isDesktop) {
     return <View style={styles.desktopBackdrop}>

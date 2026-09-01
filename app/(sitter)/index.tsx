@@ -218,7 +218,7 @@ export default function SitterHome() {
           )}
         </View>
 
-        <Pressable style={styles.editButton} onPress={() => router.push('/sitter-signup?edit=1')}>
+        <Pressable style={styles.editButton} onPress={() => router.push('/provider-signup?edit=1')}>
           <Text style={styles.editButtonText}>Edit profile</Text>
         </Pressable>
       </ScrollView>

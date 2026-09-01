@@ -12,7 +12,7 @@ import { colors } from '../../theme/colors';
 // one that creates the account in the first place.
 const ACCOUNT_CREATION_PATH = '/onboarding/account';
 
-// Same photo used on sign-in and sitter-signup's panels — each step's own
+// Same photo used on sign-in and provider-signup's panels — each step's own
 // screen still paints its own opaque background (none of the 10 step
 // files were touched), so this only ever shows through in the margin
 // around the width-capped form, framing it rather than sitting behind it.

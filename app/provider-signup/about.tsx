@@ -82,7 +82,7 @@ export default function SitterSignupAbout() {
 
   return (
     <View style={styles.screen}>
-      <WizardHeader step={3} totalSteps={3} title="About" accent="you." backTo="/sitter-signup/experience" />
+      <WizardHeader step={3} totalSteps={3} title="About" accent="you." backTo="/provider-signup/experience" />
       <ScrollView contentContainerStyle={styles.content}>
         <FieldInput
           label="About you"

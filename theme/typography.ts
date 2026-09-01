@@ -6,12 +6,12 @@ import {
   DMSans_700Bold_Italic,
 } from '@expo-google-fonts/dm-sans';
 import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
-// A display serif, used only on app/sitters.tsx's headline-heavy sections
+// A display serif, used only on app/providers.tsx's headline-heavy sections
 // (per the reference page it was built to match) — every other screen's
 // headings stay on DM Sans via resolveFontFamily below, so this is loaded
 // but not part of that resolution.
 import { Lora_600SemiBold, Lora_700Bold } from '@expo-google-fonts/lora';
-// app/sitters.tsx's body/UI font (Geist, per the same reference) — also
+// app/providers.tsx's body/UI font (Geist, per the same reference) — also
 // loaded here but, like Lora above, not part of resolveFontFamily's
 // app-wide DM Sans resolution; that page wraps AppText's Text locally to
 // use these instead.

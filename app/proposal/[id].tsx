@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
   // Explicit width/height — without it the underlying <img> can render at
   // a collapsed size before layout stabilizes on web, which is what was
   // clipping the "Find Help" button below the fold (same fix already
-  // needed on the sitter-signup/onboarding hero panels).
+  // needed on the provider-signup/onboarding hero panels).
   sitterPromoImage: {
     width: '100%',
     height: '100%',

@@ -116,7 +116,7 @@ export type SitterProfile = {
   // until the sitter fills them in from the referral modal.
   payoutMethod: 'venmo' | 'paypal' | null;
   payoutHandle: string;
-  // The multi-step signup wizard (app/sitter-signup/*) writes these after
+  // The multi-step signup wizard (app/provider-signup/*) writes these after
   // every step so a sitter who bails partway through can pick up where
   // they left off on a later sign-in (lib/onboardingProgress.ts's
   // routeSignedInUser) instead of either restarting or, worse, being
@@ -227,7 +227,7 @@ export async function fetchMySitterProfile(): Promise<SitterProfile | null> {
 // there's no path for a sitter to mark themselves vetted.
 //
 // `referredByCode` is only meaningful on the isNew path — whatever the
-// sitter typed into sitter-signup's optional "Referral code" field, if
+// sitter typed into provider-signup's optional "Referral code" field, if
 // anything. Firestore create isn't field-restricted the way update is
 // (see firestore.rules), so this is safe to write directly; it's the
 // server-side onSitterProfileCreated trigger (Admin SDK) that actually

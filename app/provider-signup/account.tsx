@@ -52,8 +52,8 @@ function splitName(name: string): [string, string] {
 // "connected" state instead of the signup form — same reasoning as that
 // screen's connectedGmail branch.
 export default function SitterSignupAccount() {
-  // Carried over from the sitters splash page's interest-list form, if
-  // that's where this visit came from (via /sitter-signup's redirect —
+  // Carried over from the providers splash page's interest-list form, if
+  // that's where this visit came from (via /provider-signup's redirect —
   // see that file). zip has nowhere to show yet (that's step 3), so it
   // rides along silently in the saved profile and step 3 picks it up
   // from there.
@@ -161,13 +161,13 @@ export default function SitterSignupAccount() {
           name,
           email: auth?.currentUser?.email ?? email.trim(),
           ...(isNew && prefillZip ? { zipCode: prefillZip } : {}),
-          signupStep: '/sitter-signup/experience',
+          signupStep: '/provider-signup/experience',
           signupComplete: false,
         },
         isNew,
         isNew ? referralCodeInput.trim() || undefined : undefined
       );
-      router.push('/sitter-signup/experience');
+      router.push('/provider-signup/experience');
     } catch (err: any) {
       setError(err?.code ? friendlyError(err.code) : err instanceof Error ? err.message : 'Something went wrong saving your info. Please try again.');
     } finally {

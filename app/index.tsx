@@ -28,7 +28,7 @@ function signIn() {
 }
 
 function becomeSitter() {
-  router.push('/sitters');
+  router.push('/providers');
 }
 
 // Shared between both layouts so the CTA/links block never drifts out of
@@ -58,7 +58,7 @@ function JoinLinks() {
   );
 }
 
-// One full-bleed hero, edge to edge — same treatment as app/sitters.tsx's
+// One full-bleed hero, edge to edge — same treatment as app/providers.tsx's
 // landing page, for a consistent "arriving somewhere" first impression
 // instead of a scrolling brochure of feature cards.
 export default function Landing() {
@@ -75,10 +75,10 @@ export default function Landing() {
   // screen mounted in the background after navigating away from it (for
   // back-navigation), and `user` is a global AuthContext value — so a
   // plain effect here would fire and force-navigate even while this
-  // screen sits inert behind, say, /sitter-signup, the moment that
+  // screen sits inert behind, say, /provider-signup, the moment that
   // screen's own lazy account creation (its ensureSignedIn, on first
   // photo/document upload) changes the signed-in user. That's exactly
-  // what was yanking someone mid sitter-signup into the family onboarding
+  // what was yanking someone mid provider-signup into the family onboarding
   // wizard. useFocusEffect only runs while this screen is actually the
   // visible one.
   useFocusEffect(

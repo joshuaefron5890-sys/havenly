@@ -13,7 +13,7 @@ import { AVAILABILITY_PERIODS, dateKey } from '../lib/sitterAvailability';
 import { fetchRecommendedSitters, RecommendedSitter } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
-// Same photo used on the Sitters splash page (app/sitters.tsx) and the
+// Same photo used on the Providers splash page (app/providers.tsx) and the
 // in-app sitter promo card (app/proposal/[id].tsx) — one consistent hero
 // image across every sitter-adjacent screen rather than a new pick here.
 const HERO_IMAGE =

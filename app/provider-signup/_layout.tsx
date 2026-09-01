@@ -11,16 +11,16 @@ import { colors } from '../../theme/colors';
 // existing sitters/{uid} doc), so landing on either of those without one —
 // a stale/expired session, a bookmarked URL — sends back to account
 // instead of letting them render against a user that doesn't exist.
-const ACCOUNT_STEP_PATH = '/sitter-signup/account';
+const ACCOUNT_STEP_PATH = '/provider-signup/account';
 
-// The bare index route (/sitter-signup) also has to be reachable signed
+// The bare index route (/provider-signup) also has to be reachable signed
 // out — it's both the ?edit=1 entry point (signed in) and the redirect
 // that forwards a fresh, not-yet-signed-in visitor into account with
 // their name/zip carried along (see index.tsx). Redirecting it here too
 // would race that more specific redirect and drop those params.
-const SELF_HANDLING_PATHS = ['/sitter-signup', ACCOUNT_STEP_PATH];
+const SELF_HANDLING_PATHS = ['/provider-signup', ACCOUNT_STEP_PATH];
 
-// Same photo the old single-page sitter-signup used for its side panel.
+// Same photo the old single-page provider-signup used for its side panel.
 const PANEL_IMAGE =
   'https://images.unsplash.com/photo-1607453998774-d533f65dac99?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 

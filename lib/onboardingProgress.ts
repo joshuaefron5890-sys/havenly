@@ -63,19 +63,25 @@ export async function routeSignedInUser(
 ): Promise<void> {
   try {
     // Sitters (lib/sitters.ts) are a completely separate account type from
-    // families — standalone signup (app/sitter-signup.tsx), own top-level
-    // collection, never a users/{uid} doc — so this has to be checked
-    // before anything below assumes "signed in" means "a family."
+    // families — standalone signup (app/provider-signup/index.tsx), own
+    // top-level collection, never a users/{uid} doc — so this has to be
+    // checked before anything below assumes "signed in" means "a family."
     if (db) {
       const sitterSnap = await getDoc(doc(db, 'sitters', user.uid));
       if (sitterSnap.exists()) {
         const sitterData = sitterSnap.data();
         // Absent (every sitter who registered before the multi-step
-        // wizard — app/sitter-signup/* — existed) still means complete;
+        // wizard — app/provider-signup/* — existed) still means complete;
         // only an explicit false means the wizard created this doc but
         // they bailed before finishing it.
         if (sitterData.signupComplete === false) {
-          router.replace((sitterData.signupStep as any) ?? '/sitter-signup/experience');
+          // A step saved under the route's old name (/sitter-signup/...,
+          // before it was renamed to /provider-signup) still needs to
+          // resolve to a real route for anyone who bailed mid-signup
+          // before this rename shipped.
+          const savedStep = sitterData.signupStep as string | undefined;
+          const step = savedStep?.replace(/^\/sitter-signup\b/, '/provider-signup') ?? '/provider-signup/experience';
+          router.replace(step as any);
         } else {
           router.replace('/(sitter)');
         }

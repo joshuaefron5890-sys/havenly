@@ -15,7 +15,7 @@ import { routeSignedInUser } from '../lib/onboardingProgress';
 import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
-// Same photo used on the sitter-signup left panel — one consistent hero
+// Same photo used on the provider-signup left panel — one consistent hero
 // image across the auth-adjacent screens rather than a different pick per
 // screen.
 const PANEL_IMAGE =

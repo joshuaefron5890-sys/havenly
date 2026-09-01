@@ -133,7 +133,7 @@ export default function SittersLanding() {
   const scrollToForm = () => scrollRef.current?.scrollTo({ y: formY.current, animated: true });
 
   // This page still isn't wired to a real backend, so "saving" the name
-  // and zip is just handing them to the sitter-signup flow as route
+  // and zip is just handing them to the provider-signup flow as route
   // params — that screen reads them back to prefill its own First/Last
   // name and ZIP fields, and every step after that persists them to the
   // sitter's own Firestore doc (see lib/onboardingProgress.ts's
@@ -162,7 +162,7 @@ export default function SittersLanding() {
     setQualified(true);
     setTimeout(() => {
       const name = `${firstName.trim()} ${lastName.trim()}`.trim();
-      router.push({ pathname: '/sitter-signup', params: { name, zip: zip.trim() } });
+      router.push({ pathname: '/provider-signup', params: { name, zip: zip.trim() } });
     }, 900);
   };
 

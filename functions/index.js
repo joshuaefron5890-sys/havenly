@@ -1559,7 +1559,7 @@ exports.getPendingSitters = onCall(async (request) => {
   const snap = await admin.firestore().collection('sitters').limit(500).get();
   const sitters = snap.docs
     // signupComplete === false means the multi-step signup wizard
-    // (app/sitter-signup/*) created this doc but the sitter hasn't
+    // (app/provider-signup/*) created this doc but the sitter hasn't
     // finished it yet — absent entirely (every sitter who registered
     // before that wizard existed) still counts as complete, so this only
     // excludes an explicit false.
@@ -1626,13 +1626,13 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
           '',
           'Your Opened Circle application has been approved. Families nearby can now find you and reach out for playdate support.',
           '',
-          `View your profile: ${APP_BASE_URL}/sitter-signup?edit=1`,
+          `View your profile: ${APP_BASE_URL}/provider-signup?edit=1`,
         ].join('\n')
       ),
       // pushTokensForFamily(uid) works unmodified for a sitter uid too —
       // see notifyOnSitterConfirmation's own comment on why.
       pushTokensForFamily(uid).then((tokens) =>
-        sendExpoPush(tokens, title, 'Your profile is now live for families to find.', { url: '/sitter-signup?edit=1' })
+        sendExpoPush(tokens, title, 'Your profile is now live for families to find.', { url: '/provider-signup?edit=1' })
       ),
     ]);
 
@@ -1687,7 +1687,7 @@ exports.setSitterVettingStatus = onCall({ secrets: [resendApiKey] }, async (requ
             ].join('\n')
           ),
           pushTokensForFamily(referredByUid).then((tokens) =>
-            sendExpoPush(tokens, referralTitle, 'Payout on the way within 7 days.', { url: '/sitter-signup?edit=1' })
+            sendExpoPush(tokens, referralTitle, 'Payout on the way within 7 days.', { url: '/provider-signup?edit=1' })
           ),
         ]);
       }

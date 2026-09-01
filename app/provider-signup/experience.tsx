@@ -169,12 +169,12 @@ export default function SitterSignupExperience() {
           specialties: profile.specialties,
           certifications: profile.certifications,
           certificationDocUrls,
-          signupStep: '/sitter-signup/about',
+          signupStep: '/provider-signup/about',
           signupComplete: false,
         },
         false
       );
-      router.push('/sitter-signup/about');
+      router.push('/provider-signup/about');
     } catch (err: any) {
       setError(friendlyError(err, 'Something went wrong saving your info. Please try again.'));
     } finally {
@@ -192,7 +192,7 @@ export default function SitterSignupExperience() {
 
   return (
     <View style={styles.screen}>
-      <WizardHeader step={2} totalSteps={3} title="Your" accent="experience." backTo="/sitter-signup/account" />
+      <WizardHeader step={2} totalSteps={3} title="Your" accent="experience." backTo="/provider-signup/account" />
       <ScrollView contentContainerStyle={styles.content}>
         <AddPhotoCircle
           label="Your photo"

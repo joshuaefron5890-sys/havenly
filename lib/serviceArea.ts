@@ -1,7 +1,7 @@
 import { lookupZipCode } from './zipcode';
 
-// The sitters splash page's interest-list form gates signup on this — see
-// app/sitters.tsx's handleSubmit. 94010 is Burlingame, the rough center of
+// The providers splash page's interest-list form gates signup on this —
+// see app/providers.tsx's handleSubmit. 94010 is Burlingame, the rough center of
 // the Bay Area Peninsula cluster (lib/clusters.ts's only cluster today).
 export const SERVICE_AREA_CENTER_ZIP = '94010';
 export const SERVICE_AREA_RADIUS_MILES = 50;

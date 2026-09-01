@@ -30,8 +30,9 @@ export function pickImageFile(): Promise<File | null> {
 // reimplement PhotoCropperModal's custom circular cropper. Pick-only (see
 // pickAndUploadNativePhoto below for the upload-immediately wrapper) —
 // callers that need to defer the actual upload (e.g.
-// app/sitter-signup.tsx, where uploading requires a signed-in account
-// that may not exist yet) can hold onto the returned blob/uri instead.
+// app/provider-signup/experience.tsx, where uploading requires a
+// signed-in account that may not exist yet) can hold onto the returned
+// blob/uri instead.
 // Resolves null if the user cancels the picker. Throws 'permission-denied'
 // if photo library access was refused.
 export async function pickNativePhoto(): Promise<{ blob: Blob; uri: string } | null> {
@@ -126,7 +127,7 @@ const MIME_TYPE_EXTENSIONS: Record<string, string> = {
   'image/heic': 'heic',
 };
 
-// Exported for app/sitter-signup.tsx, which needs the same extension label
+// Exported for app/provider-signup/*, which needs the same extension label
 // for a not-yet-uploaded pending document as docExtensionLabel derives from
 // an already-uploaded URL.
 export function extensionFromDocumentAsset(name: string, mimeType?: string): string {

@@ -9,7 +9,7 @@ import { isWithinServiceArea } from '../lib/serviceArea';
 // source, provided directly by the user rather than scraped) — this file
 // intentionally mirrors that source's structure and copy verbatim rather
 // than approximating it with this app's usual component/StyleSheet
-// conventions. A .web.tsx sibling of app/sitters.tsx: Metro/Expo Router's
+// conventions. A .web.tsx sibling of app/providers.tsx: Metro/Expo Router's
 // platform-extension resolution serves THIS file for web builds and
 // leaves the native app (iOS/Android) on the existing RN implementation,
 // since this reproduction only makes sense as real browser CSS (CSS
@@ -338,7 +338,7 @@ export default function SittersLanding() {
   const [outOfAreaOpen, setOutOfAreaOpen] = useState(false);
 
   // Preserves this page's real working behavior (ZIP-radius gating, then
-  // handing the name/zip to the sitter-signup flow as route params) while
+  // handing the name/zip to the provider-signup flow as route params) while
   // restoring the reference's own field set and copy — see PAGE_CSS's
   // doc comment above for why this differs structurally from the
   // reference's local-only demo `setSubmitted(true)`.
@@ -359,7 +359,7 @@ export default function SittersLanding() {
     }
     setSubmitted(true);
     setTimeout(() => {
-      router.push({ pathname: '/sitter-signup', params: { name: fullName.trim(), zip: zip.trim() } });
+      router.push({ pathname: '/provider-signup', params: { name: fullName.trim(), zip: zip.trim() } });
     }, 900);
   }
 

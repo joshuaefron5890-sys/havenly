@@ -39,14 +39,14 @@ function friendlyError(err: any, fallback: string): string {
 }
 
 // A fresh (non-edit) visit used to render a single-page signup form right
-// here. That's now app/sitter-signup/{account,experience,about}.tsx's job
+// here. That's now app/provider-signup/{account,experience,about}.tsx's job
 // — a real 3-step wizard with Google sign-in and step-by-step progress
 // saving, so a sitter who bails partway through can resume later instead
 // of losing everything. This route now only handles editing an existing,
 // already-complete profile (?edit=1, reached from Profile) — anyone
 // landing here without that redirects straight into step 1, carrying
-// along name/zip if the sitters splash page's interest form is where they
-// came from (see app/sitters.tsx).
+// along name/zip if the providers splash page's interest form is where
+// they came from (see app/providers.tsx).
 export default function SitterSignup() {
   const { edit, name: prefillName, zip: prefillZip } = useLocalSearchParams<{
     edit?: string;
@@ -59,7 +59,7 @@ export default function SitterSignup() {
 
   useEffect(() => {
     if (editMode) return;
-    router.replace({ pathname: '/sitter-signup/account', params: { name: prefillName, zip: prefillZip } });
+    router.replace({ pathname: '/provider-signup/account', params: { name: prefillName, zip: prefillZip } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editMode]);
 

@@ -1017,7 +1017,7 @@ const styles = StyleSheet.create({
   // screen edges; applyInner below is what actually gets width-capped
   // and centered, same split as howSection/stepsGrid already uses.
   applySection: {
-    backgroundColor: colors.heading,
+    backgroundColor: '#175746',
   },
   applyInner: {
     paddingHorizontal: 20,

@@ -856,9 +856,12 @@ const styles = StyleSheet.create({
   // Distinct from h2/body above (which "Three steps to get started"
   // still uses) — pulled from the reference's own inspector for this
   // specific heading/paragraph pair.
+  // fontWeight was a guess (700) made without real data and came out
+  // visibly too heavy against the reference, which renders this at
+  // normal weight — the serif face alone gives it enough presence.
   roleHeading: {
     fontFamily: 'Georgia, "Times New Roman", serif',
-    fontWeight: '700',
+    fontWeight: '400',
     fontSize: 48,
     color: '#24382F',
     lineHeight: 46,
@@ -992,14 +995,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
+  // Georgia (not Lora) at normal weight — matches how this site's other
+  // serif headings turned out to actually be styled once checked against
+  // the reference directly, rather than the bold Lora guess made before
+  // any of that was confirmed.
   stepNumber: {
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontWeight: '400',
     fontSize: 17,
     color: ACCENT,
   },
+  // fontWeight was another unverified guess that came out too heavy —
+  // the reference renders these at normal weight.
   stepTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.heading,
     marginBottom: 8,
   },

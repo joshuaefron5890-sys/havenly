@@ -946,7 +946,7 @@ const styles = StyleSheet.create({
   howSection: {
     paddingHorizontal: 20,
     paddingVertical: 40,
-    backgroundColor: ACCENT_MUTED,
+    backgroundColor: '#EEF4EF',
   },
   centerHeading: {
     alignItems: 'center',

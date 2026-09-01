@@ -840,8 +840,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     marginBottom: 10,
   },
+  // Now used only by "Three steps to get started" (the role section's
+  // own heading moved to roleHeading above) — switched from bold Lora to
+  // Georgia at normal weight, matching the reference's actual serif
+  // heading font everywhere else on this page.
   h2: {
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontWeight: '400',
     fontSize: 34,
     color: colors.heading,
     lineHeight: 40,

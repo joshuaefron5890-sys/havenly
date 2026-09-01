@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 
 // Every "back" chevron in the app should call this instead of a bare
 // router.back() — on a hard page refresh (or opening a deep link/bookmark
@@ -13,5 +14,17 @@ export function goBack(): void {
     router.back();
   } else {
     router.replace('/');
+  }
+}
+
+// On web this opens /privacy in a new tab, so reading it never navigates
+// away from (and loses) whatever the visitor was in the middle of —
+// filling out a form, mid-signup, etc. Native has no concept of tabs, so
+// it just pushes the route like any other in-app navigation.
+export function openPrivacyPolicy(): void {
+  if (Platform.OS === 'web') {
+    window.open('/privacy', '_blank');
+  } else {
+    router.push('/privacy');
   }
 }

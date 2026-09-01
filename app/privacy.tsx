@@ -112,9 +112,11 @@ export default function PrivacyPolicy() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={[styles.header, isDesktop && styles.headerDesktop]}>
-        <Pressable style={styles.back} onPress={goBack} hitSlop={8}>
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
-        </Pressable>
+        {Platform.OS === 'web' ? null : (
+          <Pressable style={styles.back} onPress={goBack} hitSlop={8}>
+            <Ionicons name="chevron-back" size={20} color={colors.text} />
+          </Pressable>
+        )}
         <Text style={[styles.headerTitle, isDesktop && styles.headerTitleDesktop]}>Privacy Policy</Text>
       </View>
 

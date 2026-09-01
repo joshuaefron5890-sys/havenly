@@ -16,6 +16,7 @@ import {
 import { Text as AppText } from '../components/AppText';
 import { FieldInput } from '../components/FieldInput';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { openPrivacyPolicy } from '../lib/navigation';
 import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
@@ -424,7 +425,7 @@ export default function SittersLanding() {
             <Text style={[styles.footerTagline, isDesktop && styles.footerTaglineDesktop]}>
               Belonging, shaped differently.
             </Text>
-            <Pressable onPress={() => router.push('/privacy')}>
+            <Pressable onPress={openPrivacyPolicy}>
               <Text style={[styles.footerLaunch, isDesktop && styles.footerLaunchDesktop]}>Privacy Policy</Text>
             </Pressable>
           </View>

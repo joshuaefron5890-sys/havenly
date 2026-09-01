@@ -380,12 +380,18 @@ export default function SittersLanding() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <View style={styles.brandRow}>
-            <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
-            <Text style={styles.footerWordmark}>Opened Circle</Text>
+          <View style={[styles.footerTopRow, isDesktop && styles.footerTopRowDesktop]}>
+            <View style={styles.brandRow}>
+              <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
+              <Text style={styles.footerWordmark}>Opened Circle</Text>
+            </View>
+            <Text style={[styles.footerTagline, isDesktop && styles.footerTaglineDesktop]}>
+              Belonging, shaped differently.
+            </Text>
+            <Text style={[styles.footerLaunch, isDesktop && styles.footerLaunchDesktop]}>
+              Launching in Hillsborough, California
+            </Text>
           </View>
-          <Text style={styles.footerTagline}>Belonging, shaped differently.</Text>
-          <Text style={styles.footerLaunch}>Launching in Hillsborough, California</Text>
           <Pressable onPress={signIn}>
             <Text style={styles.footerSignIn}>
               Already registered? <Text style={styles.footerSignInAccent}>Sign in</Text>
@@ -1170,6 +1176,18 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     gap: 6,
   },
+  // Mobile keeps the original stacked/centered layout (default column,
+  // relying on the numeric margins below); desktop lays the same three
+  // items out in a single row like the reference.
+  footerTopRow: {
+    alignItems: 'center',
+  },
+  footerTopRowDesktop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
   footerWordmark: {
     fontSize: 15,
     fontWeight: '700',
@@ -1180,10 +1198,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 8,
   },
+  footerTaglineDesktop: {
+    marginTop: 0,
+  },
   footerLaunch: {
     fontSize: 12,
     color: colors.caption,
     marginBottom: 12,
+  },
+  footerLaunchDesktop: {
+    marginBottom: 0,
   },
   footerSignIn: {
     fontSize: 13,

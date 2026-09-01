@@ -49,13 +49,24 @@ function friendlyError(code: string): string {
 }
 
 export default function SitterSignup() {
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const { edit, name: prefillName, zip: prefillZip } = useLocalSearchParams<{
+    edit?: string;
+    name?: string;
+    zip?: string;
+  }>();
   const editMode = edit === '1';
   const { user, loading: authLoading } = useAuth();
   const isDesktop = useIsDesktop();
 
   const [loadingExisting, setLoadingExisting] = useState(editMode);
-  const [profile, setProfile] = useState<SitterProfile>(emptySitterProfile);
+  // Carried over from the sitters splash page's interest-list form, if
+  // that's where this visit came from — a plain lazy initializer since
+  // these only ever matter on first mount, not on every re-render.
+  const [profile, setProfile] = useState<SitterProfile>(() => ({
+    ...emptySitterProfile,
+    name: prefillName ?? '',
+    zipCode: prefillZip ?? '',
+  }));
   const [password, setPassword] = useState('');
   // Only meaningful on the create path — see saveMySitterProfile's own
   // comment for why this is resolved server-side rather than trusted from

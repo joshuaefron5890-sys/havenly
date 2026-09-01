@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { forwardRef, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -97,22 +98,28 @@ export default function SittersLanding() {
   const [background, setBackground] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const scrollToRole = () => scrollRef.current?.scrollTo({ y: roleY.current, animated: true });
   const scrollToHow = () => scrollRef.current?.scrollTo({ y: howY.current, animated: true });
   const scrollToForm = () => scrollRef.current?.scrollTo({ y: formY.current, animated: true });
 
-  // Not wired to any backend yet — just a local confirmation state,
-  // per the ask to host this page while the real interest-list workflow
-  // (where these entries actually go) still gets figured out.
+  // This page still isn't wired to a real backend, so "saving" the name
+  // and zip is just handing them to the sitter-signup flow as route
+  // params — that screen reads them back to prefill its own Full
+  // name/ZIP fields. The brief delay is only so the spinner actually
+  // registers before navigating away, since there's no real network call
+  // to wait on.
   const handleSubmit = () => {
     setError(null);
     if (!name.trim() || !zip.trim() || !background) {
       setError('Fill in every field to join the interest list.');
       return;
     }
-    setSubmitted(true);
+    setSubmitting(true);
+    setTimeout(() => {
+      router.push({ pathname: '/sitter-signup', params: { name: name.trim(), zip: zip.trim() } });
+    }, 500);
   };
 
   return (
@@ -319,45 +326,43 @@ export default function SittersLanding() {
             </View>
 
             <View style={[styles.leadCard, isDesktop && styles.leadCardDesktop]}>
-              {submitted ? (
-                <View style={styles.confirmWrap}>
-                  <Ionicons name="checkmark-circle" size={32} color={ACCENT} />
-                  <Text style={styles.confirmTitle}>You’re on the list.</Text>
-                  <Text style={styles.confirmBody}>
-                    We’ll be in touch with the full application and launch details.
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
-                  <Text style={styles.formTitle}>Join our provider community</Text>
-                  <Text style={styles.formSubtitle}>Let’s first make sure you’re eligible for our first launch.</Text>
+              <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
+              <Text style={styles.formTitle}>Join our provider community</Text>
+              <Text style={styles.formSubtitle}>Let’s first make sure you’re eligible for our first launch.</Text>
 
-                  <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
-                  <FieldInput
-                    label="ZIP code"
-                    placeholder="94010"
-                    value={zip}
-                    onChangeText={setZip}
-                    keyboardType="number-pad"
-                  />
+              <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
+              <FieldInput
+                label="ZIP code"
+                placeholder="94010"
+                value={zip}
+                onChangeText={setZip}
+                keyboardType="number-pad"
+              />
 
-                  <Text style={styles.selectLabel}>Your background</Text>
-                  <Pressable style={styles.selectField} onPress={() => setPickerOpen(true)}>
-                    <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
-                      {background ?? 'Select the closest fit'}
-                    </Text>
-                    <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-                  </Pressable>
+              <Text style={styles.selectLabel}>Your background</Text>
+              <Pressable
+                style={styles.selectField}
+                onPress={() => setPickerOpen(true)}
+                disabled={submitting}
+              >
+                <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
+                  {background ?? 'Select the closest fit'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+              </Pressable>
 
-                  {error ? <Text style={styles.formError}>{error}</Text> : null}
+              {error ? <Text style={styles.formError}>{error}</Text> : null}
 
-                  <Pressable style={styles.submitButton} onPress={handleSubmit}>
+              <Pressable style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
+                {submitting ? (
+                  <ActivityIndicator color={colors.surface} />
+                ) : (
+                  <>
                     <Text style={styles.submitButtonText}>I’m interested</Text>
                     <Ionicons name="arrow-forward" size={16} color={colors.surface} />
-                  </Pressable>
-                </>
-              )}
+                  </>
+                )}
+              </Pressable>
             </View>
           </View>
         </View>
@@ -1129,24 +1134,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  confirmWrap: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    gap: 10,
-  },
-  confirmTitle: {
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontWeight: '400',
-    fontSize: 22,
-    color: colors.heading,
-  },
-  confirmBody: {
-    fontSize: 13.5,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
   // Footer
   footer: {
     alignItems: 'center',

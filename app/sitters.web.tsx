@@ -363,16 +363,15 @@ export default function SittersLanding() {
               <MapPin size={14} /> Now forming in the Bay Area
             </div>
             <h1>
-              Childcare that actually respects <em>your expertise.</em>
+              Help kids connect. <em>Get the pay you deserve.</em>
             </h1>
             <p className="hero-lede">
-              No vague job descriptions or last-minute surprises. Opened Circle connects experienced care providers
-              with pre-matched families, clear playdate plans, and structured settings — so you can focus on making
-              a real impact.
+              Opened Circle matches experienced care providers with neurodivergent families to support structured
+              playdates.
             </p>
             <div className="hero-actions">
               <a href="#interest-form" className="primary-link">
-                Become a founding provider <ArrowRight size={18} />
+                Apply Now <ArrowRight size={18} />
               </a>
               <a href="#role" className="secondary-link">
                 See what the role involves

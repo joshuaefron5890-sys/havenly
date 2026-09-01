@@ -60,9 +60,8 @@ export default function SitterSignupAccount() {
   const { name: prefillName, zip: prefillZip } = useLocalSearchParams<{ name?: string; zip?: string }>();
   const { user, loading: authLoading } = useAuth();
   const [loadingExisting, setLoadingExisting] = useState(true);
-  const [prefillFirst, prefillLast] = splitName(prefillName ?? '');
-  const [firstName, setFirstName] = useState(prefillFirst);
-  const [lastName, setLastName] = useState(prefillLast);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [referralCodeInput, setReferralCodeInput] = useState('');
@@ -71,6 +70,21 @@ export default function SitterSignupAccount() {
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const connected = Boolean(user);
+
+  // Seeded via an effect rather than useState's initial value: this
+  // screen is reached through a router.replace from /provider-signup's
+  // own redirect (see that file), and on web the freshly-mounted screen
+  // can render once before that navigation's params have actually synced
+  // — useState(prefillFirst) would lock in "" from that first render and
+  // never notice the real name arriving a tick later. "only fill if
+  // still empty" keeps this from clobbering anything the visitor's
+  // already typed if prefillName changes again after they've started.
+  useEffect(() => {
+    if (!prefillName) return;
+    const [first, last] = splitName(prefillName);
+    setFirstName((prev) => prev || first);
+    setLastName((prev) => prev || last);
+  }, [prefillName]);
 
   // Already has an account (see the doc comment above) — hydrate whatever
   // was saved in step 1 last time, so re-entering here doesn't look like

@@ -363,11 +363,12 @@ export default function SittersLanding() {
               <MapPin size={14} /> Now forming in the Bay Area
             </div>
             <h1>
-              You can open <em>a child’s world.</em>
+              Childcare that actually respects <em>your expertise.</em>
             </h1>
             <p className="hero-lede">
-              Find flexible, well-paid opportunities helping neurodivergent children build connections through
-              everyday experiences.
+              No vague job descriptions or last-minute surprises. Opened Circle connects experienced care providers
+              with pre-matched families, clear playdate plans, and structured settings — so you can focus on making
+              a real impact.
             </p>
             <div className="hero-actions">
               <a href="#interest-form" className="primary-link">

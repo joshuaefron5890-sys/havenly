@@ -191,6 +191,7 @@ html { scroll-behavior: smooth; }
   .lead-card form > div > p { color: #75847d; font-size: 13px; }
   .form-tag { color: #1b6b56; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
   .lead-card label { display: grid; gap: 6px; color: #42584e; font-size: 12px; font-weight: 700; }
+  .name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .lead-card input, .lead-card select { width: 100%; height: 43px; padding: 0 12px; border: 1px solid #d4ded8; border-radius: 10px; background: #fbfdfb; color: #294037; outline: none; }
   .lead-card input:focus, .lead-card select:focus { border-color: #70aa98; box-shadow: 0 0 0 3px #6ba79120; }
   .submit-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; cursor: pointer; height: 48px; margin-top: 4px; border-radius: 999px; background: #1b6b56; color: #fff; font-size: 14px; font-weight: 750; }
@@ -328,8 +329,8 @@ html { scroll-behavior: smooth; }
 `;
 
 export default function SittersLanding() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [zip, setZip] = useState('');
   const [background, setBackground] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -359,7 +360,8 @@ export default function SittersLanding() {
     }
     setSubmitted(true);
     setTimeout(() => {
-      router.push({ pathname: '/provider-signup', params: { name: fullName.trim(), zip: zip.trim() } });
+      const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+      router.push({ pathname: '/provider-signup', params: { name, zip: zip.trim() } });
     }, 900);
   }
 
@@ -536,29 +538,30 @@ export default function SittersLanding() {
                   <h3>Join the interest list</h3>
                   <p>We’ll send you the full application and launch details.</p>
                 </div>
-                <label>
-                  Full name
-                  <input
-                    name="name"
-                    required
-                    autoComplete="name"
-                    placeholder="Your name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Email
-                  <input
-                    name="email"
-                    required
-                    type="email"
-                    autoComplete="email"
-                    placeholder="you@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </label>
+                <div className="name-row">
+                  <label>
+                    First name
+                    <input
+                      name="firstName"
+                      required
+                      autoComplete="given-name"
+                      placeholder="Jamie"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Last name
+                    <input
+                      name="lastName"
+                      required
+                      autoComplete="family-name"
+                      placeholder="Chen"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </label>
+                </div>
                 <label>
                   ZIP code
                   <input

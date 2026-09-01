@@ -6,10 +6,11 @@ import { goBack } from '../lib/navigation';
 import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
-const TOTAL_STEPS = 10;
+const DEFAULT_TOTAL_STEPS = 10;
 
 export function WizardHeader({
   step,
+  totalSteps = DEFAULT_TOTAL_STEPS,
   title,
   accent,
   backTo,
@@ -18,6 +19,9 @@ export function WizardHeader({
   hideTitle,
 }: {
   step: number;
+  // Defaults to the family onboarding wizard's own step count — pass this
+  // explicitly for any other wizard (e.g. the 3-step sitter signup).
+  totalSteps?: number;
   title: string;
   accent: string;
   // Explicit previous-step route. Falls back to goBack() when omitted, but
@@ -63,16 +67,16 @@ export function WizardHeader({
         {showProgress ? (
           <>
             <View style={styles.track}>
-              <View style={[styles.fill, { width: `${(step / TOTAL_STEPS) * 100}%` }]} />
+              <View style={[styles.fill, { width: `${(step / totalSteps) * 100}%` }]} />
             </View>
             <Text style={styles.stepCount}>
-              {step}/{TOTAL_STEPS}
+              {step}/{totalSteps}
             </Text>
           </>
         ) : null}
       </View>
 
-      {showProgress ? <Text style={styles.eyebrow}>STEP {step} OF {TOTAL_STEPS}</Text> : null}
+      {showProgress ? <Text style={styles.eyebrow}>STEP {step} OF {totalSteps}</Text> : null}
       {hideTitle ? null : (
         <Text style={styles.title}>
           {title} <Text style={styles.accent}>{accent}</Text>

@@ -116,6 +116,14 @@ export type SitterProfile = {
   // until the sitter fills them in from the referral modal.
   payoutMethod: 'venmo' | 'paypal' | null;
   payoutHandle: string;
+  // The multi-step signup wizard (app/sitter-signup/*) writes these after
+  // every step so a sitter who bails partway through can pick up where
+  // they left off on a later sign-in (lib/onboardingProgress.ts's
+  // routeSignedInUser) instead of either restarting or, worse, being
+  // mistaken for a fully-registered sitter just because their doc exists.
+  // Both null/true once the final step completes.
+  signupStep: string | null;
+  signupComplete: boolean;
 };
 
 export const emptySitterProfile: SitterProfile = {
@@ -141,6 +149,8 @@ export const emptySitterProfile: SitterProfile = {
   referralCode: null,
   payoutMethod: null,
   payoutHandle: '',
+  signupStep: null,
+  signupComplete: false,
 };
 
 const VALID_PERIODS = new Set(AVAILABILITY_PERIODS.map((p) => p.key));
@@ -191,6 +201,12 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
     referralCode: typeof data.referralCode === 'string' ? data.referralCode : null,
     payoutMethod: data.payoutMethod === 'venmo' || data.payoutMethod === 'paypal' ? data.payoutMethod : null,
     payoutHandle: typeof data.payoutHandle === 'string' ? data.payoutHandle : '',
+    signupStep: typeof data.signupStep === 'string' ? data.signupStep : null,
+    // Absent on every sitter who registered before the multi-step wizard
+    // existed — those are all fully-registered profiles, so absence has to
+    // default to true, not false, or every legacy sitter would suddenly
+    // read as mid-signup.
+    signupComplete: typeof data.signupComplete === 'boolean' ? data.signupComplete : true,
   };
 }
 
@@ -225,12 +241,19 @@ export async function saveMySitterProfile(
   const uid = auth?.currentUser?.uid;
   if (!uid || !db) throw new Error('not-signed-in');
   const sitterRef = doc(db, 'sitters', uid);
+  // The multi-step signup wizard's first step creates the doc before the
+  // ZIP code is even collected (that's a later step) — clusterId has to
+  // be (re)computed whenever a save actually includes one, on an update
+  // just as much as on create, or a sitter who set their ZIP on a later
+  // step would be stuck with whatever clusterId (or lack of one) the
+  // create call happened to compute.
+  const clusterPatch = patch.zipCode !== undefined ? { clusterId: clusterForZip(patch.zipCode) } : {};
   if (isNew) {
     await setDoc(
       sitterRef,
       {
         ...patch,
-        clusterId: clusterForZip(patch.zipCode ?? ''),
+        ...clusterPatch,
         backgroundCheckStatus: 'pending',
         createdAt: serverTimestamp(),
         ...(referredByCode ? { referredByCodeInput: referredByCode } : {}),
@@ -248,7 +271,7 @@ export async function saveMySitterProfile(
   // field wholesale with exactly what's passed, which is what every
   // caller here actually intends: "this is the complete new value for
   // this field," not a partial nested patch.
-  await updateDoc(sitterRef, { ...patch, updatedAt: serverTimestamp() });
+  await updateDoc(sitterRef, { ...patch, ...clusterPatch, updatedAt: serverTimestamp() });
 }
 
 // The safe subset of a sitter's profile a family is ever shown — mirrors

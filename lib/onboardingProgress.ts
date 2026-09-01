@@ -69,7 +69,16 @@ export async function routeSignedInUser(
     if (db) {
       const sitterSnap = await getDoc(doc(db, 'sitters', user.uid));
       if (sitterSnap.exists()) {
-        router.replace('/(sitter)');
+        const sitterData = sitterSnap.data();
+        // Absent (every sitter who registered before the multi-step
+        // wizard — app/sitter-signup/* — existed) still means complete;
+        // only an explicit false means the wizard created this doc but
+        // they bailed before finishing it.
+        if (sitterData.signupComplete === false) {
+          router.replace((sitterData.signupStep as any) ?? '/sitter-signup/experience');
+        } else {
+          router.replace('/(sitter)');
+        }
         return;
       }
     }

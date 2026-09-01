@@ -1558,6 +1558,12 @@ exports.getPendingSitters = onCall(async (request) => {
 
   const snap = await admin.firestore().collection('sitters').limit(500).get();
   const sitters = snap.docs
+    // signupComplete === false means the multi-step signup wizard
+    // (app/sitter-signup/*) created this doc but the sitter hasn't
+    // finished it yet — absent entirely (every sitter who registered
+    // before that wizard existed) still counts as complete, so this only
+    // excludes an explicit false.
+    .filter((doc) => doc.data().signupComplete !== false)
     .filter((doc) => clusterIdOf(doc.data()) === myClusterId)
     .map((doc) => ({
       ...toPublicSitter(doc.id, doc.data()),

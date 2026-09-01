@@ -268,7 +268,8 @@ service cloud.firestore {
           'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate',
           'certificationDocUrls', 'availability', 'googleCalendarConnected',
           'googleCalendarSyncEnabled', 'availabilityConflictOverrides',
-          'availabilityManualOverrides', 'updatedAt', 'payoutMethod', 'payoutHandle'
+          'availabilityManualOverrides', 'updatedAt', 'payoutMethod', 'payoutHandle',
+          'signupStep', 'signupComplete'
         ]);
       allow delete: if false;
     }

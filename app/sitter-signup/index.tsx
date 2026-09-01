@@ -1,21 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from '../components/AppText';
+import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AddPhotoCircle } from '../components/AddPhotoCircle';
-import { Chip } from '../components/Chip';
-import { FieldInput } from '../components/FieldInput';
-import { PhotoCropperModal } from '../components/PhotoCropperModal';
-import { ZipCodeField } from '../components/ZipCodeField';
-import { useAuth } from '../contexts/AuthContext';
-import { auth, firebaseConfigured } from '../lib/firebase';
-import { NEURODIVERGENCE_OPTIONS } from '../lib/neurodivergence';
-import { extensionFromDocumentAsset, pickDocument, pickImageFile, pickNativePhoto, PickedDocument, uploadPhotoBlob } from '../lib/photoUpload';
-import { useIsDesktop } from '../lib/responsive';
+import { AddPhotoCircle } from '../../components/AddPhotoCircle';
+import { Chip } from '../../components/Chip';
+import { FieldInput } from '../../components/FieldInput';
+import { PhotoCropperModal } from '../../components/PhotoCropperModal';
+import { ZipCodeField } from '../../components/ZipCodeField';
+import { useAuth } from '../../contexts/AuthContext';
+import { NEURODIVERGENCE_OPTIONS } from '../../lib/neurodivergence';
+import { extensionFromDocumentAsset, pickDocument, pickImageFile, pickNativePhoto, PickedDocument, uploadPhotoBlob } from '../../lib/photoUpload';
+import { useIsDesktop } from '../../lib/responsive';
 import {
   docExtensionLabel,
   emptySitterProfile,
@@ -24,8 +22,8 @@ import {
   saveMySitterProfile,
   SitterProfile,
   SITTER_CERTIFICATIONS,
-} from '../lib/sitters';
-import { colors } from '../theme/colors';
+} from '../../lib/sitters';
+import { colors } from '../../theme/colors';
 
 // NEURODIVERGENCE_OPTIONS' own order is deliberate for where else it's
 // used (app/onboarding/child.tsx) — sorted only here, for this screen's
@@ -35,19 +33,20 @@ const SORTED_NEURODIVERGENCE_OPTIONS = [...NEURODIVERGENCE_OPTIONS].sort((a, b) 
 const PANEL_IMAGE =
   'https://images.unsplash.com/photo-1607453998774-d533f65dac99?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-function friendlyError(code: string): string {
-  switch (code) {
-    case 'auth/email-already-in-use':
-      return 'An account with that email already exists — try signing in instead.';
-    case 'auth/invalid-email':
-      return 'That email address looks invalid.';
-    case 'auth/weak-password':
-      return 'Password should be at least 6 characters.';
-    default:
-      return 'Something went wrong creating your account. Please try again.';
-  }
+function friendlyError(err: any, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
 }
 
+// A fresh (non-edit) visit used to render a single-page signup form right
+// here. That's now app/sitter-signup/{account,experience,about}.tsx's job
+// — a real 3-step wizard with Google sign-in and step-by-step progress
+// saving, so a sitter who bails partway through can resume later instead
+// of losing everything. This route now only handles editing an existing,
+// already-complete profile (?edit=1, reached from Profile) — anyone
+// landing here without that redirects straight into step 1, carrying
+// along name/zip if the sitters splash page's interest form is where they
+// came from (see app/sitters.tsx).
 export default function SitterSignup() {
   const { edit, name: prefillName, zip: prefillZip } = useLocalSearchParams<{
     edit?: string;
@@ -58,20 +57,14 @@ export default function SitterSignup() {
   const { user, loading: authLoading } = useAuth();
   const isDesktop = useIsDesktop();
 
-  const [loadingExisting, setLoadingExisting] = useState(editMode);
-  // Carried over from the sitters splash page's interest-list form, if
-  // that's where this visit came from — a plain lazy initializer since
-  // these only ever matter on first mount, not on every re-render.
-  const [profile, setProfile] = useState<SitterProfile>(() => ({
-    ...emptySitterProfile,
-    name: prefillName ?? '',
-    zipCode: prefillZip ?? '',
-  }));
-  const [password, setPassword] = useState('');
-  // Only meaningful on the create path — see saveMySitterProfile's own
-  // comment for why this is resolved server-side rather than trusted from
-  // here directly.
-  const [referralCodeInput, setReferralCodeInput] = useState('');
+  useEffect(() => {
+    if (editMode) return;
+    router.replace({ pathname: '/sitter-signup/account', params: { name: prefillName, zip: prefillZip } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode]);
+
+  const [loadingExisting, setLoadingExisting] = useState(true);
+  const [profile, setProfile] = useState<SitterProfile>(emptySitterProfile);
   const [pickedPhoto, setPickedPhoto] = useState<File | null>(null);
   // Picked locally but not yet uploaded — see the big comment on
   // handleSubmit below for why upload is deferred to submit time instead
@@ -107,19 +100,11 @@ export default function SitterSignup() {
     }));
   };
 
-  // Firebase auth errors carry a `.code` (mapped via friendlyError); a
-  // plain Error (e.g. a picker permission failure) carries a human-readable
-  // `.message` directly — anything else falls back to the generic message.
-  const uploadErrorMessage = (err: any, fallback: string): string => {
-    if (err?.code) return friendlyError(err.code);
-    if (err instanceof Error && err.message) return err.message;
-    return fallback;
-  };
+  const uploadErrorMessage = (err: any, fallback: string): string => friendlyError(err, fallback);
 
-  // Picking (and, on web, cropping) a photo is purely local — no network,
-  // no account needed — so it happens immediately. The actual upload is
-  // deferred to handleSubmit, once there's definitely a signed-in account
-  // to own the file. See handleSubmit's comment for why.
+  // Picking (and, on web, cropping) a photo is purely local — no network —
+  // so it happens immediately; the actual upload is deferred to
+  // handleSubmit.
   const handlePickPhoto = async () => {
     setPhotoError(null);
     if (Platform.OS === 'web') {
@@ -147,14 +132,6 @@ export default function SitterSignup() {
     setPendingPhotoPreviewUri(URL.createObjectURL(blob));
   };
 
-  // A certification document is often a PDF or Word doc, not a photo —
-  // pickDocument opens the OS's own file picker (Files/iCloud Drive/Google
-  // Drive on native, the browser's file picker on web) rather than
-  // restricting to the photo library the way the profile photo above
-  // does, and handles both platforms itself (no Platform.OS branching
-  // needed here, unlike the photo flow). Same deferred-upload reasoning as
-  // the photo above — picking is local and immediate, uploading waits for
-  // handleSubmit.
   const handleAddDocument = async () => {
     setDocError(null);
     setPickingDoc(true);
@@ -176,11 +153,6 @@ export default function SitterSignup() {
     setPendingDocs((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Uploads whatever's been picked-but-not-yet-uploaded (handlePickPhoto/
-  // handleCropConfirm/handleAddDocument only ever stash things locally —
-  // see their comments) and folds the resulting URLs into the given
-  // profile. Only ever called from handleSubmit, below, once there's
-  // definitely a signed-in account to own the files.
   const uploadPendingAssets = async (base: SitterProfile): Promise<SitterProfile> => {
     let next = base;
     if (pendingPhotoBlob) {
@@ -199,18 +171,6 @@ export default function SitterSignup() {
     return next;
   };
 
-  // Account creation (for a brand-new signup) happens right here, and only
-  // here — not the moment someone picks a photo or document. Uploading
-  // does need a signed-in account (see uploadPhotoBlob), but creating one
-  // early, before someone has actually committed to signing up, meant a
-  // half-filled-out photo pick silently created a real account — and other
-  // screens still mounted in the background (e.g. the landing page, whose
-  // own "route a signed-in user into the app" effect doesn't know this
-  // account is mid sitter-signup) would react to that and yank the person
-  // into the unrelated family onboarding flow. Deferring both account
-  // creation and the actual upload to this one place means nothing happens
-  // — no account, no Storage writes — until "Submit for review" is
-  // actually pressed.
   const handleSubmit = async () => {
     setError(null);
     if (!profile.name.trim()) {
@@ -242,54 +202,25 @@ export default function SitterSignup() {
       return;
     }
 
-    if (editMode) {
-      setSubmitting(true);
-      try {
-        const finalProfile = await uploadPendingAssets(profile);
-        await saveMySitterProfile(finalProfile, false);
-        router.replace('/(sitter)');
-      } catch (err: any) {
-        setError(uploadErrorMessage(err, 'Something went wrong saving your profile. Please try again.'));
-      } finally {
-        setSubmitting(false);
-      }
-      return;
-    }
-
-    if (!profile.email || !password) {
-      setError('Fill in your email and password to continue.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password should be at least 6 characters.');
-      return;
-    }
-    if (!firebaseConfigured || !auth) {
-      setError('Sign-up isn’t configured yet — the app is missing its backend credentials.');
-      return;
-    }
-
     setSubmitting(true);
     try {
-      // A retry after an earlier failed attempt (e.g. the account got
-      // created but a subsequent upload failed) would otherwise throw
-      // auth/email-already-in-use here — only create it if that didn't
-      // already happen.
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: profile.name.trim() });
-      } else {
-        const credential = await createUserWithEmailAndPassword(auth, profile.email.trim(), password);
-        await updateProfile(credential.user, { displayName: profile.name.trim() });
-      }
       const finalProfile = await uploadPendingAssets(profile);
-      await saveMySitterProfile(finalProfile, true, referralCodeInput.trim() || undefined);
+      await saveMySitterProfile(finalProfile, false);
       router.replace('/(sitter)');
     } catch (err: any) {
-      setError(uploadErrorMessage(err, 'Something went wrong submitting your profile. Please try again.'));
+      setError(uploadErrorMessage(err, 'Something went wrong saving your profile. Please try again.'));
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (!editMode) {
+    return (
+      <SafeAreaView style={[styles.screen, styles.centered]}>
+        <ActivityIndicator color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
 
   if (authLoading || loadingExisting) {
     return (
@@ -302,42 +233,23 @@ export default function SitterSignup() {
   const formShell = (
     <>
       <View style={styles.header}>
-        <Pressable style={styles.back} onPress={() => router.replace(editMode ? '/(sitter)' : '/')}>
+        <Pressable style={styles.back} onPress={() => router.replace('/(sitter)')}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>{editMode ? 'Edit your profile' : 'Become a sitter'}</Text>
+        <Text style={styles.headerTitle}>Edit your profile</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {!editMode ? (
-          <Text style={styles.intro}>
-            Register to be listed for families on Opened Circle looking for a sitter. We’ll review your background
-            check before you show up in any recommendations.
-          </Text>
-        ) : null}
-
         <View style={[styles.topSection, isDesktop && styles.topSectionDesktop]}>
           <View style={[styles.topFields, isDesktop && styles.topFieldsDesktop]}>
             <FieldInput label="Your name" placeholder="Jordan Lee" value={profile.name} onChangeText={(name) => patch({ name })} />
-
-            {editMode ? (
-              <View style={styles.connectedRow}>
-                <Ionicons name="mail-outline" size={22} color={colors.positive} />
-                <View style={styles.connectedTextWrap}>
-                  <Text style={styles.connectedTitle}>Signed in</Text>
-                  <Text style={styles.connectedEmail}>{user?.email}</Text>
-                </View>
+            <View style={styles.connectedRow}>
+              <Ionicons name="mail-outline" size={22} color={colors.positive} />
+              <View style={styles.connectedTextWrap}>
+                <Text style={styles.connectedTitle}>Signed in</Text>
+                <Text style={styles.connectedEmail}>{user?.email}</Text>
               </View>
-            ) : (
-              <FieldInput
-                label="Email"
-                placeholder="jordan@email.com"
-                value={profile.email}
-                onChangeText={(email) => patch({ email })}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            )}
+            </View>
           </View>
 
           <View style={[styles.topPhoto, isDesktop && styles.topPhotoDesktop]}>
@@ -353,26 +265,6 @@ export default function SitterSignup() {
           </View>
         </View>
         <PhotoCropperModal file={pickedPhoto} onCancel={() => setPickedPhoto(null)} onConfirm={handleCropConfirm} />
-
-        {!editMode ? (
-          <>
-            <FieldInput
-              label="Password"
-              placeholder="6+ characters"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            <FieldInput
-              label="Referral code"
-              placeholder="e.g. CHRISTINA5H2"
-              optional
-              value={referralCodeInput}
-              onChangeText={setReferralCodeInput}
-              autoCapitalize="characters"
-            />
-          </>
-        ) : null}
 
         <FieldInput
           label="Phone"
@@ -498,9 +390,7 @@ export default function SitterSignup() {
 
       <View style={styles.footer}>
         <Pressable style={[styles.cta, submitting && styles.ctaDisabled]} onPress={handleSubmit} disabled={submitting}>
-          <Text style={styles.ctaText}>
-            {submitting ? 'Saving…' : editMode ? 'Save changes' : 'Submit for review'}
-          </Text>
+          <Text style={styles.ctaText}>{submitting ? 'Saving…' : 'Save changes'}</Text>
         </Pressable>
       </View>
     </>
@@ -524,19 +414,16 @@ export default function SitterSignup() {
             <View style={styles.desktopPanelContent}>
               <View style={styles.desktopBrandChip}>
                 <View style={styles.desktopBrandRow}>
-                  <Image source={require('../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
+                  <Image source={require('../../assets/logo-mark.png')} style={styles.desktopBrandMark} resizeMode="contain" />
                   <Text style={styles.desktopWordmark}>
                     Opened <Text style={styles.desktopWordmarkAccent}>Circle</Text> for Sitters
                   </Text>
                 </View>
               </View>
-              <Text style={styles.desktopPanelTitle}>
-                {editMode ? 'Keep your profile current.' : 'Get matched with families who actually need you.'}
-              </Text>
+              <Text style={styles.desktopPanelTitle}>Keep your profile current.</Text>
               <Text style={styles.desktopPanelText}>
-                {editMode
-                  ? 'Families see your profile exactly as you leave it here — availability, rate, and experience included.'
-                  : "We'll review your background check before you show up in any family's recommendations."}
+                Families see your profile exactly as you leave it here — availability, rate, and experience
+                included.
               </Text>
             </View>
           </ImageBackground>
@@ -584,12 +471,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 4,
-  },
-  intro: {
-    fontSize: 14,
-    color: colors.textMuted,
-    lineHeight: 20,
-    marginBottom: 20,
   },
   photoError: {
     fontSize: 12,
@@ -746,9 +627,6 @@ const styles = StyleSheet.create({
     width: '38%',
     backgroundColor: colors.accentMuted,
   },
-  // Explicit, rather than trusting resizeMode="cover" alone to size the
-  // underlying <img> — forces it to actually fill the panel edge to edge
-  // instead of whatever its own intrinsic/natural size would otherwise be.
   desktopPanelImage: {
     width: '100%',
     height: '100%',
@@ -759,8 +637,6 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 48,
   },
-  // A backing chip rather than relying on the gradient alone — same
-  // reasoning as the fix on app/index.tsx / app/sitters.tsx.
   desktopBrandChip: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(20, 18, 16, 0.45)',

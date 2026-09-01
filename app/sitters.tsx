@@ -18,6 +18,7 @@ import { FieldInput } from '../components/FieldInput';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { openPrivacyPolicy } from '../lib/navigation';
 import { useIsDesktop } from '../lib/responsive';
+import { isWithinServiceArea } from '../lib/serviceArea';
 import { colors } from '../theme/colors';
 
 // This page's body/UI font is Geist (per the reference it was built to
@@ -122,6 +123,10 @@ export default function SittersLanding() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // True once the ZIP has checked out (see handleSubmit) — swaps the
+  // form for a brief "you qualify" message before navigating away.
+  const [qualified, setQualified] = useState(false);
+  const [outOfAreaOpen, setOutOfAreaOpen] = useState(false);
 
   const scrollToRole = () => scrollRef.current?.scrollTo({ y: roleY.current, animated: true });
   const scrollToHow = () => scrollRef.current?.scrollTo({ y: howY.current, animated: true });
@@ -129,21 +134,36 @@ export default function SittersLanding() {
 
   // This page still isn't wired to a real backend, so "saving" the name
   // and zip is just handing them to the sitter-signup flow as route
-  // params — that screen reads them back to prefill its own Full
-  // name/ZIP fields. The brief delay is only so the spinner actually
-  // registers before navigating away, since there's no real network call
-  // to wait on.
-  const handleSubmit = () => {
+  // params — that screen reads them back to prefill its own First/Last
+  // name and ZIP fields, and every step after that persists them to the
+  // sitter's own Firestore doc (see lib/onboardingProgress.ts's
+  // routeSignedInUser for how a bailed signup resumes from there).
+  const handleSubmit = async () => {
     setError(null);
     if (!firstName.trim() || !lastName.trim() || !zip.trim() || !background) {
       setError('Fill in every field to join the interest list.');
       return;
     }
     setSubmitting(true);
+    const eligible = await isWithinServiceArea(zip.trim());
+    if (eligible === null) {
+      setSubmitting(false);
+      setError('Couldn’t verify that zip code — double check it and try again.');
+      return;
+    }
+    if (!eligible) {
+      setSubmitting(false);
+      setOutOfAreaOpen(true);
+      return;
+    }
+    // Briefly shows the "you qualify" message (see the leadCard's
+    // qualified branch below) before navigating away, so the check
+    // itself doesn't feel invisible.
+    setQualified(true);
     setTimeout(() => {
       const name = `${firstName.trim()} ${lastName.trim()}`.trim();
       router.push({ pathname: '/sitter-signup', params: { name, zip: zip.trim() } });
-    }, 500);
+    }, 900);
   };
 
   return (
@@ -352,72 +372,82 @@ export default function SittersLanding() {
             </View>
 
             <View style={[styles.leadCard, isDesktop && styles.leadCardDesktop]}>
-              <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
-              <Text style={styles.formTitle}>Join our provider community</Text>
-              <Text style={styles.formSubtitle}>Let’s first make sure you’re eligible for our first launch.</Text>
-
-              <View style={styles.formNameRow}>
-                <View style={styles.formNameHalf}>
-                  <FieldInput label="First name" placeholder="Jamie" value={firstName} onChangeText={setFirstName} />
+              {qualified ? (
+                <View style={styles.qualifiedWrap}>
+                  <Ionicons name="checkmark-circle" size={40} color={ACCENT} />
+                  <Text style={styles.qualifiedTitle}>You qualify!</Text>
+                  <Text style={styles.qualifiedBody}>Taking you to sign up…</Text>
                 </View>
-                <View style={styles.formNameHalf}>
-                  <FieldInput label="Last name" placeholder="Chen" value={lastName} onChangeText={setLastName} />
-                </View>
-              </View>
-              <FieldInput
-                label="ZIP code"
-                placeholder="94010"
-                value={zip}
-                onChangeText={setZip}
-                keyboardType="number-pad"
-              />
-
-              <Text style={styles.selectLabel}>Your background</Text>
-              {Platform.OS === 'web' ? (
-                // A real <select> — on web, RN's usual approach (a
-                // Pressable opening a full-screen Modal "sheet") reads as
-                // a whole-page takeover instead of the small native
-                // dropdown browsers already give you for free.
-                <select
-                  value={background ?? ''}
-                  onChange={(e) => setBackground(e.target.value || null)}
-                  disabled={submitting}
-                  style={webSelectStyle}
-                >
-                  <option value="" disabled>
-                    Select the closest fit
-                  </option>
-                  {BACKGROUND_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
               ) : (
-                <Pressable
-                  style={styles.selectField}
-                  onPress={() => setPickerOpen(true)}
-                  disabled={submitting}
-                >
-                  <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
-                    {background ?? 'Select the closest fit'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-                </Pressable>
+                <>
+                  <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
+                  <Text style={styles.formTitle}>Join our provider community</Text>
+                  <Text style={styles.formSubtitle}>Let’s first make sure you’re eligible for our first launch.</Text>
+
+                  <View style={styles.formNameRow}>
+                    <View style={styles.formNameHalf}>
+                      <FieldInput label="First name" placeholder="Jamie" value={firstName} onChangeText={setFirstName} />
+                    </View>
+                    <View style={styles.formNameHalf}>
+                      <FieldInput label="Last name" placeholder="Chen" value={lastName} onChangeText={setLastName} />
+                    </View>
+                  </View>
+                  <FieldInput
+                    label="ZIP code"
+                    placeholder="94010"
+                    value={zip}
+                    onChangeText={setZip}
+                    keyboardType="number-pad"
+                  />
+
+                  <Text style={styles.selectLabel}>Your background</Text>
+                  {Platform.OS === 'web' ? (
+                    // A real <select> — on web, RN's usual approach (a
+                    // Pressable opening a full-screen Modal "sheet") reads as
+                    // a whole-page takeover instead of the small native
+                    // dropdown browsers already give you for free.
+                    <select
+                      value={background ?? ''}
+                      onChange={(e) => setBackground(e.target.value || null)}
+                      disabled={submitting}
+                      style={webSelectStyle}
+                    >
+                      <option value="" disabled>
+                        Select the closest fit
+                      </option>
+                      {BACKGROUND_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Pressable
+                      style={styles.selectField}
+                      onPress={() => setPickerOpen(true)}
+                      disabled={submitting}
+                    >
+                      <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
+                        {background ?? 'Select the closest fit'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                    </Pressable>
+                  )}
+
+                  {error ? <Text style={styles.formError}>{error}</Text> : null}
+
+                  <Pressable style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
+                    {submitting ? (
+                      <ActivityIndicator color={colors.surface} />
+                    ) : (
+                      <>
+                        <Text style={styles.submitButtonText}>I’m interested</Text>
+                        <Ionicons name="arrow-forward" size={16} color={colors.surface} />
+                      </>
+                    )}
+                  </Pressable>
+                </>
               )}
-
-              {error ? <Text style={styles.formError}>{error}</Text> : null}
-
-              <Pressable style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
-                {submitting ? (
-                  <ActivityIndicator color={colors.surface} />
-                ) : (
-                  <>
-                    <Text style={styles.submitButtonText}>I’m interested</Text>
-                    <Ionicons name="arrow-forward" size={16} color={colors.surface} />
-                  </>
-                )}
-              </Pressable>
             </View>
           </View>
         </View>
@@ -464,6 +494,21 @@ export default function SittersLanding() {
             </ScrollView>
           </View>
         </Pressable>
+      </Modal>
+
+      <Modal visible={outOfAreaOpen} transparent animationType="fade" onRequestClose={() => setOutOfAreaOpen(false)}>
+        <View style={styles.outOfAreaScrim}>
+          <View style={styles.outOfAreaSheet}>
+            <Ionicons name="location-outline" size={32} color={ACCENT} />
+            <Text style={styles.outOfAreaText}>
+              We are currently only available in the Bay Area Peninsula, but will soon be coming to a location near
+              you
+            </Text>
+            <Pressable style={styles.outOfAreaButton} onPress={() => setOutOfAreaOpen(false)}>
+              <Text style={styles.outOfAreaButtonText}>Got it</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1245,6 +1290,59 @@ const styles = StyleSheet.create({
   },
   footerLaunchDesktop: {
     marginBottom: 0,
+  },
+  // Interest-form "you qualify" success state, shown inside leadCard in
+  // place of the form once handleSubmit confirms the zip is in range.
+  qualifiedWrap: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  qualifiedTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.heading,
+    marginTop: 4,
+  },
+  qualifiedBody: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  // Out-of-service-area modal — a centered dialog (not a bottom sheet like
+  // the background picker below) since it's a short one-off message, not a
+  // list to choose from.
+  outOfAreaScrim: {
+    flex: 1,
+    backgroundColor: 'rgba(18, 61, 59, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  outOfAreaSheet: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 14,
+    maxWidth: 360,
+    width: '100%',
+  },
+  outOfAreaText: {
+    fontSize: 15,
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  outOfAreaButton: {
+    backgroundColor: ACCENT,
+    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+  },
+  outOfAreaButtonText: {
+    color: colors.surface,
+    fontSize: 15,
+    fontWeight: '700',
   },
   // Background picker modal
   pickerScrim: {

@@ -1,4 +1,7 @@
-export type ZipLookupResult = { city: string; state: string };
+// lat/lng come from the same zippopotam response as city/state (each
+// place includes them) — added for lib/serviceArea.ts's radius check,
+// alongside the city/state confirmation this was originally built for.
+export type ZipLookupResult = { city: string; state: string; lat: number; lng: number };
 
 // Zippopotam.us — free, no API key or signup, exactly the kind of public
 // zip→city lookup most apps use to confirm "did you type that right?"
@@ -14,8 +17,12 @@ export async function lookupZipCode(zip: string): Promise<ZipLookupResult | null
     const place = Array.isArray(data?.places) ? data.places[0] : null;
     const city = place?.['place name'];
     const state = place?.['state abbreviation'];
-    if (typeof city !== 'string' || typeof state !== 'string') return null;
-    return { city, state };
+    const lat = place ? Number(place['latitude']) : NaN;
+    const lng = place ? Number(place['longitude']) : NaN;
+    if (typeof city !== 'string' || typeof state !== 'string' || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+    return { city, state, lat, lng };
   } catch {
     return null;
   }

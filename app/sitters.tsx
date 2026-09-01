@@ -1049,7 +1049,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   h2Light: {
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontWeight: '400',
     fontSize: 32,
     color: colors.textOnDark,
     lineHeight: 38,
@@ -1077,7 +1078,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   formTitle: {
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontWeight: '400',
     fontSize: 24,
     color: colors.heading,
     marginBottom: 6,
@@ -1149,7 +1151,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   confirmTitle: {
-    fontFamily: 'Lora_700Bold',
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontWeight: '400',
     fontSize: 22,
     color: colors.heading,
   },

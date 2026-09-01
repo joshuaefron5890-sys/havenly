@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { forwardRef, useRef, useState } from 'react';
+import { forwardRef, useRef, useState, type CSSProperties } from 'react';
 import {
   ActivityIndicator,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -66,6 +67,26 @@ const BACKGROUND_OPTIONS = [
   'Sibling or volunteer with experience supporting neurodivergent children and/or children with disabilities',
   'Other relevant experience',
 ];
+
+// A raw DOM style object (not a StyleSheet — <select> is a real HTML
+// element, bypassing RN's style system) mirroring the selectField/
+// selectValue Pressable's look so the two platforms' pickers still read
+// as the same design.
+const webSelectStyle: CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  border: `1px solid ${colors.border}`,
+  backgroundColor: colors.surface,
+  borderRadius: 14,
+  paddingTop: 14,
+  paddingBottom: 14,
+  paddingLeft: 16,
+  paddingRight: 16,
+  marginBottom: 16,
+  fontSize: 14,
+  color: colors.text,
+  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+};
 
 const EXPERIENCE_ITEMS = [
   'Behavior technicians, special educators, and classroom or inclusion aides',
@@ -340,16 +361,38 @@ export default function SittersLanding() {
               />
 
               <Text style={styles.selectLabel}>Your background</Text>
-              <Pressable
-                style={styles.selectField}
-                onPress={() => setPickerOpen(true)}
-                disabled={submitting}
-              >
-                <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
-                  {background ?? 'Select the closest fit'}
-                </Text>
-                <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-              </Pressable>
+              {Platform.OS === 'web' ? (
+                // A real <select> — on web, RN's usual approach (a
+                // Pressable opening a full-screen Modal "sheet") reads as
+                // a whole-page takeover instead of the small native
+                // dropdown browsers already give you for free.
+                <select
+                  value={background ?? ''}
+                  onChange={(e) => setBackground(e.target.value || null)}
+                  disabled={submitting}
+                  style={webSelectStyle}
+                >
+                  <option value="" disabled>
+                    Select the closest fit
+                  </option>
+                  {BACKGROUND_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Pressable
+                  style={styles.selectField}
+                  onPress={() => setPickerOpen(true)}
+                  disabled={submitting}
+                >
+                  <Text style={[styles.selectValue, !background && styles.selectPlaceholder]} numberOfLines={1}>
+                    {background ?? 'Select the closest fit'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                </Pressable>
+              )}
 
               {error ? <Text style={styles.formError}>{error}</Text> : null}
 

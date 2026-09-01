@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { forwardRef, useRef, useState } from 'react';
 import {
   Image,
@@ -84,10 +83,6 @@ const TRUST_ITEMS: { icon: keyof typeof Ionicons.glyphMap; bold: string; rest: s
   { icon: 'location-outline', bold: 'Local', rest: 'Peninsula families' },
   { icon: 'cash-outline', bold: '100%', rest: 'of your hourly rate' },
 ];
-
-function signIn() {
-  router.push('/sign-in');
-}
 
 export default function SittersLanding() {
   const isDesktop = useIsDesktop();
@@ -380,14 +375,6 @@ export default function SittersLanding() {
               Launching in Hillsborough, California
             </Text>
           </View>
-          <Pressable onPress={signIn}>
-            <Text style={styles.footerSignIn}>
-              Already registered? <Text style={styles.footerSignInAccent}>Sign in</Text>
-            </Text>
-          </Pressable>
-          <Pressable onPress={() => router.push('/')}>
-            <Text style={styles.footerFamilyLink}>Looking for a sitter instead? Go to Opened Circle for families</Text>
-          </Pressable>
         </View>
       </ScrollView>
 
@@ -1195,21 +1182,6 @@ const styles = StyleSheet.create({
   footerLaunchDesktop: {
     marginBottom: 0,
   },
-  footerSignIn: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 8,
-  },
-  footerSignInAccent: {
-    color: ACCENT,
-    fontWeight: '700',
-  },
-  footerFamilyLink: {
-    fontSize: 11.5,
-    color: colors.caption,
-    marginTop: 6,
-  },
-
   // Background picker modal
   pickerScrim: {
     flex: 1,

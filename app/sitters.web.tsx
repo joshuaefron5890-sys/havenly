@@ -80,8 +80,10 @@ html { scroll-behavior: smooth; }
      never move. Making .kp-root its own scroll container sidesteps
      that instead of touching the shared, app-wide <body> reset. */
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 
   * { box-sizing: border-box; }

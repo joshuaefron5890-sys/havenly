@@ -334,8 +334,8 @@ export default function SittersLanding() {
               ) : (
                 <>
                   <Text style={styles.formTag}>TAKES ABOUT 1 MINUTE</Text>
-                  <Text style={styles.formTitle}>Join the interest list</Text>
-                  <Text style={styles.formSubtitle}>We’ll send you the full application and launch details.</Text>
+                  <Text style={styles.formTitle}>Join our provider community</Text>
+                  <Text style={styles.formSubtitle}>Let’s first make sure you’re eligible for our first launch.</Text>
 
                   <FieldInput label="Full name" placeholder="Your name" value={name} onChangeText={setName} />
                   <FieldInput
@@ -1050,13 +1050,13 @@ const styles = StyleSheet.create({
   h2Light: {
     fontFamily: 'Georgia, "Times New Roman", serif',
     fontWeight: '400',
-    fontSize: 32,
+    fontSize: 61,
     color: colors.textOnDark,
-    lineHeight: 38,
+    lineHeight: 66,
     marginBottom: 14,
   },
   applyBody: {
-    fontSize: 15,
+    fontSize: 16,
     color: 'rgba(250, 248, 243, 0.75)',
     lineHeight: 23,
   },

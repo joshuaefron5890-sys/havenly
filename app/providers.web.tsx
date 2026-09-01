@@ -1,6 +1,6 @@
 import Head from 'expo-router/head';
 import { router } from 'expo-router';
-import { FormEvent, useState } from 'react';
+import { FormEvent, MouseEvent, useState } from 'react';
 import { ArrowRight, BadgeCheck, Check, CircleDollarSign, Clock3, MapPin, ShieldCheck } from 'lucide-react';
 import { isWithinServiceArea } from '../lib/serviceArea';
 
@@ -365,6 +365,15 @@ export default function SittersLanding() {
     }, 900);
   }
 
+  // The brand mark/wordmark (nav and footer) — real href="/" so
+  // middle-click/right-click "open in new tab" still works, but a plain
+  // left-click goes through expo-router instead of a full page reload,
+  // matching how the rest of this app navigates between routes.
+  function goHome(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    router.push('/');
+  }
+
   return (
     <div className="kp-root">
       <Head>
@@ -373,7 +382,7 @@ export default function SittersLanding() {
 
       <main>
         <nav className="nav-shell" aria-label="Main navigation">
-          <a href="#top" className="brand" aria-label="Opened Circle home">
+          <a href="/" className="brand" aria-label="Opened Circle home" onClick={goHome}>
             <img className="brand-mark" src="/opened-circle-logo.png" alt="" width={40} height={40} />
             <span>Opened Circle</span>
           </a>
@@ -601,7 +610,7 @@ export default function SittersLanding() {
         </section>
 
         <footer>
-          <a href="#top" className="brand">
+          <a href="/" className="brand" onClick={goHome}>
             <img className="brand-mark" src="/opened-circle-logo.png" alt="" width={40} height={40} />
             <span>Opened Circle</span>
           </a>

@@ -171,7 +171,7 @@ export default function SittersLanding() {
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Nav */}
         <View style={[styles.nav, isDesktop && styles.navDesktop]}>
-          <Pressable style={styles.brandRow} onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}>
+          <Pressable style={styles.brandRow} onPress={() => router.push('/')}>
             <Image source={require('../assets/logo-mark.png')} style={styles.brandMark} resizeMode="contain" />
             <Text style={styles.brandWordmark}>Opened Circle</Text>
           </Pressable>

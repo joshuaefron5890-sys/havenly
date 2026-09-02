@@ -27,7 +27,6 @@ const MAX_DESKTOP_CONTENT_WIDTH = 1440;
 // (both would otherwise read as the same '/').
 function isDesktopEligibleRoute(first: string | undefined): boolean {
   return (
-    first === undefined ||
     first === 'sign-in' ||
     first === 'onboarding' ||
     first === '(tabs)' ||
@@ -54,12 +53,12 @@ export function ResponsiveContainer({ children }: PropsWithChildren) {
   const isDesktop = Platform.OS === 'web' && width >= DESKTOP_BREAKPOINT && isDesktopEligibleRoute(segments[0]);
   const isWide = width > MAX_CONTENT_WIDTH;
 
-  // app/providers.web.tsx is a pixel-accurate reproduction of an external
-  // reference site with its own real CSS media queries (900px/620px) —
-  // this app's 480/1440 phone-column wrapping would fight that at every
-  // width in between, so this route renders completely unwrapped and
-  // owns its full-bleed responsive layout end to end.
-  if (Platform.OS === 'web' && segments[0] === 'providers') {
+  // app/providers.web.tsx and app/index.web.tsx both own their own
+  // full-bleed responsive layout via real CSS media queries (900px/620px)
+  // — this app's 480/1440 phone-column wrapping would fight that at every
+  // width in between, so these routes render completely unwrapped.
+  // segments[0] is undefined for the root route ('/').
+  if (Platform.OS === 'web' && (segments[0] === 'providers' || segments[0] === undefined)) {
     return <>{children}</>;
   }
 

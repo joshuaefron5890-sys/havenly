@@ -247,8 +247,8 @@ export default function Landing() {
             <div className="portrait-card">
               <div className="portrait-scene">
                 <img
-                  src="/playdate-modern.png"
-                  alt="A provider playing with two children, one wearing headphones, while parents talk nearby."
+                  src="https://images.unsplash.com/photo-1590451934924-1bd1a184ed77?q=80&w=1729&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                  alt="A family spending time together."
                   width={1024}
                   height={1024}
                   fetchPriority="high"

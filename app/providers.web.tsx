@@ -402,7 +402,7 @@ export default function SittersLanding() {
               Login
             </a>
             <a href="#interest-form" className="nav-cta">
-              Join Early Access <ArrowRight size={15} aria-hidden="true" />
+              Apply Now <ArrowRight size={15} aria-hidden="true" />
             </a>
           </div>
         </nav>

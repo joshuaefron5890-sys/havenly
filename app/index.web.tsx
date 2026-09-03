@@ -2,7 +2,7 @@ import Head from 'expo-router/head';
 import { router, useFocusEffect } from 'expo-router';
 import { MouseEvent, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { ArrowRight, MapPin } from 'lucide-react';
+import { ArrowRight, Check, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
@@ -95,8 +95,15 @@ html { scroll-behavior: smooth; }
 
   .center-heading { max-width: 720px; margin: 0 auto 24px; text-align: center; }
   .center-heading h2 { margin: 17px 0 0; font-size: clamp(36px, 4.5vw, 54px); line-height: 1.06; }
-  .approach-section { max-width: 820px; margin: auto; padding: 96px 34px; text-align: center; }
-  .approach-section p { max-width: 640px; margin: 20px auto 0; color: #566b61; font-size: 17px; line-height: 1.75; text-align: left; }
+  .split-section { max-width: 1160px; margin: auto; padding: 72px 34px; display: grid; grid-template-columns: 1fr .88fr; gap: 64px; align-items: center; }
+  .section-intro h2 { margin: 17px 0 22px; font-size: clamp(36px, 4.5vw, 54px); line-height: 1.06; }
+  .section-intro > p { max-width: 560px; color: #61756b; font-size: 17px; line-height: 1.7; }
+  .experience-card { padding: 28px; border: 1px solid #dbe4de; border-radius: 28px; background: #fff; box-shadow: 0 20px 70px #36544412; }
+  .card-label { margin-bottom: 23px; color: #394f44; font-weight: 750; }
+  .experience-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .experience-card li { display: flex; align-items: flex-start; gap: 11px; color: #53675e; font-size: 14px; line-height: 1.55; }
+  .experience-card li svg { width: 21px; height: 21px; padding: 4px; border-radius: 50%; color: #fff; background: #1b6b56; flex: none; margin-top: 2px; }
+  .experience-note { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid #e6ebe7; color: #61756b; font-size: 12px; line-height: 1.6; }
 
   .how-section { padding: 96px 34px 110px; background: #eef4ef; }
   .steps-grid { max-width: 1090px; margin: 40px auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px; }
@@ -124,6 +131,7 @@ html { scroll-behavior: smooth; }
     .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 50px; text-align: center; }
     .hero-lede { margin-inline: auto; }
     .hero-actions { justify-content: center; }
+    .split-section { grid-template-columns: 1fr; gap: 32px; }
     .steps-grid { gap: 20px; }
     .steps-grid article { padding: 0 8px; }
     footer { grid-template-columns: 1fr; text-align: center; }
@@ -144,9 +152,9 @@ html { scroll-behavior: smooth; }
     .sun-shape { width: 300px; height: 300px; }
     .portrait-card { width: 260px; border-width: 7px; }
     .portrait-scene { height: 300px; }
-    .approach-section { padding: 64px 20px; }
-    .approach-section p { text-align: left; }
-    .center-heading h2 { font-size: 34px; }
+    .split-section { padding: 48px 20px; }
+    .experience-card { padding: 24px 22px; }
+    .center-heading h2, .section-intro h2 { font-size: 34px; }
     .how-section { padding: 60px 20px 70px; }
     .steps-grid { grid-template-columns: 1fr; gap: 30px; }
     .steps-grid article { display: grid; grid-template-columns: 55px 1fr; column-gap: 16px; }
@@ -261,17 +269,34 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="approach" className="approach-section">
-          <div className="kicker">Our approach</div>
-          <h2>Connection shouldn’t take this much work.</h2>
-          <p>
-            A simple “let’s get the kids together” usually means vetting a venue for sensory triggers, explaining
-            your child’s needs to someone new, and managing a high-stress event completely on your own.
-          </p>
-          <p>
-            We handle the match, book a setting that actually fits, and send an experienced provider so you can
-            enjoy a break, too, while your child is completely supported.
-          </p>
+        <section id="approach" className="split-section">
+          <div className="section-intro">
+            <span className="kicker">Our approach</span>
+            <h2>Connection shouldn’t take this much work.</h2>
+            <p>
+              A simple “let’s get the kids together” usually means vetting a venue for sensory triggers, explaining
+              your child’s needs to someone new, and managing a high-stress event completely on your own.
+            </p>
+          </div>
+          <div className="experience-card">
+            <p className="card-label">Here’s what we handle.</p>
+            <ul>
+              <li>
+                <Check size={16} />
+                The right match
+              </li>
+              <li>
+                <Check size={16} />A setting that actually fits
+              </li>
+              <li>
+                <Check size={16} />
+                An experienced provider
+              </li>
+            </ul>
+            <p className="experience-note">
+              So you can enjoy a break, too, while your child is completely supported.
+            </p>
+          </div>
         </section>
 
         <section id="how" className="how-section">

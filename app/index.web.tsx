@@ -2,7 +2,7 @@ import Head from 'expo-router/head';
 import { router, useFocusEffect } from 'expo-router';
 import { MouseEvent, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { ArrowRight, Calendar, Check, MapPin, ShieldCheck, Users } from 'lucide-react';
+import { ArrowRight, Calendar, Check, MapPin, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
@@ -100,9 +100,7 @@ html { scroll-behavior: smooth; }
   .match-provider-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-provider-badge { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; border: 2px solid #faf9f3; display: grid; place-items: center; color: #fff; }
   .match-provider-badge svg { width: 13px; height: 13px; }
-  .match-name { position: absolute; z-index: 4; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 6px; border-radius: 14px; background: #fff; box-shadow: 0 12px 28px #284a3c28; }
-  .match-name svg { flex: none; width: 15px; height: 15px; padding: 5px; border-radius: 8px; color: #1b6b56; background: #e8f3ed; }
-  .match-name span { font-size: 11.5px; font-weight: 750; color: #2f453b; white-space: nowrap; }
+  .match-name { position: absolute; z-index: 4; padding: 5px 10px; border-radius: 10px; background: #fff; box-shadow: 0 10px 24px #284a3c28; font-size: 10px; font-weight: 750; color: #2f453b; white-space: nowrap; }
   .match-name-back { left: -14px; top: -14px; }
   .match-name-front { right: -14px; top: -14px; }
   .match-card { display: inline-flex; align-items: flex-start; gap: 12px; }
@@ -168,9 +166,7 @@ html { scroll-behavior: smooth; }
     .match-provider-photo { border-width: 3px; }
     .match-provider-badge { width: 18px; height: 18px; }
     .match-provider-badge svg { width: 10px; height: 10px; }
-    .match-name { gap: 5px; padding: 4px 9px 4px 4px; border-radius: 11px; }
-    .match-name svg { width: 11px; height: 11px; padding: 3px; border-radius: 6px; }
-    .match-name span { font-size: 9.5px; }
+    .match-name { padding: 3px 8px; border-radius: 8px; font-size: 8.5px; }
     .match-name-back { left: -10px; top: -10px; }
     .match-name-front { right: -10px; top: -10px; }
     .match-card { gap: 9px; }
@@ -293,10 +289,7 @@ export default function Landing() {
                     fetchPriority="high"
                   />
                 </div>
-                <span className="match-name match-name-back">
-                  <Users size={15} aria-hidden="true" />
-                  The Smith Family
-                </span>
+                <span className="match-name match-name-back">The Smith Family</span>
                 <div className="match-avatar match-avatar-front">
                   <img
                     src="https://plus.unsplash.com/premium_photo-1661475916373-5aaaeb4a5393?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
@@ -306,10 +299,7 @@ export default function Landing() {
                     fetchPriority="high"
                   />
                 </div>
-                <span className="match-name match-name-front">
-                  <Users size={15} aria-hidden="true" />
-                  The Reese Family
-                </span>
+                <span className="match-name match-name-front">The Reese Family</span>
                 <div className="match-provider">
                   <div className="match-provider-photo">
                     <img

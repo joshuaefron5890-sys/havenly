@@ -239,7 +239,7 @@ html { scroll-behavior: smooth; }
     .float-pay { top: 40px; left: -4px; }
     .float-fit { right: -4px; bottom: 28px; }
     .trust-strip { grid-template-columns: 1fr; padding: 10px 24px; }
-    .trust-strip > div { justify-content: flex-start; padding: 13px 6px; border-right: 0; }
+    .trust-strip > div { justify-content: center; padding: 13px 6px; border-right: 0; }
     .section-intro h2, .center-heading h2, .apply-copy h2 { font-size: 42px; }
     .split-section { padding: 85px 20px; }
     .experience-card { padding: 26px 22px; }

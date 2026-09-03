@@ -95,8 +95,9 @@ html { scroll-behavior: smooth; }
   .match-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-avatar-back { left: 0; }
   .match-avatar-front { left: 150px; z-index: 2; }
-  .match-provider { position: absolute; left: 147px; top: 172px; width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 4px solid #faf9f3; background: #e4ece1; box-shadow: 0 10px 24px #2c3f3745; z-index: 3; }
-  .match-provider img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .match-provider { position: absolute; left: 147px; top: 172px; width: 76px; height: 76px; z-index: 3; }
+  .match-provider-photo { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 4px solid #faf9f3; background: #e4ece1; box-shadow: 0 10px 24px #2c3f3745; }
+  .match-provider-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-provider-badge { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; border: 2px solid #faf9f3; display: grid; place-items: center; color: #fff; }
   .match-provider-badge svg { width: 13px; height: 13px; }
   .match-card { display: inline-flex; align-items: flex-start; gap: 12px; }
@@ -168,7 +169,8 @@ html { scroll-behavior: smooth; }
     .match-pair { width: 252px; height: 169px; }
     .match-avatar { width: 150px; height: 150px; border-width: 4px; }
     .match-avatar-front { left: 102px; }
-    .match-provider { left: 100px; top: 117px; width: 52px; height: 52px; border-width: 3px; }
+    .match-provider { left: 100px; top: 117px; width: 52px; height: 52px; }
+    .match-provider-photo { border-width: 3px; }
     .match-provider-badge { width: 18px; height: 18px; }
     .match-provider-badge svg { width: 10px; height: 10px; }
     .match-card { gap: 9px; }
@@ -302,12 +304,14 @@ export default function Landing() {
                   />
                 </div>
                 <div className="match-provider">
-                  <img
-                    src="https://images.unsplash.com/photo-1553514029-1318c9127859?q=80&w=1064&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                    alt="Monica, the matched playdate provider"
-                    width={76}
-                    height={76}
-                  />
+                  <div className="match-provider-photo">
+                    <img
+                      src="https://images.unsplash.com/photo-1553514029-1318c9127859?q=80&w=1064&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                      alt="Monica, the matched playdate provider"
+                      width={76}
+                      height={76}
+                    />
+                  </div>
                   <span className="match-provider-badge">
                     <ShieldCheck size={13} aria-hidden="true" />
                   </span>

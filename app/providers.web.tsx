@@ -125,6 +125,7 @@ html { scroll-behavior: smooth; }
   .brand-mark svg { transform: rotate(4deg); }
   .nav-links { display: flex; align-items: center; gap: 30px; color: #52675d; font-size: 14px; font-weight: 550; }
   .nav-links a:hover { color: #1b6b56; }
+  .nav-current { color: #1b6b56; text-decoration: underline; text-underline-offset: 4px; }
   .nav-cta { border: 1px solid #1b6b56; color: #1b6b56 !important; padding: 11px 17px; border-radius: 999px; }
 
   .eyebrow, .kicker { display: inline-flex; align-items: center; gap: 7px; color: #1b6b56; font-size: 12px; font-weight: 750; letter-spacing: 0.11em; text-transform: uppercase; }
@@ -394,7 +395,9 @@ export default function SittersLanding() {
             <a href="/" onClick={goHome}>
               For parents
             </a>
-            <a href="#top">For providers</a>
+            <a href="#top" className="nav-current">
+              For providers
+            </a>
             <a href="/sign-in" onClick={goSignIn}>
               Login
             </a>

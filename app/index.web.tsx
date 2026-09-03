@@ -73,6 +73,7 @@ html { scroll-behavior: smooth; }
   .brand-mark { width: 40px; height: 40px; display: block; object-fit: contain; border-radius: 50%; }
   .nav-links { display: flex; align-items: center; gap: 30px; color: #52675d; font-size: 14px; font-weight: 550; }
   .nav-links a:hover, .nav-links button:hover { color: #1b6b56; }
+  .nav-current { color: #1b6b56; text-decoration: underline; text-underline-offset: 4px; }
   .nav-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; cursor: pointer; background: #1b6b56; color: #fff !important; min-height: 44px; padding-inline: 20px; border-radius: 999px; }
   .nav-cta:hover { background: #175746; }
 
@@ -213,7 +214,9 @@ export default function Landing() {
             <span>Opened Circle</span>
           </a>
           <div className="nav-links">
-            <a href="#top">For parents</a>
+            <a href="#top" className="nav-current">
+              For parents
+            </a>
             <a href="/providers" onClick={goProviders}>
               For providers
             </a>

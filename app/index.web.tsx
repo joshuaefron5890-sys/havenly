@@ -87,10 +87,10 @@ html { scroll-behavior: smooth; }
   .primary-link:hover { background: #0e5b4c; transform: translateY(-1px); }
   .secondary-link { border: 0; background: none; cursor: pointer; padding: 10px 0 7px; border-bottom: 1px solid #aebdb5; color: #41594e; font-size: 14px; font-weight: 650; }
 
-  .hero-visual { position: relative; min-height: 420px; display: grid; place-items: center; }
-  .sun-shape { position: absolute; width: 420px; height: 420px; border-radius: 50%; background: #e4ece1; }
-  .match-visual { position: relative; z-index: 1; width: 380px; height: 350px; }
-  .match-pair { position: relative; width: 370px; height: 220px; }
+  .hero-visual { position: relative; min-height: 520px; display: grid; place-items: center; }
+  .sun-shape { position: absolute; width: 500px; height: 500px; border-radius: 50%; background: #e4ece1; }
+  .match-visual { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+  .match-pair { position: relative; width: 370px; height: 248px; }
   .match-avatar { position: absolute; top: 0; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; border: 5px solid #faf9f3; background: #e4ece1; box-shadow: 0 18px 40px #35504530; }
   .match-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-avatar-back { left: 0; }
@@ -99,7 +99,7 @@ html { scroll-behavior: smooth; }
   .match-provider img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-provider-badge { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; border: 2px solid #faf9f3; display: grid; place-items: center; color: #fff; }
   .match-provider-badge svg { width: 13px; height: 13px; }
-  .match-card { position: absolute; left: 6px; top: 272px; display: inline-flex; align-items: flex-start; gap: 12px; }
+  .match-card { display: inline-flex; align-items: flex-start; gap: 12px; }
   .match-card-icon { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; display: grid; place-items: center; color: #fff; box-shadow: 0 8px 18px #1b6b5645; }
   .match-card-icon svg { width: 15px; height: 15px; }
   .match-card-text { display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
@@ -162,16 +162,16 @@ html { scroll-behavior: smooth; }
     h1 { font-size: 42px; }
     .hero-lede { font-size: 16px; }
     .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; }
-    .hero-visual { min-height: 300px; }
-    .sun-shape { width: 300px; height: 300px; }
-    .match-visual { width: 260px; height: 240px; }
-    .match-pair { width: 252px; height: 150px; }
+    .hero-visual { min-height: 380px; }
+    .sun-shape { width: 360px; height: 360px; }
+    .match-visual { gap: 18px; }
+    .match-pair { width: 252px; height: 169px; }
     .match-avatar { width: 150px; height: 150px; border-width: 4px; }
     .match-avatar-front { left: 102px; }
     .match-provider { left: 100px; top: 117px; width: 52px; height: 52px; border-width: 3px; }
     .match-provider-badge { width: 18px; height: 18px; }
     .match-provider-badge svg { width: 10px; height: 10px; }
-    .match-card { top: 186px; gap: 9px; }
+    .match-card { gap: 9px; }
     .match-card-icon { width: 22px; height: 22px; }
     .match-card-icon svg { width: 12px; height: 12px; }
     .match-card-text { gap: 3px; }

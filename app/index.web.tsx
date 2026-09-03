@@ -2,7 +2,7 @@ import Head from 'expo-router/head';
 import { router, useFocusEffect } from 'expo-router';
 import { MouseEvent, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
@@ -77,7 +77,7 @@ html { scroll-behavior: smooth; }
   .nav-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; cursor: pointer; background: #1b6b56; color: #fff !important; min-height: 44px; padding-inline: 20px; border-radius: 999px; }
   .nav-cta:hover { background: #175746; }
 
-  .kicker { display: inline-flex; align-items: center; gap: 7px; color: #1b6b56; font-size: 12px; font-weight: 750; letter-spacing: 0.11em; text-transform: uppercase; }
+  .eyebrow, .kicker { display: inline-flex; align-items: center; gap: 7px; color: #1b6b56; font-size: 12px; font-weight: 750; letter-spacing: 0.11em; text-transform: uppercase; }
   h1 { margin: 20px 0 20px; max-width: 690px; font-size: clamp(48px, 6vw, 80px); line-height: 0.98; }
   h1 em { color: #1b6b56; font-weight: 500; font-style: normal; }
   .hero { max-width: 1240px; margin: auto; padding: 74px 34px 70px; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 60px; align-items: center; }
@@ -86,7 +86,6 @@ html { scroll-behavior: smooth; }
   .primary-link { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 0; cursor: pointer; padding: 0 26px; border-radius: 999px; background: #1b6b56; color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 12px 30px #155d4b25; }
   .primary-link:hover { background: #0e5b4c; transform: translateY(-1px); }
   .secondary-link { border: 0; background: none; cursor: pointer; padding: 10px 0 7px; border-bottom: 1px solid #aebdb5; color: #41594e; font-size: 14px; font-weight: 650; }
-  .hero-microcopy { margin-top: 18px; color: #71837a; font-size: 13px; }
 
   .hero-visual { position: relative; min-height: 420px; display: grid; place-items: center; }
   .sun-shape { position: absolute; width: 420px; height: 420px; border-radius: 50%; background: #e4ece1; }
@@ -230,6 +229,9 @@ export default function Landing() {
 
         <section id="top" className="hero">
           <div className="hero-copy">
+            <div className="eyebrow">
+              <MapPin size={14} /> Now forming in the Bay Area
+            </div>
             <h1>
               Playdates designed around <em>your child’s needs.</em>
             </h1>
@@ -242,7 +244,6 @@ export default function Landing() {
                 Join Early Access <ArrowRight size={18} />
               </a>
             </div>
-            <p className="hero-microcopy">Launching first in Hillsborough and nearby Bay Area communities.</p>
           </div>
           <div className="hero-visual" aria-label="A family playdate">
             <div className="sun-shape" />

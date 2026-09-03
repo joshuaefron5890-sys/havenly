@@ -373,6 +373,10 @@ export default function SittersLanding() {
     event.preventDefault();
     router.push('/');
   }
+  function goSignIn(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    router.push('/sign-in');
+  }
 
   return (
     <div className="kp-root">
@@ -387,10 +391,15 @@ export default function SittersLanding() {
             <span>Opened Circle</span>
           </a>
           <div className="nav-links">
-            <a href="#role">The role</a>
-            <a href="#how">How it works</a>
+            <a href="/" onClick={goHome}>
+              For parents
+            </a>
+            <a href="#top">For providers</a>
+            <a href="/sign-in" onClick={goSignIn}>
+              Login
+            </a>
             <a href="#interest-form" className="nav-cta">
-              Sign Up <ArrowRight size={15} aria-hidden="true" />
+              Join Early Access <ArrowRight size={15} aria-hidden="true" />
             </a>
           </div>
         </nav>

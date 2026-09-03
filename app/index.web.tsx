@@ -213,9 +213,12 @@ export default function Landing() {
             <span>Opened Circle</span>
           </a>
           <div className="nav-links">
-            <a href="#how">How it works</a>
+            <a href="#top">For parents</a>
+            <a href="/providers" onClick={goProviders}>
+              For providers
+            </a>
             <a href="/sign-in" onClick={goSignIn}>
-              Sign in
+              Login
             </a>
             <a href="/onboarding/account" className="nav-cta" onClick={goSignup}>
               Join Early Access <ArrowRight size={15} aria-hidden="true" />

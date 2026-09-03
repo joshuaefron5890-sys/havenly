@@ -2,7 +2,7 @@ import Head from 'expo-router/head';
 import { router, useFocusEffect } from 'expo-router';
 import { MouseEvent, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { ArrowRight, Check, MapPin } from 'lucide-react';
+import { ArrowRight, Check, MapPin, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
@@ -89,9 +89,22 @@ html { scroll-behavior: smooth; }
 
   .hero-visual { position: relative; min-height: 420px; display: grid; place-items: center; }
   .sun-shape { position: absolute; width: 420px; height: 420px; border-radius: 50%; background: #e4ece1; }
-  .portrait-card { position: relative; width: min(400px, 82vw); overflow: hidden; z-index: 1; border: 9px solid #fff; border-radius: 28px; background: #fff; box-shadow: 0 25px 60px #35504529; }
-  .portrait-scene { position: relative; height: 460px; overflow: hidden; background: #e4ece1; display: grid; place-items: center; }
-  .portrait-scene img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .match-visual { position: relative; z-index: 1; width: 320px; height: 300px; }
+  .match-pair { position: relative; width: 310px; height: 220px; }
+  .match-avatar { position: absolute; top: 0; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; border: 5px solid #faf9f3; background: #e4ece1; box-shadow: 0 18px 40px #35504530; }
+  .match-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .match-avatar-back { left: 0; }
+  .match-avatar-front { left: 90px; z-index: 2; }
+  .match-provider { position: absolute; left: 117px; top: 172px; width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 4px solid #faf9f3; background: #e4ece1; box-shadow: 0 10px 24px #2c3f3745; z-index: 3; }
+  .match-provider img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .match-provider-badge { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; border: 2px solid #faf9f3; display: grid; place-items: center; color: #fff; }
+  .match-provider-badge svg { width: 13px; height: 13px; }
+  .match-card { position: absolute; left: 6px; top: 214px; max-width: 250px; display: inline-flex; align-items: center; gap: 12px; background: #fff; border-radius: 18px; padding: 14px 20px; box-shadow: 0 22px 50px #35504528; }
+  .match-card-icon { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; display: grid; place-items: center; color: #fff; }
+  .match-card-icon svg { width: 15px; height: 15px; }
+  .match-card-text { display: flex; flex-direction: column; gap: 2px; }
+  .match-card-text strong { font-size: 15px; color: #24382f; font-weight: 750; }
+  .match-card-text span { font-size: 12.5px; color: #61756b; }
 
   .center-heading { max-width: 720px; margin: 0 auto 24px; text-align: center; }
   .center-heading h2 { margin: 17px 0 0; font-size: clamp(36px, 4.5vw, 54px); line-height: 1.06; }
@@ -148,10 +161,20 @@ html { scroll-behavior: smooth; }
     h1 { font-size: 42px; }
     .hero-lede { font-size: 16px; }
     .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; }
-    .hero-visual { min-height: 340px; }
+    .hero-visual { min-height: 300px; }
     .sun-shape { width: 300px; height: 300px; }
-    .portrait-card { width: 260px; border-width: 7px; }
-    .portrait-scene { height: 300px; }
+    .match-visual { width: 218px; height: 205px; }
+    .match-pair { width: 212px; height: 150px; }
+    .match-avatar { width: 150px; height: 150px; border-width: 4px; }
+    .match-avatar-front { left: 61px; }
+    .match-provider { left: 80px; top: 117px; width: 52px; height: 52px; border-width: 3px; }
+    .match-provider-badge { width: 18px; height: 18px; }
+    .match-provider-badge svg { width: 10px; height: 10px; }
+    .match-card { top: 146px; padding: 10px 14px; gap: 9px; max-width: 200px; }
+    .match-card-icon { width: 22px; height: 22px; }
+    .match-card-icon svg { width: 12px; height: 12px; }
+    .match-card-text strong { font-size: 13px; }
+    .match-card-text span { font-size: 11px; }
     .split-section { padding: 48px 20px; }
     .experience-card { padding: 24px 22px; }
     .center-heading h2, .section-intro h2 { font-size: 34px; }
@@ -253,17 +276,48 @@ export default function Landing() {
               </a>
             </div>
           </div>
-          <div className="hero-visual" aria-label="A family playdate">
+          <div className="hero-visual" aria-label="Two families matched by Opened Circle, with their playdate provider">
             <div className="sun-shape" />
-            <div className="portrait-card">
-              <div className="portrait-scene">
-                <img
-                  src="https://images.unsplash.com/photo-1590451934924-1bd1a184ed77?q=80&w=1729&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                  alt="A family spending time together."
-                  width={1024}
-                  height={1024}
-                  fetchPriority="high"
-                />
+            <div className="match-visual">
+              <div className="match-pair">
+                <div className="match-avatar match-avatar-back">
+                  <img
+                    src="https://images.unsplash.com/photo-1588979355313-6711a095465f?q=80&w=972&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                    alt="The Smith family"
+                    width={220}
+                    height={220}
+                    fetchPriority="high"
+                  />
+                </div>
+                <div className="match-avatar match-avatar-front">
+                  <img
+                    src="https://plus.unsplash.com/premium_photo-1661475916373-5aaaeb4a5393?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                    alt="The Reese family"
+                    width={220}
+                    height={220}
+                    fetchPriority="high"
+                  />
+                </div>
+                <div className="match-provider">
+                  <img
+                    src="https://images.unsplash.com/photo-1553514029-1318c9127859?q=80&w=1064&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                    alt="Monica, the matched playdate provider"
+                    width={76}
+                    height={76}
+                  />
+                  <span className="match-provider-badge">
+                    <ShieldCheck size={13} aria-hidden="true" />
+                  </span>
+                </div>
+              </div>
+              <div className="match-card">
+                <span className="match-card-icon">
+                  <Check size={15} aria-hidden="true" />
+                </span>
+                <div className="match-card-text">
+                  <strong>Matched</strong>
+                  <span>This Saturday · Golden Gate Park</span>
+                </div>
               </div>
             </div>
           </div>

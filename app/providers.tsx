@@ -1,47 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { forwardRef, useRef, useState, type CSSProperties } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text as RNText,
-  TextProps,
-  View,
-} from 'react-native';
-import { Text as AppText } from '../components/AppText';
+import { useRef, useState, type CSSProperties } from 'react';
+import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../components/AppText';
 import { FieldInput } from '../components/FieldInput';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { openPrivacyPolicy } from '../lib/navigation';
 import { useIsDesktop } from '../lib/responsive';
 import { isWithinServiceArea } from '../lib/serviceArea';
 import { colors } from '../theme/colors';
-
-// This page's body/UI font is Geist (per the reference it was built to
-// match) rather than the rest of the app's DM Sans — loaded alongside
-// the other page-specific font (Lora, for the large headlines) via the
-// same shared useFonts call in app/_layout.tsx. Wrapping AppText's Text
-// here, instead of setting fontFamily on every individual style below,
-// means every plain <Text> in this file gets Geist automatically;
-// anywhere that already sets its own fontFamily (the Lora headline
-// styles) still wins, since that comes later in the merged style array.
-function resolveGeistFamily(fontWeight?: string | number, italic?: boolean): string {
-  const isBold =
-    fontWeight === 'bold' || (typeof fontWeight === 'string' ? parseInt(fontWeight, 10) >= 600 : (fontWeight ?? 0) >= 600);
-  if (isBold) return italic ? 'Geist_700Bold_Italic' : 'Geist_700Bold';
-  if (fontWeight === '500' || fontWeight === 500) return italic ? 'Geist_500Medium_Italic' : 'Geist_500Medium';
-  return italic ? 'Geist_400Regular_Italic' : 'Geist_400Regular';
-}
-
-const Text = forwardRef<RNText, TextProps>(function Text({ style, ...props }, ref) {
-  const flat = StyleSheet.flatten(style) ?? {};
-  const fontFamily = resolveGeistFamily(flat.fontWeight, flat.fontStyle === 'italic');
-  return <AppText ref={ref} style={[{ fontFamily }, style]} {...props} />;
-});
 
 // Same photo already vetted for the in-app sitter promo card
 // (app/proposal/[id].tsx's SITTER_PROMO_IMAGE) — reused here rather than

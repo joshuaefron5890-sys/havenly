@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   desktopWordmarkAccent: {
-    color: colors.accent,
+    color: '#FFFFFF',
   },
   desktopPanelTitle: {
     fontSize: 26,

@@ -1,20 +1,12 @@
-import {
-  DMSans_400Regular,
-  DMSans_400Regular_Italic,
-  DMSans_500Medium,
-  DMSans_700Bold,
-  DMSans_700Bold_Italic,
-} from '@expo-google-fonts/dm-sans';
 import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
 // A display serif, used only on app/providers.tsx's headline-heavy sections
 // (per the reference page it was built to match) — every other screen's
-// headings stay on DM Sans via resolveFontFamily below, so this is loaded
+// headings stay on Geist via resolveFontFamily below, so this is loaded
 // but not part of that resolution.
 import { Lora_600SemiBold, Lora_700Bold } from '@expo-google-fonts/lora';
-// app/providers.tsx's body/UI font (Geist, per the same reference) — also
-// loaded here but, like Lora above, not part of resolveFontFamily's
-// app-wide DM Sans resolution; that page wraps AppText's Text locally to
-// use these instead.
+// Geist is also the web landing/providers pages' body font
+// (app/index.web.tsx, app/providers.web.tsx self-host it via @font-face) —
+// used here as the app-wide default so native and web read consistently.
 import {
   Geist_400Regular,
   Geist_400Regular_Italic,
@@ -24,7 +16,7 @@ import {
   Geist_700Bold_Italic,
 } from '@expo-google-fonts/geist';
 
-// DM Sans is loaded as discrete per-weight files (see app/_layout.tsx's
+// Geist is loaded as discrete per-weight files (see app/_layout.tsx's
 // useFonts call below), not a single variable-weight family — React
 // Native can't fake a weight it doesn't have a loaded file for, so a
 // plain `fontWeight` style prop alone won't select the right file. Every
@@ -34,11 +26,6 @@ import {
 // everywhere without every screen having to reference these names
 // directly.
 export const FONT_FILES = {
-  DMSans_400Regular,
-  DMSans_400Regular_Italic,
-  DMSans_500Medium,
-  DMSans_700Bold,
-  DMSans_700Bold_Italic,
   DMMono_400Regular,
   Lora_600SemiBold,
   Lora_700Bold,
@@ -51,15 +38,15 @@ export const FONT_FILES = {
 } as const;
 
 export const FONT_FAMILY = {
-  regular: 'DMSans_400Regular',
-  regularItalic: 'DMSans_400Regular_Italic',
-  medium: 'DMSans_500Medium',
-  bold: 'DMSans_700Bold',
-  boldItalic: 'DMSans_700Bold_Italic',
+  regular: 'Geist_400Regular',
+  regularItalic: 'Geist_400Regular_Italic',
+  medium: 'Geist_500Medium',
+  bold: 'Geist_700Bold',
+  boldItalic: 'Geist_700Bold_Italic',
   mono: 'DMMono_400Regular',
 } as const;
 
-// Resolves a loaded DM Sans family name from whatever fontWeight/fontStyle
+// Resolves a loaded Geist family name from whatever fontWeight/fontStyle
 // a screen's own style already specifies — mirrors the "600/700 or 'bold'
 // → Bold, 500 → Medium, else Regular" convention already used throughout
 // this app's StyleSheets, just mapped onto real font files instead of a

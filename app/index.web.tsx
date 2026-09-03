@@ -81,7 +81,6 @@ html { scroll-behavior: smooth; }
   h1 { margin: 20px 0 20px; max-width: 690px; font-size: clamp(48px, 6vw, 80px); line-height: 0.98; }
   h1 em { color: #1b6b56; font-weight: 500; font-style: normal; }
   .hero { max-width: 1240px; margin: auto; padding: 74px 34px 70px; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 60px; align-items: center; }
-  .hero-question { max-width: 560px; color: #41594e; font-size: 19px; font-style: italic; line-height: 1.5; margin-bottom: 14px; }
   .hero-lede { max-width: 560px; color: #566b61; font-size: 18px; line-height: 1.6; }
   .hero-actions { margin-top: 30px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
   .primary-link { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 0; cursor: pointer; padding: 0 26px; border-radius: 999px; background: #1b6b56; color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 12px 30px #155d4b25; }
@@ -124,7 +123,7 @@ html { scroll-behavior: smooth; }
   @media (max-width: 900px) {
     .nav-links a:not(.nav-cta) { display: none; }
     .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 50px; text-align: center; }
-    .hero-question, .hero-lede { margin-inline: auto; }
+    .hero-lede { margin-inline: auto; }
     .hero-actions { justify-content: center; }
     .steps-grid { gap: 20px; }
     .steps-grid article { padding: 0 8px; }
@@ -140,7 +139,7 @@ html { scroll-behavior: smooth; }
     .nav-links { gap: 0; }
     .hero { padding: 44px 20px 50px; }
     h1 { font-size: 42px; }
-    .hero-question, .hero-lede { font-size: 16px; }
+    .hero-lede { font-size: 16px; }
     .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; }
     .hero-visual { min-height: 340px; }
     .sun-shape { width: 300px; height: 300px; }
@@ -234,9 +233,6 @@ export default function Landing() {
             <h1>
               Playdates designed around <em>your child’s needs.</em>
             </h1>
-            <p className="hero-question">
-              Will the setting work? Will the other family understand? Will there be enough support?
-            </p>
             <p className="hero-lede">
               Opened Circle handles every detail — matching you with compatible families, sensory-friendly places,
               and supportive providers.

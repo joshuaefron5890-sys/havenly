@@ -2,7 +2,7 @@ import Head from 'expo-router/head';
 import { router, useFocusEffect } from 'expo-router';
 import { MouseEvent, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { ArrowRight, Check, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Calendar, Check, MapPin, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
@@ -89,22 +89,23 @@ html { scroll-behavior: smooth; }
 
   .hero-visual { position: relative; min-height: 420px; display: grid; place-items: center; }
   .sun-shape { position: absolute; width: 420px; height: 420px; border-radius: 50%; background: #e4ece1; }
-  .match-visual { position: relative; z-index: 1; width: 320px; height: 300px; }
-  .match-pair { position: relative; width: 310px; height: 220px; }
+  .match-visual { position: relative; z-index: 1; width: 380px; height: 350px; }
+  .match-pair { position: relative; width: 370px; height: 220px; }
   .match-avatar { position: absolute; top: 0; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; border: 5px solid #faf9f3; background: #e4ece1; box-shadow: 0 18px 40px #35504530; }
   .match-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-avatar-back { left: 0; }
-  .match-avatar-front { left: 90px; z-index: 2; }
-  .match-provider { position: absolute; left: 117px; top: 172px; width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 4px solid #faf9f3; background: #e4ece1; box-shadow: 0 10px 24px #2c3f3745; z-index: 3; }
+  .match-avatar-front { left: 150px; z-index: 2; }
+  .match-provider { position: absolute; left: 147px; top: 172px; width: 76px; height: 76px; border-radius: 50%; overflow: hidden; border: 4px solid #faf9f3; background: #e4ece1; box-shadow: 0 10px 24px #2c3f3745; z-index: 3; }
   .match-provider img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-provider-badge { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; border: 2px solid #faf9f3; display: grid; place-items: center; color: #fff; }
   .match-provider-badge svg { width: 13px; height: 13px; }
-  .match-card { position: absolute; left: 6px; top: 214px; max-width: 250px; display: inline-flex; align-items: center; gap: 12px; background: #fff; border-radius: 18px; padding: 14px 20px; box-shadow: 0 22px 50px #35504528; }
-  .match-card-icon { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; display: grid; place-items: center; color: #fff; }
+  .match-card { position: absolute; left: 6px; top: 272px; display: inline-flex; align-items: flex-start; gap: 12px; }
+  .match-card-icon { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; display: grid; place-items: center; color: #fff; box-shadow: 0 8px 18px #1b6b5645; }
   .match-card-icon svg { width: 15px; height: 15px; }
-  .match-card-text { display: flex; flex-direction: column; gap: 2px; }
+  .match-card-text { display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
   .match-card-text strong { font-size: 15px; color: #24382f; font-weight: 750; }
-  .match-card-text span { font-size: 12.5px; color: #61756b; }
+  .match-card-line { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: #566b61; }
+  .match-card-line svg { flex: none; color: #1b6b56; }
 
   .center-heading { max-width: 720px; margin: 0 auto 24px; text-align: center; }
   .center-heading h2 { margin: 17px 0 0; font-size: clamp(36px, 4.5vw, 54px); line-height: 1.06; }
@@ -163,18 +164,20 @@ html { scroll-behavior: smooth; }
     .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; }
     .hero-visual { min-height: 300px; }
     .sun-shape { width: 300px; height: 300px; }
-    .match-visual { width: 218px; height: 205px; }
-    .match-pair { width: 212px; height: 150px; }
+    .match-visual { width: 260px; height: 240px; }
+    .match-pair { width: 252px; height: 150px; }
     .match-avatar { width: 150px; height: 150px; border-width: 4px; }
-    .match-avatar-front { left: 61px; }
-    .match-provider { left: 80px; top: 117px; width: 52px; height: 52px; border-width: 3px; }
+    .match-avatar-front { left: 102px; }
+    .match-provider { left: 100px; top: 117px; width: 52px; height: 52px; border-width: 3px; }
     .match-provider-badge { width: 18px; height: 18px; }
     .match-provider-badge svg { width: 10px; height: 10px; }
-    .match-card { top: 146px; padding: 10px 14px; gap: 9px; max-width: 200px; }
+    .match-card { top: 186px; gap: 9px; }
     .match-card-icon { width: 22px; height: 22px; }
     .match-card-icon svg { width: 12px; height: 12px; }
+    .match-card-text { gap: 3px; }
     .match-card-text strong { font-size: 13px; }
-    .match-card-text span { font-size: 11px; }
+    .match-card-line { font-size: 11px; gap: 4px; }
+    .match-card-line svg { width: 11px; height: 11px; }
     .split-section { padding: 48px 20px; }
     .experience-card { padding: 24px 22px; }
     .center-heading h2, .section-intro h2 { font-size: 34px; }
@@ -316,7 +319,14 @@ export default function Landing() {
                 </span>
                 <div className="match-card-text">
                   <strong>Matched</strong>
-                  <span>This Saturday · Golden Gate Park</span>
+                  <span className="match-card-line">
+                    <Calendar size={12} aria-hidden="true" />
+                    This Saturday
+                  </span>
+                  <span className="match-card-line">
+                    <MapPin size={12} aria-hidden="true" />
+                    Golden Gate Park
+                  </span>
                 </div>
               </div>
             </div>

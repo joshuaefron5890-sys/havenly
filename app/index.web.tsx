@@ -2,7 +2,7 @@ import Head from 'expo-router/head';
 import { router, useFocusEffect } from 'expo-router';
 import { MouseEvent, useCallback } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { ArrowRight, Calendar, Check, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Calendar, Check, MapPin, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { routeSignedInUser } from '../lib/onboardingProgress';
@@ -100,6 +100,11 @@ html { scroll-behavior: smooth; }
   .match-provider-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .match-provider-badge { position: absolute; right: -4px; bottom: -4px; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; border: 2px solid #faf9f3; display: grid; place-items: center; color: #fff; }
   .match-provider-badge svg { width: 13px; height: 13px; }
+  .match-name { position: absolute; z-index: 4; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 6px; border-radius: 14px; background: #fff; box-shadow: 0 12px 28px #284a3c28; }
+  .match-name svg { flex: none; width: 15px; height: 15px; padding: 5px; border-radius: 8px; color: #1b6b56; background: #e8f3ed; }
+  .match-name span { font-size: 11.5px; font-weight: 750; color: #2f453b; white-space: nowrap; }
+  .match-name-back { left: -14px; top: -14px; }
+  .match-name-front { right: -14px; top: -14px; }
   .match-card { display: inline-flex; align-items: flex-start; gap: 12px; }
   .match-card-icon { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #1b6b56; display: grid; place-items: center; color: #fff; box-shadow: 0 8px 18px #1b6b5645; }
   .match-card-icon svg { width: 15px; height: 15px; }
@@ -110,15 +115,6 @@ html { scroll-behavior: smooth; }
 
   .center-heading { max-width: 720px; margin: 0 auto 24px; text-align: center; }
   .center-heading h2 { margin: 17px 0 0; font-size: clamp(36px, 4.5vw, 54px); line-height: 1.06; }
-  .split-section { max-width: 1160px; margin: auto; padding: 72px 34px; display: grid; grid-template-columns: 1fr .88fr; gap: 64px; align-items: center; }
-  .section-intro h2 { margin: 17px 0 22px; font-size: clamp(36px, 4.5vw, 54px); line-height: 1.06; }
-  .section-intro > p { max-width: 560px; color: #61756b; font-size: 17px; line-height: 1.7; }
-  .experience-card { padding: 28px; border: 1px solid #dbe4de; border-radius: 28px; background: #fff; box-shadow: 0 20px 70px #36544412; }
-  .card-label { margin-bottom: 23px; color: #394f44; font-weight: 750; }
-  .experience-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-  .experience-card li { display: flex; align-items: flex-start; gap: 11px; color: #53675e; font-size: 14px; line-height: 1.55; }
-  .experience-card li svg { width: 21px; height: 21px; padding: 4px; border-radius: 50%; color: #fff; background: #1b6b56; flex: none; margin-top: 2px; }
-  .experience-note { margin: 20px 0 0; padding-top: 16px; border-top: 1px solid #e6ebe7; color: #61756b; font-size: 12px; line-height: 1.6; }
 
   .how-section { padding: 96px 34px 110px; background: #eef4ef; }
   .steps-grid { max-width: 1090px; margin: 40px auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px; }
@@ -146,7 +142,6 @@ html { scroll-behavior: smooth; }
     .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 50px; text-align: center; }
     .hero-lede { margin-inline: auto; }
     .hero-actions { justify-content: center; }
-    .split-section { grid-template-columns: 1fr; gap: 32px; }
     .steps-grid { gap: 20px; }
     .steps-grid article { padding: 0 8px; }
     footer { grid-template-columns: 1fr; text-align: center; }
@@ -173,6 +168,11 @@ html { scroll-behavior: smooth; }
     .match-provider-photo { border-width: 3px; }
     .match-provider-badge { width: 18px; height: 18px; }
     .match-provider-badge svg { width: 10px; height: 10px; }
+    .match-name { gap: 5px; padding: 4px 9px 4px 4px; border-radius: 11px; }
+    .match-name svg { width: 11px; height: 11px; padding: 3px; border-radius: 6px; }
+    .match-name span { font-size: 9.5px; }
+    .match-name-back { left: -10px; top: -10px; }
+    .match-name-front { right: -10px; top: -10px; }
     .match-card { gap: 9px; }
     .match-card-icon { width: 22px; height: 22px; }
     .match-card-icon svg { width: 12px; height: 12px; }
@@ -180,9 +180,7 @@ html { scroll-behavior: smooth; }
     .match-card-text strong { font-size: 13px; }
     .match-card-line { font-size: 11px; gap: 4px; }
     .match-card-line svg { width: 11px; height: 11px; }
-    .split-section { padding: 48px 20px; }
-    .experience-card { padding: 24px 22px; }
-    .center-heading h2, .section-intro h2 { font-size: 34px; }
+    .center-heading h2 { font-size: 34px; }
     .how-section { padding: 60px 20px 70px; }
     .steps-grid { grid-template-columns: 1fr; gap: 30px; }
     .steps-grid article { display: grid; grid-template-columns: 55px 1fr; column-gap: 16px; }
@@ -272,7 +270,8 @@ export default function Landing() {
               Playdates designed around <em>your child’s needs.</em>
             </h1>
             <p className="hero-lede">
-              Opened Circle handles every detail — matching you with compatible families, sensory-friendly places,
+              Opened Circle matches experienced care providers with neurodivergent families to support structured
+              playdates. We handle every detail — matching you with compatible families, sensory-friendly places,
               and supportive providers.
             </p>
             <div className="hero-actions">
@@ -294,6 +293,10 @@ export default function Landing() {
                     fetchPriority="high"
                   />
                 </div>
+                <span className="match-name match-name-back">
+                  <Users size={15} aria-hidden="true" />
+                  The Smith Family
+                </span>
                 <div className="match-avatar match-avatar-front">
                   <img
                     src="https://plus.unsplash.com/premium_photo-1661475916373-5aaaeb4a5393?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
@@ -303,6 +306,10 @@ export default function Landing() {
                     fetchPriority="high"
                   />
                 </div>
+                <span className="match-name match-name-front">
+                  <Users size={15} aria-hidden="true" />
+                  The Reese Family
+                </span>
                 <div className="match-provider">
                   <div className="match-provider-photo">
                     <img
@@ -337,39 +344,9 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="approach" className="split-section">
-          <div className="section-intro">
-            <span className="kicker">Our approach</span>
-            <h2>Connection shouldn’t take this much work.</h2>
-            <p>
-              A simple “let’s get the kids together” usually means vetting a venue for sensory triggers, explaining
-              your child’s needs to someone new, and managing a high-stress event completely on your own.
-            </p>
-          </div>
-          <div className="experience-card">
-            <p className="card-label">Here’s what we handle.</p>
-            <ul>
-              <li>
-                <Check size={16} />
-                The right match
-              </li>
-              <li>
-                <Check size={16} />A setting that actually fits
-              </li>
-              <li>
-                <Check size={16} />
-                An experienced provider
-              </li>
-            </ul>
-            <p className="experience-note">
-              So you can enjoy a break, too, while your child is completely supported.
-            </p>
-          </div>
-        </section>
-
         <section id="how" className="how-section">
           <div className="center-heading">
-            <span className="kicker">How it works</span>
+            <span className="kicker">Connection shouldn’t take this much work</span>
             <h2>How Opened Circle works.</h2>
           </div>
           <div className="steps-grid">

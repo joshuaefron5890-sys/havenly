@@ -59,6 +59,11 @@ export function SettingsMenu() {
     router.push('/admin/referrals');
   };
 
+  const goToTestData = () => {
+    setOpen(false);
+    router.push('/admin/test-data');
+  };
+
   const logOut = async () => {
     setOpen(false);
     await signOutUser();
@@ -115,6 +120,10 @@ export function SettingsMenu() {
                 <Pressable style={styles.item} onPress={goToReferralPayouts}>
                   <Ionicons name="cash-outline" size={18} color={colors.text} />
                   <Text style={styles.itemText}>Referral payouts</Text>
+                </Pressable>
+                <Pressable style={styles.item} onPress={goToTestData}>
+                  <Ionicons name="flask-outline" size={18} color={colors.text} />
+                  <Text style={styles.itemText}>Test data</Text>
                 </Pressable>
               </>
             ) : null}

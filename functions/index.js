@@ -1261,15 +1261,20 @@ exports.getSuggestedFamilies = onCall(async (request) => {
   // getRecommendedProducts). Home's own "Families like you" preview still
   // only ever shows one row (client-side slice); the full list here is
   // what powers the dedicated Families tab (app/(tabs)/families.tsx).
-  const [meSnap, snap] = await Promise.all([
+  const [meSnap, snap, showTestData] = await Promise.all([
     admin.firestore().collection('users').doc(familyUid).get(),
     admin.firestore().collection('users').where('onboardingComplete', '==', true).limit(500).get(),
+    isClusterAdmin(request.auth.uid, request.auth.token.email),
   ]);
   const me = meSnap.data() ?? {};
   const myClusterId = clusterIdOf(me);
 
   const families = snap.docs
     .filter((doc) => doc.id !== familyUid && clusterIdOf(doc.data()) === myClusterId)
+    // Seeded test families (see generateTestData) are only ever shown to a
+    // cluster admin previewing what they look like — never to a real
+    // family, so there's no risk of them reading as genuine matches.
+    .filter((doc) => showTestData || !doc.data().isTestData)
     .map((doc) => {
       const target = doc.data();
       return { ...toPublicFamily(doc.id, target), matchScore: computeMatch(me, target).matchScore };
@@ -1293,13 +1298,15 @@ exports.getFamiliesByUids = onCall(async (request) => {
     return { families: [] };
   }
 
-  const [meSnap, snaps] = await Promise.all([
+  const [meSnap, snaps, showTestData] = await Promise.all([
     admin.firestore().collection('users').doc(await resolveFamilyUid(request.auth.uid)).get(),
     Promise.all(uids.map((uid) => admin.firestore().collection('users').doc(uid).get())),
+    isClusterAdmin(request.auth.uid, request.auth.token.email),
   ]);
   const me = meSnap.data() ?? {};
   const families = snaps
     .filter((snap) => snap.exists)
+    .filter((snap) => showTestData || !snap.data().isTestData)
     .map((snap) => {
       const target = snap.data();
       return { ...toPublicFamily(snap.id, target), matchScore: computeMatch(me, target).matchScore };
@@ -1511,15 +1518,19 @@ exports.getRecommendedSitters = onCall(async (request) => {
   const period = typeof request.data?.period === 'string' ? request.data.period : null;
 
   const familyUid = await resolveFamilyUid(request.auth.uid);
-  const [meSnap, snap] = await Promise.all([
+  const [meSnap, snap, showTestData] = await Promise.all([
     admin.firestore().collection('users').doc(familyUid).get(),
     admin.firestore().collection('sitters').limit(500).get(),
+    isClusterAdmin(request.auth.uid, request.auth.token.email),
   ]);
   const me = meSnap.data() ?? {};
   const myClusterId = clusterIdOf(me);
 
   const sitters = snap.docs
     .filter((doc) => doc.data().backgroundCheckStatus === 'clear' && clusterIdOf(doc.data()) === myClusterId)
+    // Same admin-only visibility as getSuggestedFamilies above — see
+    // generateTestData's own comment for why.
+    .filter((doc) => showTestData || !doc.data().isTestData)
     .map((doc) => ({
       ...toPublicSitter(doc.id, doc.data()),
       matchScore: sitterMatchScore(me, doc.data()),
@@ -3204,6 +3215,274 @@ exports.deleteMyAccount = onCall(async (request) => {
   await admin.auth().deleteUser(uid);
 
   return { success: true };
+});
+
+// --- Test data -----------------------------------------------------------
+//
+// Fake families/sitters (app/admin/test-data.tsx) for an admin to exercise
+// Discover/matching/vetting UI against without needing real signups. Tagged
+// isTestData: true and given fixed IDs (test-family-01.., test-sitter-01..)
+// so re-generating overwrites the same docs instead of piling up duplicates.
+// Visibility is admin-only and unconditional — see the isTestData filters in
+// getSuggestedFamilies/getFamiliesByUids/getRecommendedSitters above — so
+// there's deliberately no separate on/off flag: a regular family can never
+// see this data, so there's nothing to leave accidentally switched on.
+
+const TEST_FAMILY_COUNT = 30;
+const TEST_SITTER_COUNT = 15;
+
+const TEST_FIRST_NAMES = [
+  'Maria', 'James', 'Aisha', 'Wei', 'Sofia', 'Daniel', 'Priya', 'Liam',
+  'Fatima', 'Noah', 'Yuki', 'Olivia', 'Carlos', 'Emma', 'Kwame', 'Ava',
+  'Diego', 'Mia', 'Tariq', 'Grace', 'Hiroshi', 'Zoe', 'Amara', 'Lucas',
+  'Ingrid', 'Ethan', 'Chidi', 'Nora', 'Sanjay', 'Ruth',
+];
+const TEST_LAST_NAMES = [
+  'Nguyen', 'Garcia', 'Okafor', 'Chen', 'Patel', 'Silva', 'Kowalski',
+  'Haddad', 'Kim', 'Johnson', 'Ferreira', 'Abara', 'Rossi', 'Novak',
+  'Tanaka', 'Reyes', 'Osei', 'Larsen', 'Ahmadi', 'Brooks',
+];
+const TEST_CHILD_NAMES = [
+  'Aiden', 'Luna', 'Kai', 'Zara', 'Theo', 'Nova', 'Rowan', 'Maya', 'Finn',
+  'Elena', 'Micah', 'Sadie', 'Omar', 'Iris', 'Jasper', 'Willow', 'Leo',
+  'June', 'Amir', 'Piper',
+];
+const TEST_CITIES = [
+  { city: 'San Francisco', zip: '94110' },
+  { city: 'Oakland', zip: '94610' },
+  { city: 'Berkeley', zip: '94704' },
+  { city: 'San Jose', zip: '95125' },
+  { city: 'Palo Alto', zip: '94301' },
+  { city: 'Fremont', zip: '94536' },
+  { city: 'Walnut Creek', zip: '94596' },
+  { city: 'San Mateo', zip: '94402' },
+  { city: 'Redwood City', zip: '94061' },
+  { city: 'Mountain View', zip: '94041' },
+  { city: 'Sunnyvale', zip: '94086' },
+  { city: 'Alameda', zip: '94501' },
+];
+const TEST_SCHOOLS = [
+  'Bay Vista Elementary', 'Willow Creek Elementary', 'Redwood Grove School',
+  'Sunridge Elementary', 'Harborview School', 'Cedar Hill Elementary',
+  'Meadowlark School', 'Northgate Elementary',
+];
+const TEST_GRADES = ['Pre-K', 'K', '1st', '2nd', '3rd', '4th', '5th', '6th'];
+const TEST_INTERESTS = [
+  'Minecraft', 'Roblox', 'Pokémon', 'LEGO', 'Board games', 'Arts & crafts',
+  'Drawing', 'Music', 'Dogs', 'Dinosaurs', 'Science', 'Space', 'Reading',
+  'Swimming', 'Soccer',
+];
+const TEST_GOALS = [
+  'A close friend for my child', 'Regular playdates', 'Occasional playdates',
+  'Parent friendships', 'Whole-family friendships',
+  'Families who understand neurodivergence', 'Weekend get-togethers',
+  'After-school hangouts', 'Parents to talk to (without the kids)',
+  'Larger group activities', 'Families with similar experiences',
+];
+const TEST_PLAY_STYLES = [
+  'Jumps right in', 'Needs to warm up', 'Prefers one-on-one',
+  'Loves small groups', 'Parallel play', 'Collaborative play',
+  'Prefers structure', 'Loves free play',
+];
+const TEST_PLAYDATE_LENGTHS = ['< 1 hour', '1–2 hours', '2–3 hours', 'Half a day', 'It depends'];
+const TEST_NEURODIVERGENCE = [
+  'Autism', 'ADHD', 'Dyslexia', 'Dyspraxia', 'Sensory processing differences',
+  'Auditory processing differences', 'Anxiety', 'Communication differences',
+];
+const TEST_PERSONALITY = [
+  'Loves getting to know other parents', "Chatty, but doesn't need a new best friend",
+  'Mostly there for the kids', 'Takes a little while to warm up',
+  'Loves bringing families together', 'Happiest in small groups',
+];
+const TEST_SOUNDS_GOOD = ['Coffee', 'Dinner', 'Walking', 'Family BBQs', 'Day trips', 'Kids activities together', 'Talking parenting'];
+const TEST_AVAILABILITY = [
+  'Before school', 'After school', 'Evenings', 'Saturday morning',
+  'Saturday afternoon', 'Saturday evening', 'Sunday morning', 'Sunday afternoon',
+];
+const TEST_PROVIDER_OPTIONS = [
+  "Yes, I wouldn't have a playdate without one",
+  'No, not right now',
+  "I'm open to either",
+];
+const TEST_SITTER_BIOS = [
+  'Experienced with sensory-friendly playdates — patient, calm, and happy to follow a kid-led routine.',
+  'Background in early childhood education, comfortable with structured and free-play activities alike.',
+  'Years of experience supporting neurodivergent kids through transitions and big feelings.',
+  'Easygoing and attentive — great with group playdates as well as one-on-one supervision.',
+  'Certified in first aid and CPR, with a calm, low-pressure approach to new environments.',
+];
+// Mirrors lib/sitters.ts's SITTER_CERTIFICATIONS — duplicated rather than
+// imported, same reasoning as every other bit of domain vocabulary shared
+// between the Expo app and this separate Cloud Functions bundle.
+const TEST_SITTER_CERTIFICATIONS = [
+  'Behavioral Therapy Experience (ABA, etc.)',
+  'CPR Certified',
+  'Early Childhood Education',
+  'First Aid Certified',
+  'Nursing/Medical Background',
+  'Special Education Background',
+];
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function pickSome(arr, min, max) {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  const count = min + Math.floor(Math.random() * (max - min + 1));
+  return shuffled.slice(0, Math.min(count, arr.length));
+}
+function pickRate() {
+  return `$${15 + Math.floor(Math.random() * 4) * 5}/hr`; // $15/20/25/30 per hr
+}
+
+function buildTestFamily() {
+  const firstName = pick(TEST_FIRST_NAMES);
+  const lastName = pick(TEST_LAST_NAMES);
+  const { city, zip } = pick(TEST_CITIES);
+  const childCount = Math.random() < 0.35 ? 2 : 1;
+  const children = Array.from({ length: childCount }, () => ({
+    name: pick(TEST_CHILD_NAMES),
+    age: String(4 + Math.floor(Math.random() * 9)),
+    grade: pick(TEST_GRADES),
+    school: pick(TEST_SCHOOLS),
+    neurodivergence: pickSome(TEST_NEURODIVERGENCE, 1, 2),
+    photoUrl: null,
+    playStyle: pickSome(TEST_PLAY_STYLES, 1, 3),
+    idealPlaydateLength: pick(TEST_PLAYDATE_LENGTHS),
+  }));
+  const providerWillingness = pick(TEST_PROVIDER_OPTIONS);
+
+  return {
+    firstName,
+    lastName,
+    familyPhotoUrl: null,
+    numChildren: childCount,
+    numNeurodivergentChildren: childCount,
+    partnerAtHome: Math.random() < 0.6,
+    siblingsIncluded: null,
+    zipCode: zip,
+    city,
+    state: 'CA',
+    clusterId: 'bay-area',
+    children,
+    siblingProfiles: [],
+    interests: pickSome(TEST_INTERESTS, 3, 7),
+    goals: pickSome(TEST_GOALS, 2, 4),
+    personality: pick(TEST_PERSONALITY),
+    soundsGoodTo: pickSome(TEST_SOUNDS_GOOD, 2, 4),
+    availability: pickSome(TEST_AVAILABILITY, 2, 5),
+    providerWillingness,
+    providerMaxHourlyRate: providerWillingness === 'No, not right now' ? '' : pickRate(),
+    googleCalendarConnected: false,
+    googleCalendarSyncEnabled: false,
+    onboardingComplete: true,
+    isTestData: true,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+}
+
+function buildTestSitter(index) {
+  const firstName = pick(TEST_FIRST_NAMES);
+  const lastName = pick(TEST_LAST_NAMES);
+  const { city, zip } = pick(TEST_CITIES);
+  const n = String(index + 1).padStart(2, '0');
+
+  return {
+    name: `${firstName} ${lastName}`,
+    email: `test-sitter-${n}@example.com`,
+    phone: `(555) 010-${1000 + index}`.slice(0, 14),
+    bio: pick(TEST_SITTER_BIOS),
+    photoUrl: null,
+    city,
+    state: 'CA',
+    zipCode: zip,
+    clusterId: 'bay-area',
+    specialties: pickSome(TEST_NEURODIVERGENCE, 1, 3),
+    certifications: pickSome(TEST_SITTER_CERTIFICATIONS, 1, 3),
+    yearsExperience: `${1 + Math.floor(Math.random() * 8)} years`,
+    hourlyRate: pickRate(),
+    backgroundCheckStatus: 'clear',
+    certificationDocUrls: [],
+    availability: {},
+    googleCalendarConnected: false,
+    googleCalendarSyncEnabled: false,
+    availabilityConflictOverrides: {},
+    availabilityManualOverrides: {},
+    referralCode: null,
+    payoutMethod: null,
+    payoutHandle: '',
+    signupStep: null,
+    signupComplete: true,
+    isTestData: true,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+}
+
+async function countTestData() {
+  const db = admin.firestore();
+  const [familiesSnap, sittersSnap] = await Promise.all([
+    db.collection('users').where('isTestData', '==', true).get(),
+    db.collection('sitters').where('isTestData', '==', true).get(),
+  ]);
+  return { familyCount: familiesSnap.size, sitterCount: sittersSnap.size };
+}
+
+// Admin-only, same cluster-admin gate as every other admin tool in this
+// file. Fixed IDs (test-family-01.., test-sitter-01..) mean clicking
+// Generate again reshuffles the same docs with fresh random data rather
+// than creating an ever-growing pile.
+exports.generateTestData = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+
+  const db = admin.firestore();
+  const batch = db.batch();
+  for (let i = 0; i < TEST_FAMILY_COUNT; i++) {
+    const id = `test-family-${String(i + 1).padStart(2, '0')}`;
+    batch.set(db.collection('users').doc(id), buildTestFamily());
+  }
+  for (let i = 0; i < TEST_SITTER_COUNT; i++) {
+    const id = `test-sitter-${String(i + 1).padStart(2, '0')}`;
+    batch.set(db.collection('sitters').doc(id), buildTestSitter(i));
+  }
+  await batch.commit();
+
+  return countTestData();
+});
+
+exports.deleteTestData = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+
+  const db = admin.firestore();
+  const [familiesSnap, sittersSnap] = await Promise.all([
+    db.collection('users').where('isTestData', '==', true).get(),
+    db.collection('sitters').where('isTestData', '==', true).get(),
+  ]);
+  const batch = db.batch();
+  familiesSnap.docs.forEach((doc) => batch.delete(doc.ref));
+  sittersSnap.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+
+  return countTestData();
+});
+
+exports.getTestDataStatus = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  if (!(await isClusterAdmin(request.auth.uid, request.auth.token.email))) {
+    throw new HttpsError('permission-denied', 'Admins only.');
+  }
+  return countTestData();
 });
 
 

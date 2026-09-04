@@ -142,6 +142,14 @@ export default function ForYou() {
   const isDesktop = useIsDesktop();
   const { perRow, cardSize } = computeGridLayout(gridWidth, isDesktop);
 
+  // Favorites' own measured width — it sits in a narrower half-row on
+  // desktop (see the Upcoming Events/Favorites split below), so it can't
+  // reuse gridWidth above, which is measured from the full content width.
+  // Always exactly 2 cards per row regardless of that width, unlike the
+  // grids elsewhere that pick however many columns fit a comfortable size.
+  const [favoritesWidth, setFavoritesWidth] = useState<number | null>(null);
+  const favoritesCardSize = favoritesWidth ? (favoritesWidth - GRID_GAP) / 2 : cardSize;
+
   // Shared across every section below — event/product/podcast/article
   // contributions all live in the same 'contributions' collection and
   // favorite field (see lib/favorites.ts), unlike curated content which
@@ -1154,54 +1162,56 @@ export default function ForYou() {
           </View>
 
           {/* Distinct from every other section on this screen on purpose —
-              a tinted band with its own header, and a horizontal-scrolling
-              row instead of the wrap-grid everyone else uses, so this reads
-              as "everything you've favorited" at a glance rather than just
-              another list. Shows every favorite (there are only ever a
-              handful), so no expand/collapse toggle is needed here the way
-              the grids below need one. The card/header render regardless of
-              state (loading, empty, or populated) so it always reads as its
-              own section, same as Upcoming Events beside it. */}
-          <View style={[styles.sectionCard, styles.favoritesBand, isDesktop && styles.eventsFavoritesCardDesktop]}>
-            <View style={styles.favoritesHeader}>
+              a tinted band with its own header and a fixed 2-per-row grid
+              (favoritesCardSize above), rather than the however-many-fit
+              grid everyone else uses, so this reads as "everything you've
+              favorited" at a glance rather than just another list. Shows
+              every favorite (there are only ever a handful), so no
+              expand/collapse toggle is needed here the way the grids below
+              need one. The card/header render regardless of state (loading,
+              empty, or populated) so it always reads as its own section,
+              same as Upcoming Events beside it. */}
+          <View style={[styles.sectionCard, isDesktop && styles.eventsFavoritesCardDesktop]}>
+            <View style={styles.sectionCardHead}>
               <View style={styles.sectionCardIconWrap}>
                 <Ionicons name="heart" size={13} color={colors.accent} />
               </View>
               <Text style={styles.sectionCardTitle}>Favorites</Text>
             </View>
-            {forYouLoading ? (
-              <ActivityIndicator color={colors.accent} style={styles.favoritesLoading} />
-            ) : favorites.length === 0 ? (
-              <EmptyState
-                text="Add your favorite products, events, podcasts, and more"
-                style={styles.favoritesEmpty}
-              />
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.favoritesScroll}
-              >
-                {favorites.map((h) => (
-                  <SquareCard
-                    key={h.key}
-                    title={h.title}
-                    subtitle={h.subtitle}
-                    image={h.image}
-                    pairImages={h.pairImages}
-                    icon={h.icon}
-                    badge={h.badge}
-                    badgeVariant={h.badgeVariant}
-                    matchScore={h.matchScore}
-                    personFallback={h.personFallback}
-                    favorited={h.favorited}
-                    onToggleFavorite={h.onToggleFavorite}
-                    size={isDesktop ? cardSize : undefined}
-                    onPress={h.onPress}
-                  />
-                ))}
-              </ScrollView>
-            )}
+            <View
+              style={styles.favoritesBody}
+              onLayout={(e) => {
+                const width = e.nativeEvent.layout.width;
+                setFavoritesWidth((prev) => prev ?? width);
+              }}
+            >
+              {forYouLoading ? (
+                <ActivityIndicator color={colors.accent} />
+              ) : favorites.length === 0 ? (
+                <EmptyState text="Add your favorite products, events, podcasts, and more" />
+              ) : (
+                <View style={styles.favoritesGrid}>
+                  {favorites.map((h) => (
+                    <SquareCard
+                      key={h.key}
+                      title={h.title}
+                      subtitle={h.subtitle}
+                      image={h.image}
+                      pairImages={h.pairImages}
+                      icon={h.icon}
+                      badge={h.badge}
+                      badgeVariant={h.badgeVariant}
+                      matchScore={h.matchScore}
+                      personFallback={h.personFallback}
+                      favorited={h.favorited}
+                      onToggleFavorite={h.onToggleFavorite}
+                      size={favoritesCardSize}
+                      onPress={h.onPress}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -1676,32 +1686,17 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
   },
-  // Favorites keeps its own asymmetric padding (flush left, open right) —
-  // needed so its horizontal-scroll row can bleed its content to the
-  // card's own right edge (the screen's, on mobile; the column's, on
-  // desktop) instead of stopping at an inset.
-  favoritesBand: {
-    marginTop: 0,
-    paddingVertical: 16,
-    paddingLeft: 16,
+  // Same padding rhythm as eventsCalendarBody — Favorites used to bleed
+  // its horizontal-scroll row to the card's right edge, but a wrapping
+  // 2-per-row grid (favoritesGrid) wants normal padding on every side
+  // like everything else instead.
+  favoritesBody: {
+    padding: 16,
   },
-  favoritesHeader: {
+  favoritesGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    paddingRight: 16,
-  },
-  favoritesScroll: {
+    flexWrap: 'wrap',
     gap: 10,
-    paddingRight: 16,
-  },
-  favoritesLoading: {
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-  },
-  favoritesEmpty: {
-    paddingRight: 16,
   },
   playdateLoading: {
     marginTop: 20,

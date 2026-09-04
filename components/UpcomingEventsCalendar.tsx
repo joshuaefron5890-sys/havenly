@@ -84,38 +84,44 @@ export function UpcomingEventsCalendar({
     <View>
       <View style={styles.nav}>
         <Pressable onPress={goToPrevMonth} hitSlop={8}>
-          <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+          <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
         </Pressable>
         <Text style={styles.monthLabel}>
           {MONTH_LABELS[viewMonth]} {viewYear}
         </Text>
         <Pressable onPress={goToNextMonth} hitSlop={8}>
-          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </Pressable>
       </View>
 
-      <View style={styles.weekdayRow}>
-        {WEEKDAY_LABELS.map((label, i) => (
-          <Text key={`${label}-${i}`} style={styles.weekdayLabel}>
-            {label}
-          </Text>
-        ))}
-      </View>
+      {/* Capped and centered rather than stretched to the card's full
+          width — aspectRatio:1 cells otherwise scale up with whatever
+          width they're given, making the grid much chunkier than a
+          small "which days have something" glance needs. */}
+      <View style={styles.gridWrap}>
+        <View style={styles.weekdayRow}>
+          {WEEKDAY_LABELS.map((label, i) => (
+            <Text key={`${label}-${i}`} style={styles.weekdayLabel}>
+              {label}
+            </Text>
+          ))}
+        </View>
 
-      <View style={styles.grid}>
-        {cells.map((day, i) => {
-          if (day === null) return <View key={`blank-${i}`} style={styles.dayCell} />;
-          const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
-          const hasEvent = markedDateKeys.has(dateKey(viewYear, viewMonth, day));
-          return (
-            <View key={day} style={styles.dayCell}>
-              <View style={[styles.dayNumber, isToday && styles.dayNumberToday]}>
-                <Text style={[styles.dayText, isToday && styles.dayTextToday]}>{day}</Text>
+        <View style={styles.grid}>
+          {cells.map((day, i) => {
+            if (day === null) return <View key={`blank-${i}`} style={styles.dayCell} />;
+            const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+            const hasEvent = markedDateKeys.has(dateKey(viewYear, viewMonth, day));
+            return (
+              <View key={day} style={styles.dayCell}>
+                <View style={[styles.dayNumber, isToday && styles.dayNumberToday]}>
+                  <Text style={[styles.dayText, isToday && styles.dayTextToday]}>{day}</Text>
+                </View>
+                {hasEvent ? <View style={styles.dayDot} /> : null}
               </View>
-              {hasEvent ? <View style={styles.dayDot} /> : null}
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
       </View>
 
       {agenda.length > 0 ? (
@@ -128,7 +134,7 @@ export function UpcomingEventsCalendar({
               onPress={item.onPress}
             >
               <View style={styles.agendaIcon}>
-                <Ionicons name="calendar" size={14} color={colors.accent} />
+                <Ionicons name="calendar" size={12} color={colors.accent} />
               </View>
               <View style={styles.agendaText}>
                 <Text style={styles.agendaTitle} numberOfLines={1}>
@@ -138,7 +144,7 @@ export function UpcomingEventsCalendar({
                   {item.subtitle}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={14} color={colors.caption} />
+              <Ionicons name="chevron-forward" size={12} color={colors.caption} />
             </Pressable>
           ))}
         </View>
@@ -160,20 +166,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
+  gridWrap: {
+    width: '100%',
+    maxWidth: 250,
+    alignSelf: 'center',
+  },
   weekdayRow: {
     flexDirection: 'row',
   },
   weekdayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: colors.textMuted,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 4,
+    marginTop: 2,
   },
   dayCell: {
     width: `${100 / 7}%`,
@@ -182,18 +193,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayNumber: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 21,
+    height: 21,
+    borderRadius: 10.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayNumberToday: {
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: colors.accent,
   },
   dayText: {
-    fontSize: 13,
+    fontSize: 11,
     color: colors.text,
   },
   dayTextToday: {
@@ -201,39 +212,39 @@ const styles = StyleSheet.create({
   },
   dayDot: {
     position: 'absolute',
-    bottom: 6,
-    width: 5,
-    height: 5,
-    borderRadius: 3,
+    bottom: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: colors.accent,
   },
   agenda: {
-    marginTop: 14,
-    paddingTop: 14,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   agendaLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: colors.textMuted,
     letterSpacing: 0.8,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   agendaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
+    gap: 8,
+    paddingVertical: 6,
   },
   agendaRowDivider: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   agendaIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
     backgroundColor: colors.accentMuted,
     alignItems: 'center',
     justifyContent: 'center',
@@ -243,13 +254,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   agendaTitle: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     fontWeight: '700',
     color: colors.text,
   },
   agendaMeta: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
 });

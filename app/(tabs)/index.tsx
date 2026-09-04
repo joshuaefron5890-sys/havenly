@@ -734,7 +734,7 @@ export default function ForYou() {
       const d = new Date(item.dateISO);
       return d.getFullYear() === agendaMonth.year && d.getMonth() === agendaMonth.month;
     })
-    .map(({ key, title, subtitle, onPress }) => ({ key, title, subtitle, onPress }));
+    .map(({ key, title, subtitle, dateISO, onPress }) => ({ key, title, subtitle, dateISO, onPress }));
 
   // Which side of the upcoming playdate is "my family" vs. the other one,
   // so the callout can show both — same fromUid/toUid disambiguation

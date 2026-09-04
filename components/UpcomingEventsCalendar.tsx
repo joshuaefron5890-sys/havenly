@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
 
@@ -20,6 +20,10 @@ const MONTH_LABELS = [
   'December',
 ];
 
+// Keeps the list from turning into a long scroll on a busy month — see the
+// pager at the bottom of the agenda panel below.
+const PAGE_SIZE = 3;
+
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -35,15 +39,17 @@ export type CalendarAgendaItem = {
   key: string;
   title: string;
   subtitle: string;
+  dateISO: string;
   onPress: () => void;
 };
 
 // A read-only month view, distinct from components/DatePickerModal.tsx's
-// calendar (that one's for picking a single date — a filled selected-day
-// circle, no dots, plus a time picker/footer this doesn't need). Same
+// calendar (that one's for picking a single date to fill into a form field;
+// this one's for browsing what's already on the calendar). Same
 // weekday-row/7-column-grid anatomy, since that's already the app's one
-// established calendar pattern, just with a small dot marking any day that
-// has something on it instead of a single selectable fill.
+// established calendar pattern, with a small dot marking any day that has
+// something on it, and (like DatePickerModal) a filled circle for whichever
+// day is currently selected.
 export function UpcomingEventsCalendar({
   markedDateKeys,
   agenda,
@@ -60,6 +66,11 @@ export function UpcomingEventsCalendar({
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
+  // Tapping a day narrows the panel below from "this month's events" down
+  // to just that day's — cleared back to the month view either by tapping
+  // the same day again or the panel's own "Clear" link.
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     onMonthChange?.(viewYear, viewMonth);
@@ -73,6 +84,8 @@ export function UpcomingEventsCalendar({
   ];
 
   const goToPrevMonth = () => {
+    setSelectedDay(null);
+    setPage(0);
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear((y) => y - 1);
@@ -82,6 +95,8 @@ export function UpcomingEventsCalendar({
   };
 
   const goToNextMonth = () => {
+    setSelectedDay(null);
+    setPage(0);
     if (viewMonth === 11) {
       setViewMonth(0);
       setViewYear((y) => y + 1);
@@ -89,6 +104,44 @@ export function UpcomingEventsCalendar({
       setViewMonth((m) => m + 1);
     }
   };
+
+  const selectDay = (day: number) => {
+    setPage(0);
+    setSelectedDay((prev) => (prev === day ? null : day));
+  };
+
+  const clearSelectedDay = () => {
+    setSelectedDay(null);
+    setPage(0);
+  };
+
+  const dayItems =
+    selectedDay === null
+      ? null
+      : agenda.filter((item) => {
+          const d = new Date(item.dateISO);
+          return (
+            !Number.isNaN(d.getTime()) &&
+            d.getFullYear() === viewYear &&
+            d.getMonth() === viewMonth &&
+            d.getDate() === selectedDay
+          );
+        });
+
+  const visibleItems = dayItems ?? agenda;
+  const pageCount = Math.max(1, Math.ceil(visibleItems.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, pageCount - 1);
+  const pagedItems = visibleItems.slice(clampedPage * PAGE_SIZE, clampedPage * PAGE_SIZE + PAGE_SIZE);
+  const showPanel = selectedDay !== null || agenda.length > 0;
+
+  // Re-triggered whenever the visible set of rows changes underneath the
+  // panel (a day gets picked or cleared, or the page turns) — slides the
+  // new rows in from the right rather than just swapping them in place.
+  const slide = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    slide.setValue(18);
+    Animated.timing(slide, { toValue: 0, duration: 220, useNativeDriver: false }).start();
+  }, [selectedDay, clampedPage, viewYear, viewMonth, slide]);
 
   return (
     <View>
@@ -121,42 +174,88 @@ export function UpcomingEventsCalendar({
           {cells.map((day, i) => {
             if (day === null) return <View key={`blank-${i}`} style={styles.dayCell} />;
             const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+            const isSelected = day === selectedDay;
             const hasEvent = markedDateKeys.has(dateKey(viewYear, viewMonth, day));
             return (
-              <View key={day} style={styles.dayCell}>
-                <View style={[styles.dayNumber, isToday && styles.dayNumberToday]}>
-                  <Text style={[styles.dayText, isToday && styles.dayTextToday]}>{day}</Text>
+              <Pressable key={day} style={styles.dayCell} onPress={() => selectDay(day)}>
+                <View style={[styles.dayNumber, isToday && styles.dayNumberToday, isSelected && styles.dayNumberSelected]}>
+                  <Text style={[styles.dayText, isToday && styles.dayTextToday, isSelected && styles.dayTextSelected]}>
+                    {day}
+                  </Text>
                 </View>
                 {hasEvent ? <View style={styles.dayDot} /> : null}
-              </View>
+              </Pressable>
             );
           })}
         </View>
       </View>
 
-      {agenda.length > 0 ? (
+      {showPanel ? (
         <View style={styles.agenda}>
-          <Text style={styles.agendaLabel}>UPCOMING</Text>
-          {agenda.map((item, i) => (
-            <Pressable
-              key={item.key}
-              style={[styles.agendaRow, i > 0 && styles.agendaRowDivider]}
-              onPress={item.onPress}
-            >
-              <View style={styles.agendaIcon}>
-                <Ionicons name="calendar" size={13} color={colors.accent} />
-              </View>
-              <View style={styles.agendaText}>
-                <Text style={styles.agendaTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={styles.agendaMeta} numberOfLines={1}>
-                  {item.subtitle}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={13} color={colors.caption} />
-            </Pressable>
-          ))}
+          <View style={styles.agendaHead}>
+            <Text style={styles.agendaLabel}>
+              {selectedDay !== null ? `${MONTH_LABELS[viewMonth].slice(0, 3).toUpperCase()} ${selectedDay}` : 'UPCOMING'}
+            </Text>
+            {selectedDay !== null ? (
+              <Pressable onPress={clearSelectedDay} hitSlop={8}>
+                <Text style={styles.agendaClear}>Clear</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <Animated.View
+            style={{
+              transform: [{ translateX: slide }],
+              opacity: slide.interpolate({ inputRange: [0, 18], outputRange: [1, 0] }),
+            }}
+          >
+            {pagedItems.length === 0 ? (
+              <Text style={styles.agendaEmpty}>No events on this day.</Text>
+            ) : (
+              pagedItems.map((item, i) => (
+                <Pressable
+                  key={item.key}
+                  style={[styles.agendaRow, i > 0 && styles.agendaRowDivider]}
+                  onPress={item.onPress}
+                >
+                  <View style={styles.agendaIcon}>
+                    <Ionicons name="calendar" size={13} color={colors.accent} />
+                  </View>
+                  <View style={styles.agendaText}>
+                    <Text style={styles.agendaTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.agendaMeta} numberOfLines={1}>
+                      {item.subtitle}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={13} color={colors.caption} />
+                </Pressable>
+              ))
+            )}
+          </Animated.View>
+
+          {pageCount > 1 ? (
+            <View style={styles.pager}>
+              <Pressable onPress={() => setPage((p) => Math.max(0, p - 1))} disabled={clampedPage === 0} hitSlop={8}>
+                <Ionicons name="chevron-back" size={15} color={clampedPage === 0 ? colors.border : colors.textMuted} />
+              </Pressable>
+              <Text style={styles.pagerLabel}>
+                {clampedPage + 1} / {pageCount}
+              </Text>
+              <Pressable
+                onPress={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={clampedPage === pageCount - 1}
+                hitSlop={8}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={15}
+                  color={clampedPage === pageCount - 1 ? colors.border : colors.textMuted}
+                />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -211,11 +310,23 @@ const styles = StyleSheet.create({
     borderWidth: 1.3,
     borderColor: colors.accent,
   },
+  // Listed after dayNumberToday in the style array wherever both can apply
+  // (today happens to be the selected day) so its borderWidth:0 wins over
+  // today's ring, leaving one clean filled circle instead of a ring inside
+  // a fill.
+  dayNumberSelected: {
+    backgroundColor: colors.accent,
+    borderWidth: 0,
+  },
   dayText: {
     fontSize: 12,
     color: colors.text,
   },
   dayTextToday: {
+    fontWeight: '700',
+  },
+  dayTextSelected: {
+    color: colors.surface,
     fontWeight: '700',
   },
   dayDot: {
@@ -232,12 +343,27 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  agendaHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 9,
+  },
   agendaLabel: {
     fontSize: 10.5,
     fontWeight: '700',
     color: colors.textMuted,
     letterSpacing: 0.8,
-    marginBottom: 9,
+  },
+  agendaClear: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  agendaEmpty: {
+    fontSize: 13,
+    color: colors.textMuted,
+    paddingVertical: 8,
   },
   agendaRow: {
     flexDirection: 'row',
@@ -270,5 +396,21 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: colors.textMuted,
     marginTop: 1,
+  },
+  pager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  pagerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
 });

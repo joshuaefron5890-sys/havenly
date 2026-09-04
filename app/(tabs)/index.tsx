@@ -679,7 +679,18 @@ export default function ForYou() {
   // for other sections on this screen.
   const calendarItems = useMemo(() => {
     const now = Date.now();
-    type CalendarItem = { key: string; dateISO: string; title: string; subtitle: string; onPress: () => void };
+    type CalendarItem = {
+      key: string;
+      dateISO: string;
+      title: string;
+      subtitle: string;
+      // Distinguishes a playdate (a proposal between two families) from a
+      // standard event (TACA, a support group, etc.) — the calendar below
+      // colors dots/rows differently per type so the two don't blur
+      // together at a glance.
+      type: 'playdate' | 'event';
+      onPress: () => void;
+    };
     const proposalItems: CalendarItem[] = [...confirmedProposals, ...pendingProposals]
       .filter((p) => p.date)
       .map((p) => ({
@@ -687,6 +698,7 @@ export default function ForYou() {
         dateISO: p.date,
         title: proposalStartLabel(p),
         subtitle: p.venue || (p.status === 'accepted' ? 'Confirmed playdate' : 'Proposed playdate'),
+        type: 'playdate',
         onPress: () => router.push(`/proposal/${p.id}`),
       }));
     const eventItems: CalendarItem[] = (events ?? []).map((e) => ({
@@ -694,6 +706,7 @@ export default function ForYou() {
       dateISO: e.eventDate,
       title: e.title,
       subtitle: eventSubtitle(e),
+      type: 'event',
       onPress: () =>
         router.push({
           pathname: '/event/[id]',
@@ -720,13 +733,18 @@ export default function ForYou() {
       .sort((a, b) => new Date(a.dateISO).getTime() - new Date(b.dateISO).getTime());
   }, [confirmedProposals, pendingProposals, events]);
 
+  // Two separate sets rather than one — a day with both a playdate and an
+  // event needs to show both colored dots, not just whichever happened to
+  // be marked last.
   const calendarMarkedDateKeys = useMemo(() => {
-    const keys = new Set<string>();
+    const playdateKeys = new Set<string>();
+    const eventKeys = new Set<string>();
     for (const item of calendarItems) {
       const d = new Date(item.dateISO);
-      if (!Number.isNaN(d.getTime())) keys.add(dateKey(d.getFullYear(), d.getMonth(), d.getDate()));
+      if (Number.isNaN(d.getTime())) continue;
+      (item.type === 'playdate' ? playdateKeys : eventKeys).add(dateKey(d.getFullYear(), d.getMonth(), d.getDate()));
     }
-    return keys;
+    return { playdateKeys, eventKeys };
   }, [calendarItems]);
 
   const calendarAgenda: CalendarAgendaItem[] = calendarItems
@@ -734,7 +752,7 @@ export default function ForYou() {
       const d = new Date(item.dateISO);
       return d.getFullYear() === agendaMonth.year && d.getMonth() === agendaMonth.month;
     })
-    .map(({ key, title, subtitle, dateISO, onPress }) => ({ key, title, subtitle, dateISO, onPress }));
+    .map(({ key, title, subtitle, dateISO, type, onPress }) => ({ key, title, subtitle, dateISO, type, onPress }));
 
   // Which side of the upcoming playdate is "my family" vs. the other one,
   // so the callout can show both — same fromUid/toUid disambiguation
@@ -977,7 +995,8 @@ export default function ForYou() {
             </View>
             <View style={styles.eventsCalendarBody}>
               <UpcomingEventsCalendar
-                markedDateKeys={calendarMarkedDateKeys}
+                playdateDateKeys={calendarMarkedDateKeys.playdateKeys}
+                eventDateKeys={calendarMarkedDateKeys.eventKeys}
                 agenda={calendarAgenda}
                 onMonthChange={(year, month) =>
                   setAgendaMonth((prev) => (prev.year === year && prev.month === month ? prev : { year, month }))

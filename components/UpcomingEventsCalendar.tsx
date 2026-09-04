@@ -28,9 +28,10 @@ function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
-// 'YYYY-M-D' in local time — matches how markedDateKeys is built from a raw
-// ISO date string (new Date(iso).getFullYear()/getMonth()/getDate()), so a
-// day lights up in the viewer's own time zone rather than UTC.
+// 'YYYY-M-D' in local time — matches how playdateDateKeys/eventDateKeys are
+// built from a raw ISO date string
+// (new Date(iso).getFullYear()/getMonth()/getDate()), so a day lights up in
+// the viewer's own time zone rather than UTC.
 export function dateKey(year: number, month: number, day: number): string {
   return `${year}-${month}-${day}`;
 }
@@ -40,6 +41,10 @@ export type CalendarAgendaItem = {
   title: string;
   subtitle: string;
   dateISO: string;
+  // A playdate (a proposal between two families) vs. a standard event
+  // (TACA, a support group, etc.) — colors the day's dot and the agenda
+  // row's icon differently so the two read apart at a glance.
+  type: 'playdate' | 'event';
   onPress: () => void;
 };
 
@@ -51,11 +56,13 @@ export type CalendarAgendaItem = {
 // something on it, and (like DatePickerModal) a filled circle for whichever
 // day is currently selected.
 export function UpcomingEventsCalendar({
-  markedDateKeys,
+  playdateDateKeys,
+  eventDateKeys,
   agenda,
   onMonthChange,
 }: {
-  markedDateKeys: Set<string>;
+  playdateDateKeys: Set<string>;
+  eventDateKeys: Set<string>;
   agenda: CalendarAgendaItem[];
   // Fired on mount and on every prev/next navigation — lets the parent
   // (which owns the agenda list's actual data) filter it down to whatever
@@ -175,7 +182,9 @@ export function UpcomingEventsCalendar({
             if (day === null) return <View key={`blank-${i}`} style={styles.dayCell} />;
             const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
             const isSelected = day === selectedDay;
-            const hasEvent = markedDateKeys.has(dateKey(viewYear, viewMonth, day));
+            const key = dateKey(viewYear, viewMonth, day);
+            const hasPlaydate = playdateDateKeys.has(key);
+            const hasEvent = eventDateKeys.has(key);
             return (
               <Pressable key={day} style={styles.dayCell} onPress={() => selectDay(day)}>
                 <View style={[styles.dayNumber, isToday && styles.dayNumberToday, isSelected && styles.dayNumberSelected]}>
@@ -183,10 +192,26 @@ export function UpcomingEventsCalendar({
                     {day}
                   </Text>
                 </View>
-                {hasEvent ? <View style={styles.dayDot} /> : null}
+                {hasPlaydate || hasEvent ? (
+                  <View style={styles.dayDotsRow}>
+                    {hasPlaydate ? <View style={[styles.dayDot, styles.dayDotPlaydate]} /> : null}
+                    {hasEvent ? <View style={[styles.dayDot, styles.dayDotEvent]} /> : null}
+                  </View>
+                ) : null}
               </Pressable>
             );
           })}
+        </View>
+      </View>
+
+      <View style={styles.legend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.dayDot, styles.dayDotPlaydate]} />
+          <Text style={styles.legendLabel}>Playdate</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.dayDot, styles.dayDotEvent]} />
+          <Text style={styles.legendLabel}>Event</Text>
         </View>
       </View>
 
@@ -218,8 +243,8 @@ export function UpcomingEventsCalendar({
                   style={[styles.agendaRow, i > 0 && styles.agendaRowDivider]}
                   onPress={item.onPress}
                 >
-                  <View style={styles.agendaIcon}>
-                    <Ionicons name="calendar" size={13} color={colors.accent} />
+                  <View style={[styles.agendaIcon, item.type === 'event' && styles.agendaIconEvent]}>
+                    <Ionicons name="calendar" size={13} color={item.type === 'event' ? colors.info : colors.accent} />
                   </View>
                   <View style={styles.agendaText}>
                     <Text style={styles.agendaTitle} numberOfLines={1}>
@@ -329,13 +354,40 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontWeight: '700',
   },
-  dayDot: {
+  // Wraps 1-2 dots (a day can have both a playdate and an event) centered
+  // as a group at the bottom of the cell, rather than each dot
+  // individually positioning itself and needing to know about the other.
+  dayDotsRow: {
     position: 'absolute',
     bottom: 4,
+    flexDirection: 'row',
+    gap: 3,
+  },
+  dayDot: {
     width: 5,
     height: 5,
     borderRadius: 2.5,
+  },
+  dayDotPlaydate: {
     backgroundColor: colors.accent,
+  },
+  dayDotEvent: {
+    backgroundColor: colors.info,
+  },
+  legend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendLabel: {
+    fontSize: 11,
+    color: colors.textMuted,
   },
   agenda: {
     marginTop: 12,
@@ -382,6 +434,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentMuted,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  agendaIconEvent: {
+    backgroundColor: colors.infoMuted,
   },
   agendaText: {
     flex: 1,

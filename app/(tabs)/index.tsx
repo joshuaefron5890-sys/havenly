@@ -37,6 +37,15 @@ import { colors } from '../../theme/colors';
 import { CalendarAgendaItem, dateKey, UpcomingEventsCalendar } from '../../components/UpcomingEventsCalendar';
 
 const GRID_GAP = 10;
+// Shared by the eventsFavoritesRowDesktop/sectionCard/favoritesBody
+// styles below AND the favoritesCardSize arithmetic — Favorites' card size
+// is derived from gridWidth rather than independently measured via its own
+// onLayout, which raced the Upcoming Events card's own first layout: on
+// some loads Favorites got measured before the row had settled into its
+// 50/50 split, locking onto the wider pre-split width.
+const FAVORITES_ROW_GAP = 16;
+const SECTION_CARD_BORDER = 1;
+const FAVORITES_BODY_PADDING = 16;
 // The comfortable size range a preview card can flex within — wide enough
 // to stay legible, narrow enough that a row can fit an extra card rather
 // than leaving it just out of reach.
@@ -110,13 +119,16 @@ export default function ForYou() {
   const isDesktop = useIsDesktop();
   const { perRow, cardSize } = computeGridLayout(gridWidth, isDesktop);
 
-  // Favorites' own measured width — it sits in a narrower half-row on
-  // desktop (see the Upcoming Events/Favorites split below), so it can't
-  // reuse gridWidth above, which is measured from the full content width.
-  // Always exactly 2 cards per row regardless of that width, unlike the
-  // grids elsewhere that pick however many columns fit a comfortable size.
-  const [favoritesWidth, setFavoritesWidth] = useState<number | null>(null);
-  const favoritesCardSize = favoritesWidth ? (favoritesWidth - GRID_GAP) / 2 : cardSize;
+  // Favorites sits in a narrower half-row on desktop (see the Upcoming
+  // Events/Favorites split below), so it can't just reuse cardSize above —
+  // but its width is still a fixed function of gridWidth (half of it, minus
+  // the row gap, card border, and its own body padding), so it's derived
+  // arithmetically rather than independently measured. Always exactly 2
+  // cards per row regardless of that width, unlike the grids elsewhere that
+  // pick however many columns fit a comfortable size.
+  const favoritesCardSize = gridWidth
+    ? (((isDesktop ? (gridWidth - FAVORITES_ROW_GAP) / 2 : gridWidth) - SECTION_CARD_BORDER * 2 - FAVORITES_BODY_PADDING * 2 - GRID_GAP) / 2)
+    : cardSize;
 
   // Families
   const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
@@ -967,13 +979,7 @@ export default function ForYou() {
               </View>
               <Text style={styles.sectionCardTitle}>Favorites</Text>
             </View>
-            <View
-              style={styles.favoritesBody}
-              onLayout={(e) => {
-                const width = e.nativeEvent.layout.width;
-                setFavoritesWidth((prev) => (prev === width ? prev : width));
-              }}
-            >
+            <View style={styles.favoritesBody}>
               {forYouLoading ? (
                 <ActivityIndicator color={colors.accent} />
               ) : favorites.length === 0 ? (
@@ -1069,7 +1075,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: colors.surface,
     borderRadius: 20,
-    borderWidth: 1,
+    borderWidth: SECTION_CARD_BORDER,
     borderColor: colors.border,
     marginTop: 20,
     marginBottom: 16,
@@ -1124,7 +1130,7 @@ const styles = StyleSheet.create({
     // edges line up. Any leftover space just sits blank inside the
     // shorter card, which is fine here — better than a ragged bottom edge.
     alignItems: 'stretch',
-    gap: 16,
+    gap: FAVORITES_ROW_GAP,
     marginTop: 20,
     marginBottom: 16,
   },
@@ -1141,7 +1147,7 @@ const styles = StyleSheet.create({
   // 2-per-row grid (favoritesGrid) wants normal padding on every side
   // like everything else instead.
   favoritesBody: {
-    padding: 16,
+    padding: FAVORITES_BODY_PADDING,
   },
   favoritesGrid: {
     flexDirection: 'row',

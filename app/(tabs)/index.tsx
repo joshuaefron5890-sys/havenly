@@ -662,6 +662,17 @@ export default function ForYou() {
 
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
 
+  // Which month the calendar below is currently showing — starts on
+  // today's, and UpcomingEventsCalendar's onMonthChange keeps it in sync
+  // as someone pages through prev/next, so the agenda list underneath it
+  // (calendarAgenda below) can filter down to just that month instead of
+  // always showing the next few upcoming items regardless of what the
+  // calendar itself is currently displaying.
+  const [agendaMonth, setAgendaMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+
   // Upcoming Events' calendar — every future proposal (confirmed or still
   // pending) plus every nearby event already fetched above, merged into
   // one date-sorted list. No new fetch: both sources are already loaded
@@ -719,7 +730,10 @@ export default function ForYou() {
   }, [calendarItems]);
 
   const calendarAgenda: CalendarAgendaItem[] = calendarItems
-    .slice(0, 3)
+    .filter((item) => {
+      const d = new Date(item.dateISO);
+      return d.getFullYear() === agendaMonth.year && d.getMonth() === agendaMonth.month;
+    })
     .map(({ key, title, subtitle, onPress }) => ({ key, title, subtitle, onPress }));
 
   // Which side of the upcoming playdate is "my family" vs. the other one,
@@ -962,7 +976,13 @@ export default function ForYou() {
               </Pressable>
             </View>
             <View style={styles.eventsCalendarBody}>
-              <UpcomingEventsCalendar markedDateKeys={calendarMarkedDateKeys} agenda={calendarAgenda} />
+              <UpcomingEventsCalendar
+                markedDateKeys={calendarMarkedDateKeys}
+                agenda={calendarAgenda}
+                onMonthChange={(year, month) =>
+                  setAgendaMonth((prev) => (prev.year === year && prev.month === month ? prev : { year, month }))
+                }
+              />
             </View>
           </View>
 

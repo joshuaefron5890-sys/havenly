@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './AppText';
 import { colors } from '../theme/colors';
@@ -47,13 +47,23 @@ export type CalendarAgendaItem = {
 export function UpcomingEventsCalendar({
   markedDateKeys,
   agenda,
+  onMonthChange,
 }: {
   markedDateKeys: Set<string>;
   agenda: CalendarAgendaItem[];
+  // Fired on mount and on every prev/next navigation — lets the parent
+  // (which owns the agenda list's actual data) filter it down to whatever
+  // month is currently in view here, instead of this component's own
+  // month state and the parent's agenda drifting independently.
+  onMonthChange?: (year: number, month: number) => void;
 }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  useEffect(() => {
+    onMonthChange?.(viewYear, viewMonth);
+  }, [viewYear, viewMonth, onMonthChange]);
 
   const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
   const totalDays = daysInMonth(viewYear, viewMonth);

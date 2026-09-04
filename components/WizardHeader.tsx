@@ -6,7 +6,7 @@ import { goBack } from '../lib/navigation';
 import { useIsDesktop } from '../lib/responsive';
 import { colors } from '../theme/colors';
 
-const DEFAULT_TOTAL_STEPS = 10;
+const DEFAULT_TOTAL_STEPS = 11;
 
 export function WizardHeader({
   step,

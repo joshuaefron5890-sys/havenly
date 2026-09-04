@@ -74,6 +74,11 @@ export type OnboardingProfile = {
   personality: string | null;
   soundsGoodTo: string[];
   availability: string[];
+  // Whether the family would pay for a playdate provider (a paid
+  // chaperone/sitter who joins or supervises a playdate) — stores the
+  // selected option's own label text, same as `personality` above, rather
+  // than a separate key.
+  providerWillingness: string | null;
   googleCalendarConnected: boolean;
   // Whether the family opted in to Opened Circle creating events on their Google
   // Calendar when a playdate is accepted, as opposed to only checking
@@ -101,6 +106,7 @@ const initialProfile: OnboardingProfile = {
   personality: null,
   soundsGoodTo: [],
   availability: [],
+  providerWillingness: null,
   googleCalendarConnected: false,
   googleCalendarSyncEnabled: false,
 };

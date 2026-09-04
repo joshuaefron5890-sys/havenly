@@ -180,10 +180,10 @@ export default function Calendar() {
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <WizardHeader
-        step={10}
+        step={11}
         title="Connect your"
         accent="calendar."
-        backTo={editMode ? '/profile' : '/onboarding/availability'}
+        backTo={editMode ? '/profile' : '/onboarding/provider-preference'}
         editMode={editMode}
       />
       <ScrollView contentContainerStyle={styles.content}>

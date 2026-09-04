@@ -452,7 +452,10 @@ export default function Profile() {
 
         <SectionCard title="Playdate providers" editHref="/onboarding/provider-preference?edit=1">
           {profile.providerWillingness ? (
-            <Field label="Willing to pay for a provider" value={profile.providerWillingness} />
+            <>
+              <Field label="Willing to pay for a provider" value={profile.providerWillingness} />
+              <Field label="Max hourly rate" value={profile.providerMaxHourlyRate} />
+            </>
           ) : (
             <Text style={styles.empty}>Not set yet</Text>
           )}

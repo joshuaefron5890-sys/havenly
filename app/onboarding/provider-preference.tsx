@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { saveOnboardingStep } from '../../lib/onboardingProgress';
@@ -18,14 +19,28 @@ const OPTIONS = [
   "I'm open to either",
 ];
 
+// The two options where a max rate is actually worth asking about — "No,
+// not right now" skips straight to Continue.
+const RATE_OPTIONS = [OPTIONS[0], OPTIONS[2]];
+
 export default function ProviderPreference() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const editMode = edit === '1';
   const { profile, updateProfile } = useOnboarding();
   const [providerWillingness, setProviderWillingness] = useState<string | null>(profile.providerWillingness);
+  const [maxHourlyRate, setMaxHourlyRate] = useState(profile.providerMaxHourlyRate);
+  const showRateQuestion = providerWillingness !== null && RATE_OPTIONS.includes(providerWillingness);
+
+  const selectWillingness = (option: string) => {
+    setProviderWillingness(option);
+    // Switching to "No, not right now" makes a previously entered rate
+    // stale — clear it rather than silently carrying it into the saved
+    // profile alongside an answer that says a provider isn't wanted.
+    if (!RATE_OPTIONS.includes(option)) setMaxHourlyRate('');
+  };
 
   const handleContinue = () => {
-    const patch = { providerWillingness };
+    const patch = { providerWillingness, providerMaxHourlyRate: showRateQuestion ? maxHourlyRate.trim() : '' };
     updateProfile(patch);
     saveOnboardingStep(patch, '/onboarding/calendar', { editMode });
     router.push(editMode ? '/profile' : '/onboarding/calendar');
@@ -49,12 +64,27 @@ export default function ProviderPreference() {
             <Pressable
               key={option}
               style={[styles.option, isSelected && styles.optionSelected]}
-              onPress={() => setProviderWillingness(option)}
+              onPress={() => selectWillingness(option)}
             >
               <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
             </Pressable>
           );
         })}
+
+        {showRateQuestion ? (
+          <View style={styles.rateSection}>
+            <FieldInput
+              label="Max hourly rate you'd pay"
+              placeholder="$20/hr"
+              keyboardType="decimal-pad"
+              value={maxHourlyRate}
+              onChangeText={setMaxHourlyRate}
+            />
+            <Text style={styles.footnote}>
+              *This doesn't mean you'll automatically be matched at your maximum.
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -108,6 +138,14 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: colors.accent,
+  },
+  rateSection: {
+    marginTop: 8,
+  },
+  footnote: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: -8,
   },
   footer: {
     padding: 20,

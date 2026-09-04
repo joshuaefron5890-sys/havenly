@@ -79,6 +79,11 @@ export type OnboardingProfile = {
   // selected option's own label text, same as `personality` above, rather
   // than a separate key.
   providerWillingness: string | null;
+  // Only asked (and only meaningful) when providerWillingness is one of the
+  // two "would pay" options — free text like sitters' own `hourlyRate`
+  // (lib/sitters.ts) rather than a parsed number, since it's a rough ceiling
+  // a family has in mind, not a value anything currently matches against.
+  providerMaxHourlyRate: string;
   googleCalendarConnected: boolean;
   // Whether the family opted in to Opened Circle creating events on their Google
   // Calendar when a playdate is accepted, as opposed to only checking
@@ -107,6 +112,7 @@ const initialProfile: OnboardingProfile = {
   soundsGoodTo: [],
   availability: [],
   providerWillingness: null,
+  providerMaxHourlyRate: '',
   googleCalendarConnected: false,
   googleCalendarSyncEnabled: false,
 };

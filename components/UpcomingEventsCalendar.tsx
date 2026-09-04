@@ -84,13 +84,13 @@ export function UpcomingEventsCalendar({
     <View>
       <View style={styles.nav}>
         <Pressable onPress={goToPrevMonth} hitSlop={8}>
-          <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+          <Ionicons name="chevron-back" size={17} color={colors.textMuted} />
         </Pressable>
         <Text style={styles.monthLabel}>
           {MONTH_LABELS[viewMonth]} {viewYear}
         </Text>
         <Pressable onPress={goToNextMonth} hitSlop={8}>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={17} color={colors.textMuted} />
         </Pressable>
       </View>
 
@@ -134,7 +134,7 @@ export function UpcomingEventsCalendar({
               onPress={item.onPress}
             >
               <View style={styles.agendaIcon}>
-                <Ionicons name="calendar" size={12} color={colors.accent} />
+                <Ionicons name="calendar" size={13} color={colors.accent} />
               </View>
               <View style={styles.agendaText}>
                 <Text style={styles.agendaTitle} numberOfLines={1}>
@@ -144,7 +144,7 @@ export function UpcomingEventsCalendar({
                   {item.subtitle}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={12} color={colors.caption} />
+              <Ionicons name="chevron-forward" size={13} color={colors.caption} />
             </Pressable>
           ))}
         </View>
@@ -168,8 +168,6 @@ const styles = StyleSheet.create({
   },
   gridWrap: {
     width: '100%',
-    maxWidth: 250,
-    alignSelf: 'center',
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -177,14 +175,14 @@ const styles = StyleSheet.create({
   weekdayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 2,
+    marginTop: 3,
   },
   dayCell: {
     width: `${100 / 7}%`,
@@ -193,18 +191,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayNumber: {
-    width: 21,
-    height: 21,
-    borderRadius: 10.5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayNumberToday: {
-    borderWidth: 1.2,
+    borderWidth: 1.3,
     borderColor: colors.accent,
   },
   dayText: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.text,
   },
   dayTextToday: {
@@ -212,38 +210,38 @@ const styles = StyleSheet.create({
   },
   dayDot: {
     position: 'absolute',
-    bottom: 3,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    bottom: 4,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: colors.accent,
   },
   agenda: {
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   agendaLabel: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     color: colors.textMuted,
     letterSpacing: 0.8,
-    marginBottom: 8,
+    marginBottom: 9,
   },
   agendaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
+    gap: 9,
+    paddingVertical: 7,
   },
   agendaRowDivider: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   agendaIcon: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
     borderRadius: 8,
     backgroundColor: colors.accentMuted,
     alignItems: 'center',
@@ -254,12 +252,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   agendaTitle: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.text,
   },
   agendaMeta: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: colors.textMuted,
     marginTop: 1,
   },

@@ -1140,66 +1140,75 @@ export default function ForYou() {
           </View>
         )}
 
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionCardHead}>
-            <View style={styles.sectionCardIconWrap}>
-              <Ionicons name="calendar" size={13} color={colors.accent} />
-            </View>
-            <Text style={styles.sectionCardTitle}>Upcoming Events</Text>
-            <Pressable onPress={() => router.push('/(tabs)/events')}>
-              <Text style={styles.sectionCardLink}>View all</Text>
-            </Pressable>
-          </View>
-          <View style={styles.eventsCalendarBody}>
-            <UpcomingEventsCalendar markedDateKeys={calendarMarkedDateKeys} agenda={calendarAgenda} />
-          </View>
-        </View>
-
-        {forYouLoading ? (
-          <ActivityIndicator color={colors.accent} />
-        ) : favorites.length === 0 ? (
-          <EmptyState text="Nothing favorited yet — tap the heart on a family, event, product, podcast, or article, and it'll show up here." />
-        ) : (
-          // Distinct from every other section on this screen on purpose —
-          // a tinted band with its own header, and a horizontal-scrolling
-          // row instead of the wrap-grid everyone else uses, so this reads
-          // as "everything you've favorited" at a glance rather than just
-          // another list. Shows every favorite (there are only ever a
-          // handful), so no expand/collapse toggle is needed here the way
-          // the grids below need one.
-          <View style={[styles.sectionCard, styles.favoritesBand]}>
-            <View style={styles.favoritesHeader}>
+        {/* On desktop, side by side — each gets half the row instead of
+            the calendar stretching to the full width it doesn't need. On
+            mobile, still stacked full-width; a phone doesn't have room
+            for a legible 7-column grid at half width. */}
+        <View style={[styles.eventsFavoritesRow, isDesktop && styles.eventsFavoritesRowDesktop]}>
+          <View style={[styles.sectionCard, isDesktop && styles.eventsFavoritesCardDesktop]}>
+            <View style={styles.sectionCardHead}>
               <View style={styles.sectionCardIconWrap}>
-                <Ionicons name="heart" size={13} color={colors.accent} />
+                <Ionicons name="calendar" size={13} color={colors.accent} />
               </View>
-              <Text style={styles.sectionCardTitle}>Favorites</Text>
+              <Text style={styles.sectionCardTitle}>Upcoming Events</Text>
+              <Pressable onPress={() => router.push('/(tabs)/events')}>
+                <Text style={styles.sectionCardLink}>View all</Text>
+              </Pressable>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.favoritesScroll}
-            >
-              {favorites.map((h) => (
-                <SquareCard
-                  key={h.key}
-                  title={h.title}
-                  subtitle={h.subtitle}
-                  image={h.image}
-                  pairImages={h.pairImages}
-                  icon={h.icon}
-                  badge={h.badge}
-                  badgeVariant={h.badgeVariant}
-                  matchScore={h.matchScore}
-                  personFallback={h.personFallback}
-                  favorited={h.favorited}
-                  onToggleFavorite={h.onToggleFavorite}
-                  size={isDesktop ? cardSize : undefined}
-                  onPress={h.onPress}
-                />
-              ))}
-            </ScrollView>
+            <View style={styles.eventsCalendarBody}>
+              <UpcomingEventsCalendar markedDateKeys={calendarMarkedDateKeys} agenda={calendarAgenda} />
+            </View>
           </View>
-        )}
+
+          {forYouLoading ? (
+            <ActivityIndicator color={colors.accent} style={[isDesktop && styles.eventsFavoritesCardDesktop]} />
+          ) : favorites.length === 0 ? (
+            <EmptyState
+              text="Nothing favorited yet — tap the heart on a family, event, product, podcast, or article, and it'll show up here."
+              style={[isDesktop && styles.eventsFavoritesCardDesktop]}
+            />
+          ) : (
+            // Distinct from every other section on this screen on purpose —
+            // a tinted band with its own header, and a horizontal-scrolling
+            // row instead of the wrap-grid everyone else uses, so this reads
+            // as "everything you've favorited" at a glance rather than just
+            // another list. Shows every favorite (there are only ever a
+            // handful), so no expand/collapse toggle is needed here the way
+            // the grids below need one.
+            <View style={[styles.sectionCard, styles.favoritesBand, isDesktop && styles.eventsFavoritesCardDesktop]}>
+              <View style={styles.favoritesHeader}>
+                <View style={styles.sectionCardIconWrap}>
+                  <Ionicons name="heart" size={13} color={colors.accent} />
+                </View>
+                <Text style={styles.sectionCardTitle}>Favorites</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.favoritesScroll}
+              >
+                {favorites.map((h) => (
+                  <SquareCard
+                    key={h.key}
+                    title={h.title}
+                    subtitle={h.subtitle}
+                    image={h.image}
+                    pairImages={h.pairImages}
+                    icon={h.icon}
+                    badge={h.badge}
+                    badgeVariant={h.badgeVariant}
+                    matchScore={h.matchScore}
+                    personFallback={h.personFallback}
+                    favorited={h.favorited}
+                    onToggleFavorite={h.onToggleFavorite}
+                    size={isDesktop ? cardSize : undefined}
+                    onPress={h.onPress}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
 
         <SectionHeader
           title="Families like you"
@@ -1645,10 +1654,31 @@ const styles = StyleSheet.create({
   eventsCalendarBody: {
     padding: 16,
   },
-  // Favorites keeps the band's own asymmetric padding (flush
-  // left, open right) rather than sectionCard's usual uniform padding —
-  // still needed here so its horizontal-scroll row can bleed its content
-  // to the true right edge of the screen instead of stopping at an inset.
+  // On mobile the two cards stack full-width, each keeping its own
+  // sectionCard margin — this wrapper is layout-neutral there. On
+  // desktop they sit side by side instead, each taking half the row, so
+  // the row itself takes over the outer margin (see
+  // eventsFavoritesCardDesktop zeroing each card's own).
+  eventsFavoritesRow: {},
+  eventsFavoritesRowDesktop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  // Only meaningful on desktop (see eventsFavoritesRowDesktop) — the row's
+  // own marginTop/marginBottom above replace each card's individual
+  // margins there, so both sides line up instead of stacking their own.
+  eventsFavoritesCardDesktop: {
+    flex: 1,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  // Favorites keeps its own asymmetric padding (flush left, open right) —
+  // needed so its horizontal-scroll row can bleed its content to the
+  // card's own right edge (the screen's, on mobile; the column's, on
+  // desktop) instead of stopping at an inset.
   favoritesBand: {
     marginTop: 0,
     paddingVertical: 16,

@@ -98,10 +98,14 @@ export default function ForYou() {
   const { user, familyUid } = useAuth();
   const myUid = familyUid ?? user?.uid;
 
-  // Measured once from a zero-height spacer at the top of the scroll
-  // content — its width equals the grids' own width (both sit inside the
-  // same padded content container), and is what determines how many cards
-  // make up "one row" below.
+  // Measured from a zero-height spacer at the top of the scroll content —
+  // its width equals the grids' own width (both sit inside the same padded
+  // content container), and is what determines how many cards make up "one
+  // row" below. Re-measured on every layout pass (bailing out when the
+  // width hasn't actually changed) rather than locked to the first value,
+  // so a browser resize — or a breakpoint switch that swaps in a
+  // differently-sized container — is picked up instead of leaving stale
+  // cards sized for whatever width happened to be measured first.
   const [gridWidth, setGridWidth] = useState<number | null>(null);
   const isDesktop = useIsDesktop();
   const { perRow, cardSize } = computeGridLayout(gridWidth, isDesktop);
@@ -729,7 +733,7 @@ export default function ForYou() {
             // in production (TypeError: Cannot read property 'layout' of
             // null) despite never reproducing in dev.
             const width = e.nativeEvent.layout.width;
-            setGridWidth((prev) => prev ?? width);
+            setGridWidth((prev) => (prev === width ? prev : width));
           }}
         />
 
@@ -967,7 +971,7 @@ export default function ForYou() {
               style={styles.favoritesBody}
               onLayout={(e) => {
                 const width = e.nativeEvent.layout.width;
-                setFavoritesWidth((prev) => prev ?? width);
+                setFavoritesWidth((prev) => (prev === width ? prev : width));
               }}
             >
               {forYouLoading ? (

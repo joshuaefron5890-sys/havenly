@@ -71,14 +71,14 @@ export async function createPlaydateProposal(
   toUid: string,
   details: PlaydateProposalDetails,
   note: string
-): Promise<string> {
+): Promise<{ conversationId: string; proposalId: string }> {
   const myUid = getMyFamilyUid();
   if (!myUid || !db) {
     throw new Error('not-signed-in');
   }
   const conversationId = await getOrCreateConversation(toUid);
   await sendProposalMessage(conversationId, details, note);
-  await addDoc(collection(db, 'playdateProposals'), {
+  const proposalRef = await addDoc(collection(db, 'playdateProposals'), {
     conversationId,
     fromUid: myUid,
     toUid,
@@ -88,7 +88,7 @@ export async function createPlaydateProposal(
     createdAt: serverTimestamp(),
     ...details,
   });
-  return conversationId;
+  return { conversationId, proposalId: proposalRef.id };
 }
 
 // Only the recipient can respond, and only while it's still pending — both

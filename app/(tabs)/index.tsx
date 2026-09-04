@@ -52,8 +52,9 @@ import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../
 import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { useIsDesktop } from '../../lib/responsive';
-import { SITTERS_ENABLED } from '../../lib/sitters';
+import { fetchRecommendedSitters, RecommendedSitter, SITTERS_ENABLED } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
+import { CalendarAgendaItem, dateKey, UpcomingEventsCalendar } from '../../components/UpcomingEventsCalendar';
 
 // Articles stayed a row list (see the section below) rather than joining
 // the square-card grid — a lone document icon centered in a big square
@@ -133,6 +134,7 @@ function mergeFamilies(favorited: SuggestedFamily[], suggested: SuggestedFamily[
 export default function ForYou() {
   const { user, familyUid } = useAuth();
   const firstName = user?.displayName?.trim().split(' ')[0] || '';
+  const myUid = familyUid ?? user?.uid;
 
   // Measured once from a zero-height spacer at the top of the scroll
   // content — its width equals the grids' own width (both sit inside the
@@ -501,31 +503,28 @@ export default function ForYou() {
     };
   }, [proposal]);
 
-  // For You — a cross-category highlight reel above everything else,
-  // prioritized in a fixed order: a confirmed playdate is the single most
-  // actionable thing on the whole dashboard, then a proposed-but-not-yet-
-  // answered playdate (still needs someone to act on it), then anything
-  // already favorited (a signal the user gave directly), then families
-  // the match algorithm rates especially highly but haven't been
-  // favorited yet.
+  // Confirmed and pending playdate proposals — Home's playdate section
+  // (confirmed callout, or the Suggested Playdate fallback below) reads
+  // confirmedProposals/pendingProposals directly; Favorites (further
+  // below) no longer surfaces proposals at all, only actual favorites.
   const [confirmedProposals, setConfirmedProposals] = useState<PlaydateProposal[]>([]);
-  const [confirmedProposalPhotos, setConfirmedProposalPhotos] = useState<
-    Record<string, [string | null, string | null]>
-  >({});
   const [pendingProposals, setPendingProposals] = useState<PlaydateProposal[]>([]);
-  const [pendingProposalPhotos, setPendingProposalPhotos] = useState<
-    Record<string, [string | null, string | null]>
-  >({});
+  // Neither fetch above was previously tracked by any loading flag, so the
+  // playdate section could flash "nothing confirmed" for a moment before
+  // fetchAcceptedProposals actually resolved — this gates that decision
+  // (see the Suggested Playdate branch below) until both have landed.
+  const [proposalsLoaded, setProposalsLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
       let cancelled = false;
-      fetchAcceptedProposals().then((result) => {
-        if (!cancelled) setConfirmedProposals(result);
-      });
-      fetchPendingProposals().then((result) => {
-        if (!cancelled) setPendingProposals(result);
+      setProposalsLoaded(false);
+      Promise.all([fetchAcceptedProposals(), fetchPendingProposals()]).then(([accepted, pending]) => {
+        if (cancelled) return;
+        setConfirmedProposals(accepted);
+        setPendingProposals(pending);
+        setProposalsLoaded(true);
       });
       return () => {
         cancelled = true;
@@ -533,49 +532,7 @@ export default function ForYou() {
     }, [user])
   );
 
-  useEffect(() => {
-    if (!confirmedProposals.length) {
-      setConfirmedProposalPhotos({});
-      return;
-    }
-    let cancelled = false;
-    const uids = [...new Set(confirmedProposals.flatMap((p) => [p.fromUid, p.toUid]))];
-    fetchFamiliesByUids(uids).then((result) => {
-      if (cancelled) return;
-      const byUid = new Map(result.map((f) => [f.uid, familyPhoto(f)]));
-      const photos: Record<string, [string | null, string | null]> = {};
-      for (const p of confirmedProposals) {
-        photos[p.id] = [byUid.get(p.fromUid) ?? null, byUid.get(p.toUid) ?? null];
-      }
-      setConfirmedProposalPhotos(photos);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [confirmedProposals]);
-
-  useEffect(() => {
-    if (!pendingProposals.length) {
-      setPendingProposalPhotos({});
-      return;
-    }
-    let cancelled = false;
-    const uids = [...new Set(pendingProposals.flatMap((p) => [p.fromUid, p.toUid]))];
-    fetchFamiliesByUids(uids).then((result) => {
-      if (cancelled) return;
-      const byUid = new Map(result.map((f) => [f.uid, familyPhoto(f)]));
-      const photos: Record<string, [string | null, string | null]> = {};
-      for (const p of pendingProposals) {
-        photos[p.id] = [byUid.get(p.fromUid) ?? null, byUid.get(p.toUid) ?? null];
-      }
-      setPendingProposalPhotos(photos);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [pendingProposals]);
-
-  type Highlight = {
+  type FavoriteCard = {
     key: string;
     title: string;
     subtitle?: string;
@@ -586,9 +543,9 @@ export default function ForYou() {
     badgeVariant?: 'accent' | 'positive' | 'warning';
     matchScore?: number;
     // Plain favorites (families/products/podcasts/articles) show the same
-    // corner heart used everywhere else instead of a separate "Favorited"
-    // text badge — badge is reserved for a real status (Confirmed,
-    // Proposed, Suggested, or a calendar-added event's Added).
+    // corner heart used everywhere else instead of a separate text badge —
+    // badge is reserved for a favorited event's "Added" (see
+    // favoritedEvents below; that's the only card type that ever sets one).
     favorited?: boolean;
     onToggleFavorite?: () => void;
     // A specific family's own photo (favorited/top-match cards) rather than
@@ -600,8 +557,8 @@ export default function ForYou() {
 
   // confirmedProposals is already sorted soonest-first, so the first one
   // that falls within the next 7 days (if any) is the one to surface in
-  // its own full callout above the Highlights band — it also gets left
-  // out of `confirmed` below so it doesn't show up a second time there.
+  // its own full callout — when there isn't one, the Suggested Playdate
+  // branch below takes that same slot instead.
   const upcomingPlaydate = useMemo(() => {
     const now = Date.now();
     const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
@@ -612,8 +569,8 @@ export default function ForYou() {
   }, [confirmedProposals]);
 
   // Full profiles (name, kids, photo) for the upcoming callout's two
-  // families — confirmedProposalPhotos above only carries a bare photo
-  // URL, not enough to show "who's coming" the way the callout needs to.
+  // families — the callout needs more than just a photo URL to show
+  // "who's coming."
   const [upcomingPlaydateFamilies, setUpcomingPlaydateFamilies] = useState<Record<string, SuggestedFamily>>({});
 
   useEffect(() => {
@@ -631,41 +588,68 @@ export default function ForYou() {
     };
   }, [upcomingPlaydate]);
 
-  const highlights = useMemo<Highlight[]>(() => {
-    const confirmed: Highlight[] = confirmedProposals
-      .filter((p) => p.id !== upcomingPlaydate?.id)
-      .map((p) => {
-        const photos = confirmedProposalPhotos[p.id];
-        return {
-          key: `confirmed-${p.id}`,
-          title: proposalStartLabel(p),
-          subtitle: p.venue,
-          pairImages: photos
-            ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
-            : undefined,
-          icon: 'calendar',
-          badge: 'Confirmed',
-          badgeVariant: 'positive',
-          onPress: () => router.push(`/proposal/${p.id}`),
-        };
-      });
+  // My own family's public profile — just enough (photo) to show "you" as
+  // one half of the avatar pair on the Suggested Playdate card, the same
+  // way upcomingPlaydateFamilies does for the confirmed callout above.
+  const [myFamily, setMyFamily] = useState<SuggestedFamily | null>(null);
 
-    const proposed: Highlight[] = pendingProposals.map((p) => {
-      const photos = pendingProposalPhotos[p.id];
-      return {
-        key: `proposed-${p.id}`,
-        title: proposalStartLabel(p),
-        subtitle: p.venue,
-        pairImages: photos
-          ? [photos[0] ? { uri: photos[0] } : undefined, photos[1] ? { uri: photos[1] } : undefined]
-          : undefined,
-        icon: 'calendar',
-        badge: 'Proposed',
-        onPress: () => router.push(`/proposal/${p.id}`),
-      };
+  useEffect(() => {
+    if (!myUid) return;
+    let cancelled = false;
+    fetchFamiliesByUids([myUid]).then((result) => {
+      if (!cancelled) setMyFamily(result[0] ?? null);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [myUid]);
 
-    const favoritedEvents: Highlight[] = (events ?? [])
+  // The best family to suggest a playdate with, when there's no upcoming
+  // one already: highest matchScore among families the viewer isn't
+  // already mid-conversation with (pending or confirmed) — mergedFamilies
+  // already combines favorited + suggested families (see mergeFamilies
+  // above), so this reuses that same pool rather than a separate fetch.
+  const proposedOrConfirmedUids = useMemo(
+    () => new Set([...confirmedProposals, ...pendingProposals].flatMap((p) => [p.fromUid, p.toUid])),
+    [confirmedProposals, pendingProposals]
+  );
+  const suggestedMatch = useMemo(() => {
+    if (familiesLoading) return null;
+    const candidates = mergedFamilies
+      .filter((f) => f.uid !== myUid && !proposedOrConfirmedUids.has(f.uid))
+      .sort((a, b) => b.matchScore - a.matchScore);
+    return candidates[0] ?? null;
+  }, [mergedFamilies, familiesLoading, myUid, proposedOrConfirmedUids]);
+
+  // A provider to suggest as chaperone alongside the matched family —
+  // fetchRecommendedSitters with no slot sorts purely by specialty overlap
+  // (see lib/sitters.ts), so the first result is the closest specialty
+  // match in the viewer's own cluster. Shown as a preview only: a sitter
+  // can only actually be added to a playdate once it's accepted (see
+  // addSitterToPlaydate/firestore.rules), so this isn't attached to
+  // anything yet — confirming the suggested family still leaves finding
+  // and adding a sitter as its own step later, same as any other playdate.
+  const [suggestedSitter, setSuggestedSitter] = useState<RecommendedSitter | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user || !SITTERS_ENABLED) return;
+      let cancelled = false;
+      fetchRecommendedSitters()
+        .then((result) => {
+          if (!cancelled) setSuggestedSitter(result[0] ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setSuggestedSitter(null);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [user])
+  );
+
+  const favorites = useMemo<FavoriteCard[]>(() => {
+    const favoritedEvents: FavoriteCard[] = (events ?? [])
       .filter((e) => favoriteEventIds.has(e.id))
       .map((e) => ({
         key: `event-${e.id}`,
@@ -697,7 +681,7 @@ export default function ForYou() {
           }),
       }));
 
-    const favoritedFamilies: Highlight[] = mergedFamilies
+    const favoritedFamilies: FavoriteCard[] = mergedFamilies
       .filter((f) => favoriteFamilyUids.has(f.uid))
       .map((f) => {
         const photoUrl = familyPhoto(f);
@@ -713,7 +697,7 @@ export default function ForYou() {
           onPress: () => router.push(`/family/${f.uid}`),
         };
       });
-    const favoritedProducts: Highlight[] = (products ?? [])
+    const favoritedProducts: FavoriteCard[] = (products ?? [])
       .filter((p) => favoriteProductUrls.has(p.url))
       .map((p) => ({
         key: `product-${p.url}`,
@@ -737,7 +721,7 @@ export default function ForYou() {
             },
           }),
       }));
-    const favoritedPodcasts: Highlight[] = (podcasts ?? [])
+    const favoritedPodcasts: FavoriteCard[] = (podcasts ?? [])
       .filter((p) => favoritePodcastIds.has(p.id))
       .map((p) => ({
         key: `podcast-${p.id}`,
@@ -762,7 +746,7 @@ export default function ForYou() {
             },
           }),
       }));
-    const favoritedArticles: Highlight[] = (articles ?? [])
+    const favoritedArticles: FavoriteCard[] = (articles ?? [])
       .filter((a) => favoriteResourceUrls.has(a.url))
       .map((a) => ({
         key: `article-${a.url}`,
@@ -784,43 +768,8 @@ export default function ForYou() {
           }),
       }));
 
-    // 95%+ matches that aren't already surfaced above as a favorite —
-    // favoriting already outranks match score, so a family shouldn't get
-    // two cards.
-    const topMatches: Highlight[] = mergedFamilies
-      .filter((f) => f.matchScore >= 95 && !favoriteFamilyUids.has(f.uid))
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .map((f) => {
-        const photoUrl = familyPhoto(f);
-        return {
-          key: `match-${f.uid}`,
-          title: familyDisplayName(f),
-          subtitle: familySubtitle(f),
-          image: photoUrl ? { uri: photoUrl } : undefined,
-          badge: 'Suggested',
-          badgeVariant: 'warning',
-          matchScore: f.matchScore,
-          personFallback: true,
-          onPress: () => router.push(`/family/${f.uid}`),
-        };
-      });
-
-    return [
-      ...confirmed,
-      ...proposed,
-      ...favoritedEvents,
-      ...favoritedFamilies,
-      ...favoritedProducts,
-      ...favoritedPodcasts,
-      ...favoritedArticles,
-      ...topMatches,
-    ];
+    return [...favoritedEvents, ...favoritedFamilies, ...favoritedProducts, ...favoritedPodcasts, ...favoritedArticles];
   }, [
-    confirmedProposals,
-    confirmedProposalPhotos,
-    upcomingPlaydate,
-    pendingProposals,
-    pendingProposalPhotos,
     events,
     favoriteEventIds,
     mergedFamilies,
@@ -835,10 +784,70 @@ export default function ForYou() {
 
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
 
+  // Upcoming Events' calendar — every future proposal (confirmed or still
+  // pending) plus every nearby event already fetched above, merged into
+  // one date-sorted list. No new fetch: both sources are already loaded
+  // for other sections on this screen.
+  const calendarItems = useMemo(() => {
+    const now = Date.now();
+    type CalendarItem = { key: string; dateISO: string; title: string; subtitle: string; onPress: () => void };
+    const proposalItems: CalendarItem[] = [...confirmedProposals, ...pendingProposals]
+      .filter((p) => p.date)
+      .map((p) => ({
+        key: `proposal-${p.id}`,
+        dateISO: p.date,
+        title: proposalStartLabel(p),
+        subtitle: p.venue || (p.status === 'accepted' ? 'Confirmed playdate' : 'Proposed playdate'),
+        onPress: () => router.push(`/proposal/${p.id}`),
+      }));
+    const eventItems: CalendarItem[] = (events ?? []).map((e) => ({
+      key: `event-${e.id}`,
+      dateISO: e.eventDate,
+      title: e.title,
+      subtitle: eventSubtitle(e),
+      onPress: () =>
+        router.push({
+          pathname: '/event/[id]',
+          params: {
+            id: String(e.id),
+            title: e.title,
+            source: e.source,
+            eventDate: e.eventDate,
+            venue: e.venue,
+            address: e.address,
+            imageUrl: e.imageUrl ?? '',
+            link: e.link,
+            categories: e.categories.join(','),
+            distanceMiles: e.distanceMiles != null ? String(e.distanceMiles) : '',
+            virtual: String(e.virtual),
+          },
+        }),
+    }));
+    return [...proposalItems, ...eventItems]
+      .filter((item) => {
+        const t = new Date(item.dateISO).getTime();
+        return !Number.isNaN(t) && t >= now;
+      })
+      .sort((a, b) => new Date(a.dateISO).getTime() - new Date(b.dateISO).getTime());
+  }, [confirmedProposals, pendingProposals, events]);
+
+  const calendarMarkedDateKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const item of calendarItems) {
+      const d = new Date(item.dateISO);
+      if (!Number.isNaN(d.getTime())) keys.add(dateKey(d.getFullYear(), d.getMonth(), d.getDate()));
+    }
+    return keys;
+  }, [calendarItems]);
+
+  const calendarAgenda: CalendarAgendaItem[] = calendarItems
+    .slice(0, 3)
+    .map(({ key, title, subtitle, onPress }) => ({ key, title, subtitle, onPress }));
+
   // Which side of the upcoming playdate is "my family" vs. the other one,
   // so the callout can show both — same fromUid/toUid disambiguation
   // app/proposal/[id].tsx already does.
-  const myUpcomingUid = familyUid ?? user?.uid;
+  const myUpcomingUid = myUid;
   const otherUpcomingUid = upcomingPlaydate
     ? upcomingPlaydate.fromUid === myUpcomingUid
       ? upcomingPlaydate.toUid
@@ -938,7 +947,9 @@ export default function ForYou() {
           title={firstName ? `For You, ${firstName}` : 'For You'}
           description="Meet families nearby, set playdates, listen to your favorite podcast, and more. We've curated our top recommendations that fit you and your family best."
         />
-        {upcomingPlaydate ? (
+        {!proposalsLoaded ? (
+          <ActivityIndicator color={colors.accent} style={styles.playdateLoading} />
+        ) : upcomingPlaydate ? (
           <View style={[styles.playdateCallout, isDesktop && styles.playdateCalloutDesktop]}>
             <View style={styles.playdateCalloutMain}>
               <Pressable style={styles.playdateCalloutHeader} onPress={() => router.push(`/proposal/${upcomingPlaydate.id}`)}>
@@ -1012,9 +1023,9 @@ export default function ForYou() {
             </View>
 
             <View style={[styles.playdateCalloutActions, isDesktop && styles.playdateCalloutActionsDesktop]}>
-              <View style={styles.playdateCalloutBadge}>
+              <View style={[styles.playdateCalloutBadge, styles.playdateCalloutBadgeConfirmed]}>
                 <Ionicons name="checkmark-circle" size={13} color={colors.positive} />
-                <Text style={styles.playdateCalloutBadgeText}>Confirmed</Text>
+                <Text style={[styles.playdateCalloutBadgeText, styles.playdateCalloutBadgeTextConfirmed]}>Confirmed</Text>
               </View>
               {SITTERS_ENABLED && !upcomingPlaydate.sitter ? (
                 <Pressable
@@ -1023,7 +1034,7 @@ export default function ForYou() {
                     router.push(`/find-sitter?proposalId=${upcomingPlaydate.id}&date=${encodeURIComponent(upcomingPlaydate.date)}`)
                   }
                 >
-                  <Ionicons name="heart-outline" size={15} color={colors.surface} />
+                  <Ionicons name="heart-outline" size={15} color={colors.accent} />
                   <Text style={styles.playdateCalloutSitterCtaText}>Find a sitter for this playdate</Text>
                 </Pressable>
               ) : null}
@@ -1034,32 +1045,141 @@ export default function ForYou() {
               </Pressable>
             </View>
           </View>
-        ) : null}
+        ) : (
+          // No confirmed playdate in the next 7 days — rather than leave
+          // this slot empty, suggest the best next match (see
+          // suggestedMatch above) plus a provider to chaperone, so there's
+          // always something actionable here. Same card shell/shape as the
+          // confirmed state above, but its content is a suggestion, not a
+          // real event yet — "Confirm details" hands off to the normal
+          // propose flow (pre-filled with this family) rather than
+          // pretending a date/venue/sitter are already locked in.
+          <View style={[styles.playdateCallout, isDesktop && styles.playdateCalloutDesktop]}>
+            <View style={styles.playdateCalloutMain}>
+              <View style={styles.playdateCalloutHeader}>
+                <View style={styles.pdEyebrowRow}>
+                  <View style={styles.pdEyebrowIcon}>
+                    <Ionicons name="sparkles" size={10} color={colors.accent} />
+                  </View>
+                  <Text style={styles.playdateCalloutEyebrow}>SUGGESTED PLAYDATE</Text>
+                </View>
+                <Text style={styles.playdateCalloutTitle}>
+                  {suggestedMatch ? familyDisplayName(suggestedMatch) : 'Finding a match…'}
+                </Text>
+              </View>
+
+              {suggestedMatch ? (
+                <>
+                  <View style={styles.playdateCalloutFamiliesRow}>
+                    <View style={styles.pdPhotos}>
+                      <Photo
+                        source={myFamily && familyPhoto(myFamily) ? { uri: familyPhoto(myFamily)! } : undefined}
+                        style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarBack]}
+                        variant="person"
+                        iconSize={26}
+                      />
+                      <Photo
+                        source={familyPhoto(suggestedMatch) ? { uri: familyPhoto(suggestedMatch)! } : undefined}
+                        style={[styles.playdateCalloutAvatar, styles.playdateCalloutAvatarFront]}
+                        variant="person"
+                        iconSize={26}
+                      />
+                      {SITTERS_ENABLED && suggestedSitter ? (
+                        <View style={styles.pdProviderWrap}>
+                          <Photo
+                            source={suggestedSitter.photoUrl ? { uri: suggestedSitter.photoUrl } : undefined}
+                            style={styles.pdProvider}
+                            variant="person"
+                            iconSize={14}
+                          />
+                          <View style={styles.pdProviderBadge}>
+                            <Ionicons name="shield-checkmark" size={8} color={colors.surface} />
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.playdateCalloutFamilyNames}>
+                      <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
+                        {familySubtitle(suggestedMatch)}
+                      </Text>
+                      {SITTERS_ENABLED && suggestedSitter ? (
+                        <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
+                          Suggested chaperone: {suggestedSitter.name}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  <View style={styles.pdMatchPill}>
+                    <Ionicons name="sparkles" size={11} color={colors.accent} />
+                    <Text style={styles.pdMatchPillText}>Strong Match</Text>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.playdateCalloutInfoText}>
+                  No new matches right now — check back soon, or browse families yourself.
+                </Text>
+              )}
+            </View>
+
+            {suggestedMatch ? (
+              <View style={[styles.playdateCalloutActions, isDesktop && styles.playdateCalloutActionsDesktop]}>
+                <View style={[styles.playdateCalloutBadge, styles.playdateCalloutBadgeSuggested]}>
+                  <Ionicons name="sparkles" size={11} color={colors.accent} />
+                  <Text style={[styles.playdateCalloutBadgeText, styles.playdateCalloutBadgeTextSuggested]}>Suggested</Text>
+                </View>
+                <Pressable
+                  style={styles.playdateCalloutCta}
+                  onPress={() => router.push(`/propose-playdate?familyId=${suggestedMatch.uid}&source=suggested`)}
+                >
+                  <Text style={styles.playdateCalloutCtaText}>Confirm details</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.surface} />
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionCardHead}>
+            <View style={styles.sectionCardIconWrap}>
+              <Ionicons name="calendar" size={13} color={colors.accent} />
+            </View>
+            <Text style={styles.sectionCardTitle}>Upcoming Events</Text>
+            <Pressable onPress={() => router.push('/(tabs)/events')}>
+              <Text style={styles.sectionCardLink}>View all</Text>
+            </Pressable>
+          </View>
+          <View style={styles.eventsCalendarBody}>
+            <UpcomingEventsCalendar markedDateKeys={calendarMarkedDateKeys} agenda={calendarAgenda} />
+          </View>
+        </View>
+
         {forYouLoading ? (
           <ActivityIndicator color={colors.accent} />
-        ) : highlights.length === 0 ? (
-          <EmptyState text="Nothing to highlight yet — favorite a family or pick, or confirm a playdate, and it'll show up here." />
+        ) : favorites.length === 0 ? (
+          <EmptyState text="Nothing favorited yet — tap the heart on a family, event, product, podcast, or article, and it'll show up here." />
         ) : (
           // Distinct from every other section on this screen on purpose —
           // a tinted band with its own header, and a horizontal-scrolling
           // row instead of the wrap-grid everyone else uses, so this reads
-          // as "your curated top picks" at a glance rather than just
-          // another list. Shows every highlight (there are only ever a
-          // handful — confirmed/pending playdates plus top matches), so no
-          // expand/collapse toggle is needed here the way the grids below need one.
-          <View style={styles.highlightsBand}>
-            <View style={styles.highlightsHeader}>
-              <View style={styles.highlightsIconWrap}>
-                <Ionicons name="sparkles" size={13} color={colors.accent} />
+          // as "everything you've favorited" at a glance rather than just
+          // another list. Shows every favorite (there are only ever a
+          // handful), so no expand/collapse toggle is needed here the way
+          // the grids below need one.
+          <View style={[styles.sectionCard, styles.favoritesBand]}>
+            <View style={styles.favoritesHeader}>
+              <View style={styles.sectionCardIconWrap}>
+                <Ionicons name="heart" size={13} color={colors.accent} />
               </View>
-              <Text style={styles.highlightsTitle}>Highlights</Text>
+              <Text style={styles.sectionCardTitle}>Favorites</Text>
             </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.highlightsScroll}
+              contentContainerStyle={styles.favoritesScroll}
             >
-              {highlights.map((h) => (
+              {favorites.map((h) => (
                 <SquareCard
                   key={h.key}
                   title={h.title}
@@ -1478,33 +1598,31 @@ const styles = StyleSheet.create({
     // edges. computeGridLayout sizes each card to exactly fill this width,
     // so the last card's right edge lands directly under "View all."
   },
-  highlightsBand: {
-    // A white, bordered card floating on the page's grey background —
-    // reads as "its own module" through shape and elevation rather than a
-    // filled color, so the only orange in this section is the small icon
-    // chip below, not the whole band.
+  // A white, bordered card floating on the page's grey background — reads
+  // as "its own module" through shape and elevation rather than a filled
+  // color. Generic/reusable: the playdate callout, the Upcoming Events
+  // calendar, and the Favorites band all share this same shell.
+  sectionCard: {
     backgroundColor: colors.surface,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 16,
-    paddingLeft: 16,
     marginTop: 20,
-    marginBottom: 4,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  highlightsHeader: {
+  sectionCardHead: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
-    paddingRight: 16,
+    padding: 16,
+    paddingBottom: 0,
   },
-  highlightsIconWrap: {
+  sectionCardIconWrap: {
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -1512,30 +1630,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  highlightsTitle: {
+  sectionCardTitle: {
     fontSize: 17,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.2,
+    flex: 1,
   },
-  highlightsScroll: {
+  sectionCardLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  eventsCalendarBody: {
+    padding: 16,
+  },
+  // Favorites keeps the band's own asymmetric padding (flush
+  // left, open right) rather than sectionCard's usual uniform padding —
+  // still needed here so its horizontal-scroll row can bleed its content
+  // to the true right edge of the screen instead of stopping at an inset.
+  favoritesBand: {
+    marginTop: 0,
+    paddingVertical: 16,
+    paddingLeft: 16,
+  },
+  favoritesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingRight: 16,
+  },
+  favoritesScroll: {
     gap: 10,
     paddingRight: 16,
   },
-  // A full standalone callout rather than the old thin banner — this is
-  // the single most actionable thing on the dashboard, so it gets its own
-  // real estate instead of a one-line strip that duplicated the same
-  // playdate's own Highlights card right below it (that card is now
-  // filtered out of Highlights whenever this callout is showing it). A
-  // dark card rather than a tinted wash — a warm espresso charcoal rather
-  // than pure near-black (colors.text), which read as too harsh against
-  // the warm photos elsewhere on the dashboard. Every text/icon color
-  // below is flipped to white/light-gray to match.
-  playdateCallout: {
-    backgroundColor: '#2B2724',
-    borderRadius: 20,
-    padding: 18,
+  playdateLoading: {
+    marginTop: 20,
     marginBottom: 16,
+  },
+  // Same white-card shell as sectionCard above (not reused directly since
+  // this one needs its own marginBottom/padding rhythm to match the
+  // callout's existing internal spacing) — both the confirmed and
+  // Suggested Playdate states share this.
+  playdateCallout: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 18,
+    marginTop: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
   // On desktop, the info column doesn't come close to using the card's
   // full width — rather than leave that as bare white space, the CTAs
@@ -1559,10 +1709,24 @@ const styles = StyleSheet.create({
   playdateCalloutHeader: {
     marginBottom: 16,
   },
+  pdEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  pdEyebrowIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.accentMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   playdateCalloutEyebrow: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#B9B9BE',
+    color: colors.textMuted,
     letterSpacing: 1.2,
     marginBottom: 4,
   },
@@ -1570,27 +1734,39 @@ const styles = StyleSheet.create({
   // header — it used to float alone to the left of the buttons once they
   // moved into their own column on desktop, disconnected from everything
   // else in that column. Right-aligned (flex-end) to sit flush with the
-  // CTAs' own right edge rather than hanging off their left.
+  // CTAs' own right edge rather than hanging off their left. Bare
+  // background/text color live on the *Confirmed/*Suggested variants below
+  // so the same shell serves both states.
   playdateCalloutBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-end',
     gap: 4,
-    backgroundColor: colors.positiveMuted,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
     marginBottom: 10,
   },
+  playdateCalloutBadgeConfirmed: {
+    backgroundColor: colors.positiveMuted,
+  },
+  playdateCalloutBadgeSuggested: {
+    backgroundColor: colors.accentMuted,
+  },
   playdateCalloutBadgeText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  playdateCalloutBadgeTextConfirmed: {
     color: colors.positive,
+  },
+  playdateCalloutBadgeTextSuggested: {
+    color: colors.accent,
   },
   playdateCalloutTitle: {
     fontSize: 19,
     fontWeight: '800',
-    color: colors.surface,
+    color: colors.text,
     letterSpacing: -0.2,
   },
   // The two families' photos, overlapping (same idiom as SquareCard's
@@ -1607,13 +1783,20 @@ const styles = StyleSheet.create({
     width: 90,
     height: 64,
   },
+  // Wider/taller than playdateCalloutPhotos above — the Suggested state
+  // tucks a third, smaller provider avatar into the bottom-right seam,
+  // which needs a bit more room than the plain two-avatar pair.
+  pdPhotos: {
+    width: 100,
+    height: 78,
+  },
   playdateCalloutAvatar: {
     position: 'absolute',
     width: 64,
     height: 64,
     borderRadius: 32,
     borderWidth: 3,
-    borderColor: '#2B2724',
+    borderColor: colors.surface,
   },
   playdateCalloutAvatarBack: {
     left: 0,
@@ -1621,18 +1804,61 @@ const styles = StyleSheet.create({
   playdateCalloutAvatarFront: {
     left: 26,
   },
+  pdProviderWrap: {
+    position: 'absolute',
+    left: 64,
+    top: 40,
+    width: 34,
+    height: 34,
+  },
+  pdProvider: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 3,
+    borderColor: colors.surface,
+  },
+  pdProviderBadge: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   playdateCalloutFamilyNames: {
     flex: 1,
   },
   playdateCalloutFamilyName: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.text,
   },
   playdateCalloutFamilyKids: {
     fontSize: 13,
-    color: '#B9B9BE',
+    color: colors.textMuted,
     marginTop: 3,
+  },
+  pdMatchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    backgroundColor: colors.accentMuted,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 12,
+  },
+  pdMatchPillText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: colors.accent,
   },
   playdateCalloutInfoRow: {
     flexDirection: 'row',
@@ -1642,13 +1868,13 @@ const styles = StyleSheet.create({
   },
   playdateCalloutInfoText: {
     fontSize: 14,
-    color: colors.surface,
+    color: colors.text,
   },
   playdateCalloutSitterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 10,
     marginBottom: 14,
@@ -1664,23 +1890,20 @@ const styles = StyleSheet.create({
   playdateCalloutSitterName: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.text,
   },
   playdateCalloutSitterMeta: {
     fontSize: 11,
-    color: '#B9B9BE',
+    color: colors.textMuted,
     marginTop: 1,
   },
-  // White (not the orange accent used elsewhere) — orange-on-charcoal read
-  // fine but white keeps this secondary button visually paired with the
-  // solid "View details" button's own white text.
   playdateCalloutSitterCta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: colors.surface,
+    borderColor: colors.accent,
     borderRadius: 999,
     paddingVertical: 11,
     marginBottom: 14,
@@ -1688,7 +1911,7 @@ const styles = StyleSheet.create({
   playdateCalloutSitterCtaText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.surface,
+    color: colors.accent,
   },
   playdateCalloutCta: {
     flexDirection: 'row',

@@ -31,7 +31,7 @@ function formatSlotLabel(slot: SuggestedSlot): string {
 }
 
 export default function ProposePlaydate() {
-  const { familyId } = useLocalSearchParams<{ familyId: string }>();
+  const { familyId, source } = useLocalSearchParams<{ familyId: string; source?: string }>();
   const { profile: myProfile } = useOnboarding();
   const [targetProfile, setTargetProfile] = useState<FamilyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +101,7 @@ export default function ProposePlaydate() {
     if (!familyId || !selectedSlot || !venue.trim() || submitting) return;
     setSubmitting(true);
     try {
-      const conversationId = await createPlaydateProposal(
+      const { conversationId, proposalId } = await createPlaydateProposal(
         familyId,
         {
           date: selectedSlot.start.toISOString(),
@@ -112,7 +112,12 @@ export default function ProposePlaydate() {
         },
         note
       );
-      router.replace(`/messages/${conversationId}`);
+      // Arriving from Home's Suggested Playdate card lands on the new
+      // proposal's own detail screen (the "event details" the CTA there
+      // promised) rather than the message thread — every other entry
+      // point keeps going to Messages, where the proposal is also visible
+      // as the first message in the thread.
+      router.replace(source === 'suggested' ? `/proposal/${proposalId}` : `/messages/${conversationId}`);
     } catch (err: any) {
       showAlert('Couldn’t send that proposal', err?.message ?? err?.code ?? 'Please try again.');
     } finally {

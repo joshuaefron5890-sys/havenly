@@ -1153,28 +1153,30 @@ export default function ForYou() {
             </View>
           </View>
 
-          {forYouLoading ? (
-            <ActivityIndicator color={colors.accent} style={[isDesktop && styles.eventsFavoritesCardDesktop]} />
-          ) : favorites.length === 0 ? (
-            <EmptyState
-              text="Nothing favorited yet — tap the heart on a family, event, product, podcast, or article, and it'll show up here."
-              style={[isDesktop && styles.eventsFavoritesCardDesktop]}
-            />
-          ) : (
-            // Distinct from every other section on this screen on purpose —
-            // a tinted band with its own header, and a horizontal-scrolling
-            // row instead of the wrap-grid everyone else uses, so this reads
-            // as "everything you've favorited" at a glance rather than just
-            // another list. Shows every favorite (there are only ever a
-            // handful), so no expand/collapse toggle is needed here the way
-            // the grids below need one.
-            <View style={[styles.sectionCard, styles.favoritesBand, isDesktop && styles.eventsFavoritesCardDesktop]}>
-              <View style={styles.favoritesHeader}>
-                <View style={styles.sectionCardIconWrap}>
-                  <Ionicons name="heart" size={13} color={colors.accent} />
-                </View>
-                <Text style={styles.sectionCardTitle}>Favorites</Text>
+          {/* Distinct from every other section on this screen on purpose —
+              a tinted band with its own header, and a horizontal-scrolling
+              row instead of the wrap-grid everyone else uses, so this reads
+              as "everything you've favorited" at a glance rather than just
+              another list. Shows every favorite (there are only ever a
+              handful), so no expand/collapse toggle is needed here the way
+              the grids below need one. The card/header render regardless of
+              state (loading, empty, or populated) so it always reads as its
+              own section, same as Upcoming Events beside it. */}
+          <View style={[styles.sectionCard, styles.favoritesBand, isDesktop && styles.eventsFavoritesCardDesktop]}>
+            <View style={styles.favoritesHeader}>
+              <View style={styles.sectionCardIconWrap}>
+                <Ionicons name="heart" size={13} color={colors.accent} />
               </View>
+              <Text style={styles.sectionCardTitle}>Favorites</Text>
+            </View>
+            {forYouLoading ? (
+              <ActivityIndicator color={colors.accent} style={styles.favoritesLoading} />
+            ) : favorites.length === 0 ? (
+              <EmptyState
+                text="Add your favorite products, events, podcasts, and more"
+                style={styles.favoritesEmpty}
+              />
+            ) : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1199,8 +1201,8 @@ export default function ForYou() {
                   />
                 ))}
               </ScrollView>
-            </View>
-          )}
+            )}
+          </View>
         </View>
 
         <SectionHeader
@@ -1655,7 +1657,13 @@ const styles = StyleSheet.create({
   eventsFavoritesRow: {},
   eventsFavoritesRowDesktop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    // 'stretch' (flexbox's row default) rather than 'flex-start' — the
+    // shorter card (Favorites, whose content is one row of cards vs. the
+    // calendar's grid + agenda list) stretches to match the taller one's
+    // height instead of the row collapsing to it, so both cards' bottom
+    // edges line up. Any leftover space just sits blank inside the
+    // shorter card, which is fine here — better than a ragged bottom edge.
+    alignItems: 'stretch',
     gap: 16,
     marginTop: 20,
     marginBottom: 16,
@@ -1686,6 +1694,13 @@ const styles = StyleSheet.create({
   },
   favoritesScroll: {
     gap: 10,
+    paddingRight: 16,
+  },
+  favoritesLoading: {
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  favoritesEmpty: {
     paddingRight: 16,
   },
   playdateLoading: {

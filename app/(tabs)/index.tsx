@@ -46,6 +46,10 @@ const GRID_GAP = 10;
 const FAVORITES_ROW_GAP = 16;
 const SECTION_CARD_BORDER = 1;
 const FAVORITES_BODY_PADDING = 16;
+// Wider than the general grids' GRID_GAP — Favorites only ever shows 2
+// (large) cards per row rather than 3-6 smaller ones, so it can afford a
+// roomier gutter between them without looking sparse.
+const FAVORITES_GRID_GAP = 20;
 // The comfortable size range a preview card can flex within — wide enough
 // to stay legible, narrow enough that a row can fit an extra card rather
 // than leaving it just out of reach.
@@ -127,7 +131,7 @@ export default function ForYou() {
   // cards per row regardless of that width, unlike the grids elsewhere that
   // pick however many columns fit a comfortable size.
   const favoritesCardSize = gridWidth
-    ? (((isDesktop ? (gridWidth - FAVORITES_ROW_GAP) / 2 : gridWidth) - SECTION_CARD_BORDER * 2 - FAVORITES_BODY_PADDING * 2 - GRID_GAP) / 2)
+    ? (((isDesktop ? (gridWidth - FAVORITES_ROW_GAP) / 2 : gridWidth) - SECTION_CARD_BORDER * 2 - FAVORITES_BODY_PADDING * 2 - FAVORITES_GRID_GAP) / 2)
     : cardSize;
 
   // Families
@@ -1152,7 +1156,7 @@ const styles = StyleSheet.create({
   favoritesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: FAVORITES_GRID_GAP,
   },
   playdateLoading: {
     marginTop: 20,

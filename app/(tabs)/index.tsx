@@ -50,6 +50,8 @@ const FAVORITES_BODY_PADDING = 16;
 // (large) cards per row rather than 3-6 smaller ones, so it can afford a
 // roomier gutter between them without looking sparse.
 const FAVORITES_GRID_GAP = 20;
+// 2 rows of the 2-per-row grid — see the pager next to favoritesPage below.
+const FAVORITES_PAGE_SIZE = 4;
 // The comfortable size range a preview card can flex within — wide enough
 // to stay legible, narrow enough that a row can fit an extra card rather
 // than leaving it just out of reach.
@@ -660,6 +662,18 @@ export default function ForYou() {
     favoriteResourceUrls,
   ]);
 
+  // Capped at 2 rows (2 cards each) rather than wrapping to however many
+  // favorites exist — a heavy favoriter would otherwise push Favorites much
+  // taller than Upcoming Events beside it. A page turn reveals the rest,
+  // same chevron-and-count pager as the calendar's own agenda list.
+  const [favoritesPage, setFavoritesPage] = useState(0);
+  const favoritesPageCount = Math.max(1, Math.ceil(favorites.length / FAVORITES_PAGE_SIZE));
+  const clampedFavoritesPage = Math.min(favoritesPage, favoritesPageCount - 1);
+  const pagedFavorites = favorites.slice(
+    clampedFavoritesPage * FAVORITES_PAGE_SIZE,
+    clampedFavoritesPage * FAVORITES_PAGE_SIZE + FAVORITES_PAGE_SIZE
+  );
+
   const forYouLoading = familiesLoading && products === null && podcasts === null && articles === null;
 
   // Which month the calendar below is currently showing — starts on
@@ -1028,26 +1042,58 @@ export default function ForYou() {
               ) : favorites.length === 0 ? (
                 <EmptyState text="Add your favorite products, events, podcasts, and more" />
               ) : (
-                <View style={styles.favoritesGrid}>
-                  {favorites.map((h) => (
-                    <SquareCard
-                      key={h.key}
-                      title={h.title}
-                      subtitle={h.subtitle}
-                      image={h.image}
-                      pairImages={h.pairImages}
-                      icon={h.icon}
-                      badge={h.badge}
-                      badgeVariant={h.badgeVariant}
-                      matchScore={h.matchScore}
-                      personFallback={h.personFallback}
-                      favorited={h.favorited}
-                      onToggleFavorite={h.onToggleFavorite}
-                      size={favoritesCardSize}
-                      onPress={h.onPress}
-                    />
-                  ))}
-                </View>
+                <>
+                  <View style={styles.favoritesGrid}>
+                    {pagedFavorites.map((h) => (
+                      <SquareCard
+                        key={h.key}
+                        title={h.title}
+                        subtitle={h.subtitle}
+                        image={h.image}
+                        pairImages={h.pairImages}
+                        icon={h.icon}
+                        badge={h.badge}
+                        badgeVariant={h.badgeVariant}
+                        matchScore={h.matchScore}
+                        personFallback={h.personFallback}
+                        favorited={h.favorited}
+                        onToggleFavorite={h.onToggleFavorite}
+                        size={favoritesCardSize}
+                        onPress={h.onPress}
+                      />
+                    ))}
+                  </View>
+
+                  {favoritesPageCount > 1 ? (
+                    <View style={styles.favoritesPager}>
+                      <Pressable
+                        onPress={() => setFavoritesPage((p) => Math.max(0, p - 1))}
+                        disabled={clampedFavoritesPage === 0}
+                        hitSlop={8}
+                      >
+                        <Ionicons
+                          name="chevron-back"
+                          size={15}
+                          color={clampedFavoritesPage === 0 ? colors.border : colors.textMuted}
+                        />
+                      </Pressable>
+                      <Text style={styles.favoritesPagerLabel}>
+                        {clampedFavoritesPage + 1} / {favoritesPageCount}
+                      </Text>
+                      <Pressable
+                        onPress={() => setFavoritesPage((p) => Math.min(favoritesPageCount - 1, p + 1))}
+                        disabled={clampedFavoritesPage === favoritesPageCount - 1}
+                        hitSlop={8}
+                      >
+                        <Ionicons
+                          name="chevron-forward"
+                          size={15}
+                          color={clampedFavoritesPage === favoritesPageCount - 1 ? colors.border : colors.textMuted}
+                        />
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </>
               )}
             </View>
           </View>
@@ -1196,6 +1242,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: FAVORITES_GRID_GAP,
+  },
+  favoritesPager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  favoritesPagerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
   playdateLoading: {
     marginTop: 20,

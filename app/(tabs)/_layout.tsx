@@ -75,24 +75,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="products"
+        name="explore"
         options={{
-          title: 'Products',
-          tabBarIcon: ({ color, size }) => <Ionicons name="bag-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="podcasts"
-        options={{
-          title: 'Podcasts',
-          tabBarIcon: ({ color, size }) => <Ionicons name="mic-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="articles"
-        options={{
-          title: 'Resources',
-          tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} />,
+          title: 'Explore',
+          tabBarIcon: ({ color, size }) => <Ionicons name="compass-outline" size={size} color={color} />,
         }}
       />
     </Tabs>

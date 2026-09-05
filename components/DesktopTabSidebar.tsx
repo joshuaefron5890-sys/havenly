@@ -12,9 +12,7 @@ const NAV_ITEMS: { path: string; label: string; icon: keyof typeof Ionicons.glyp
   { path: '/', label: 'Home', icon: 'home-outline' },
   { path: '/families', label: 'Families', icon: 'people-outline' },
   { path: '/events', label: 'Events', icon: 'calendar-outline' },
-  { path: '/products', label: 'Products', icon: 'bag-outline' },
-  { path: '/podcasts', label: 'Podcasts', icon: 'mic-outline' },
-  { path: '/articles', label: 'Resources', icon: 'document-text-outline' },
+  { path: '/explore', label: 'Explore', icon: 'compass-outline' },
 ];
 
 // Desktop-only replacement for the bottom tab bar (see

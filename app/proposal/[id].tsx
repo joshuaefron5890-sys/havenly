@@ -558,11 +558,14 @@ const styles = StyleSheet.create({
   },
   // Full width and a real photo aspect ratio (not a small cropped circle)
   // — this is the one photo of each family shown on the whole screen, so
-  // it gets to actually read as a photo. The card's own overflow:hidden
+  // it gets to actually read as a photo. Landscape rather than portrait —
+  // 4:5 (taller than wide) made this the dominant thing on the whole
+  // screen; 3:2 keeps it clearly bigger than the old 56px circle without
+  // dwarfing the date/venue/notes below. The card's own overflow:hidden
   // above clips its corners to match, no separate borderRadius needed here.
   familyPhoto: {
     width: '100%',
-    aspectRatio: 4 / 5,
+    aspectRatio: 3 / 2,
   },
   familyCardBody: {
     padding: 12,

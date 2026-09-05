@@ -223,13 +223,25 @@ export default function Events() {
     setContributions(result);
   };
 
+  const doneLoadingEvents = events !== null || Boolean(error);
+
   // Community contributions are fetched and rendered independently of the
   // real (TACA-sourced) events feed, and must stay that way — they used to
   // live inside the same branch as the events error/loading state, so a
   // contributor's own just-submitted event would silently vanish behind
   // "Couldn't load events" whenever that unrelated feed had trouble.
-  const hasContent = filteredProposals.length > 0 || (filteredEvents?.length ?? 0) > 0 || filteredContributions.length > 0;
-  const doneLoadingEvents = events !== null || Boolean(error);
+  //
+  // Playdates are different: fetchPendingProposals/fetchAcceptedProposals
+  // (a quick Firestore query against this family's own small collection)
+  // routinely resolves well before fetchNearbyEvents (an external API
+  // call), so without gating this on doneLoadingEvents, the grid would
+  // render with just the playdate cards for a moment while the rest of
+  // the page still shows its loading spinner above — up and running,
+  // then the events grid awkwardly reflows once the real events land.
+  const hasContent =
+    (doneLoadingEvents && filteredProposals.length > 0) ||
+    (filteredEvents?.length ?? 0) > 0 ||
+    filteredContributions.length > 0;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -259,7 +271,7 @@ export default function Events() {
 
         {hasContent ? (
           <View style={styles.grid}>
-            {filteredProposals.map((p) => {
+            {doneLoadingEvents && filteredProposals.map((p) => {
               const photos = proposalPhotos[p.id];
               return (
                 <SquareCard

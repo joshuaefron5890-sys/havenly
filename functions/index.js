@@ -2303,8 +2303,18 @@ exports.getPodcastSuggestions = onCall(async (request) => {
   // a sanity ceiling against a pathological case, well above what ~20
   // search terms deduped by feed would realistically ever produce.
   const hiddenKeys = await fetchHiddenKeys();
+  // matchedTags is filtered down to the family's own real neurodivergence
+  // tags before it ever reaches the client. BROAD_NEURODIVERGENCE_TERMS
+  // above is deliberately searched regardless of what the family actually
+  // has on file (for content variety), but without this filter a podcast
+  // that only turned up under, say, the broad "dyslexia" search would come
+  // back tagged matchedTags: ['dyslexia'] even for a family with no
+  // dyslexia tag anywhere on their profile — read by the client (and the
+  // Resources tab's "matched to your family" grouping) as a real
+  // personalized match instead of just a broad topical search hit.
+  const realTags = new Set(neurodivergence);
   const podcasts = [...byFeed.values()]
-    .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
+    .map((p) => ({ ...p, matchedTags: [...p.matchedTags].filter((t) => realTags.has(t)) }))
     .filter((p) => !hiddenKeys.has(`podcast:${p.id}`))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
     .slice(0, 150);
@@ -2718,8 +2728,15 @@ exports.getRecommendedProducts = onCall(async (request) => {
   // against a pathological case, well above what this many sources/terms
   // deduped by URL would realistically ever produce.
   const hiddenKeys = await fetchHiddenKeys();
+  // matchedTags is filtered down to the family's own real neurodivergence
+  // tags before it ever reaches the client — a product found only via the
+  // 'General' sensory fallback search above (added for catalog coverage,
+  // not because it's actually relevant to a specific tag) would otherwise
+  // show a "Matches General" subtitle that reads like a real personalized
+  // match when it isn't one.
+  const realTags = new Set(neurodivergence);
   const products = [...byUrl.values()]
-    .map((p) => ({ ...p, matchedTags: [...p.matchedTags] }))
+    .map((p) => ({ ...p, matchedTags: [...p.matchedTags].filter((t) => realTags.has(t)) }))
     .filter((p) => !hiddenKeys.has(`product:${p.url}`))
     .sort((a, b) => b.matchedTags.length - a.matchedTags.length)
     .slice(0, 150);

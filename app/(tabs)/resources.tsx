@@ -466,14 +466,14 @@ export default function Resources() {
   // --- Default view: relevance rows, grouped by matched tag ---------------
 
   const feedRows = useMemo(() => {
-    const tagSet = new Set<string>();
-    allItems.forEach((item) => item.matchedTags.forEach((tag) => tagSet.add(tag)));
-    const tagRows = [...tagSet].sort().map((tag) => ({
-      key: `tag-${tag}`,
-      eyebrow: 'MATCHED TO YOUR FAMILY',
-      title: tag,
-      items: allItems.filter((item) => item.matchedTags.includes(tag)),
-    }));
+    // One row for every item that matched at least one of the family's own
+    // tags — a per-tag row (one per neurodivergence tag) put the same item
+    // in every row it matched, so anything overlapping two tags visibly
+    // duplicated on screen.
+    const matchedItems = allItems.filter((item) => item.matchedTags.length > 0);
+    const matchedRow = matchedItems.length
+      ? [{ key: 'recommended', eyebrow: 'MATCHED TO YOUR FAMILY', title: 'Recommended for you', items: matchedItems }]
+      : [];
     const communityItems = allItems.filter((item) => item.community);
     const communityRow = communityItems.length
       ? [{ key: 'community', eyebrow: 'FROM OTHER FAMILIES', title: 'Shared by families like yours', items: communityItems }]
@@ -482,13 +482,12 @@ export default function Resources() {
     // all (MedlinePlus/a blog's RSS feed has no neurodivergence data to
     // match against) — without this row, anything with an empty
     // matchedTags AND not a community pick belonged to neither row above
-    // and silently vanished from the feed the moment even one tag row
-    // existed.
+    // and silently vanished from the feed.
     const leftoverItems = allItems.filter((item) => !item.community && item.matchedTags.length === 0);
     const leftoverRow = leftoverItems.length
-      ? [{ key: 'more', eyebrow: 'MORE TO EXPLORE', title: tagRows.length > 0 ? 'More for your family' : 'Recommended for you', items: leftoverItems }]
+      ? [{ key: 'more', eyebrow: 'MORE TO EXPLORE', title: matchedItems.length > 0 ? 'More for your family' : 'Recommended for you', items: leftoverItems }]
       : [];
-    return [...tagRows, ...communityRow, ...leftoverRow];
+    return [...matchedRow, ...communityRow, ...leftoverRow];
   }, [allItems]);
 
   // Quick filter (always visible, not gated behind the search icon) — narrows

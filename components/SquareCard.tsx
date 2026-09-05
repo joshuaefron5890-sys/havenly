@@ -4,7 +4,6 @@ import { Text } from './AppText';
 import { colors } from '../theme/colors';
 import { images } from '../theme/images';
 import { Photo } from './Photo';
-import { PuzzleMatchIcon } from './PuzzleMatchIcon';
 
 // A square, image-forward card for dashboard grids — deliberately shows
 // less than a ListRow (title + one line of subtitle) since it links through
@@ -181,7 +180,6 @@ export function SquareCard({
         ) : null}
         {matchScore != null ? (
           <View style={styles.matchScoreBadge}>
-            <PuzzleMatchIcon size={9} color={colors.accent} gapColor={colors.surface} />
             <Text style={styles.matchScoreText} numberOfLines={1}>
               Strong Match
             </Text>
@@ -340,11 +338,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 4,
     right: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
     borderRadius: 999,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.accent,
     paddingHorizontal: 6,
     paddingVertical: 3,
     shadowColor: '#000',
@@ -356,7 +351,7 @@ const styles = StyleSheet.create({
   matchScoreText: {
     fontSize: 8,
     fontWeight: '700',
-    color: colors.accent,
+    color: colors.surface,
   },
   badgePositive: {
     backgroundColor: colors.positive,

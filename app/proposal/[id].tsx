@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddToGoogleCalendarPrompt } from '../../components/AddToGoogleCalendarPrompt';
 import { EmptyState } from '../../components/EmptyState';
 import { Photo } from '../../components/Photo';
-import { PuzzleMatchIcon } from '../../components/PuzzleMatchIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { showAlert, showConfirm } from '../../lib/alert';
@@ -88,30 +87,32 @@ function FamilyMini({
         source={family && familyPhoto(family) ? { uri: familyPhoto(family)! } : undefined}
         style={styles.familyPhoto}
         variant="person"
-        iconSize={26}
+        iconSize={48}
       />
-      <Text style={styles.familyName} numberOfLines={1}>
-        {family ? familyDisplayName(family) : fallbackLabel}
-      </Text>
-      {family?.city ? (
-        <Text style={styles.familyLocation} numberOfLines={1}>
-          {family.city}, {family.state}
+      <View style={styles.familyCardBody}>
+        <Text style={styles.familyName} numberOfLines={1}>
+          {family ? familyDisplayName(family) : fallbackLabel}
         </Text>
-      ) : null}
-      {kids.length > 0 ? (
-        <View style={styles.kidsList}>
-          {kids.map((kid, i) => (
-            <View key={`${kid.name}-${i}`} style={styles.kidChip}>
-              <Photo source={kid.photoUrl ? { uri: kid.photoUrl } : undefined} style={styles.kidPhoto} variant="person" iconSize={11} />
-              <Text style={styles.kidChipText} numberOfLines={1}>
-                {kid.age ? `${kid.name}, ${kid.age}` : kid.name}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.emptyInline}>No kids listed yet</Text>
-      )}
+        {family?.city ? (
+          <Text style={styles.familyLocation} numberOfLines={1}>
+            {family.city}, {family.state}
+          </Text>
+        ) : null}
+        {kids.length > 0 ? (
+          <View style={styles.kidsList}>
+            {kids.map((kid, i) => (
+              <View key={`${kid.name}-${i}`} style={styles.kidChip}>
+                <Photo source={kid.photoUrl ? { uri: kid.photoUrl } : undefined} style={styles.kidPhoto} variant="person" iconSize={11} />
+                <Text style={styles.kidChipText} numberOfLines={1}>
+                  {kid.age ? `${kid.name}, ${kid.age}` : kid.name}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.emptyInline}>No kids listed yet</Text>
+        )}
+      </View>
     </View>
   );
   if (!onPress) return content;
@@ -300,13 +301,6 @@ export default function ProposalDetail() {
       <ScrollView contentContainerStyle={[styles.content, isDesktop && styles.desktopColumn]}>
         <View style={styles.familiesRow}>
           <FamilyMini family={myFamily} fallbackLabel="You" />
-          <View style={styles.connector}>
-            {otherFamily ? (
-              <PuzzleMatchIcon size={15} color={colors.accent} gapColor={colors.surface} />
-            ) : (
-              <Ionicons name="people" size={16} color={colors.accent} />
-            )}
-          </View>
           <FamilyMini
             family={otherFamily}
             fallbackLabel="…"
@@ -550,24 +544,29 @@ const styles = StyleSheet.create({
   familiesRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 12,
     marginBottom: 16,
   },
   familyCard: {
     flex: 1,
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   familyCardPressable: {
     flex: 1,
   },
+  // Full width and a real photo aspect ratio (not a small cropped circle)
+  // — this is the one photo of each family shown on the whole screen, so
+  // it gets to actually read as a photo. The card's own overflow:hidden
+  // above clips its corners to match, no separate borderRadius needed here.
   familyPhoto: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginBottom: 8,
+    width: '100%',
+    aspectRatio: 4 / 5,
+  },
+  familyCardBody: {
+    padding: 12,
+    alignItems: 'center',
   },
   familyName: {
     fontSize: 14,
@@ -605,17 +604,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textMuted,
     marginTop: 10,
-  },
-  connector: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 40,
   },
   card: {
     backgroundColor: colors.surface,

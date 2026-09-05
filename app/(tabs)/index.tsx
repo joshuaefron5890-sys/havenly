@@ -1,7 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ImageSourcePropType, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ImageSourcePropType,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '../../components/AppText';
 import { EmptyState } from '../../components/EmptyState';
@@ -52,6 +61,9 @@ const FAVORITES_BODY_PADDING = 16;
 const FAVORITES_GRID_GAP = 20;
 // 2 rows of the 2-per-row grid — see the pager next to favoritesPage below.
 const FAVORITES_PAGE_SIZE = 4;
+// How many more "Families like you" cards reveal per scroll-triggered
+// batch — same convention the old Products/Podcasts/Resources tabs used.
+const FAMILIES_PAGE_BATCH = 12;
 // The comfortable size range a preview card can flex within — wide enough
 // to stay legible, narrow enough that a row can fit an extra card rather
 // than leaving it just out of reach.
@@ -90,15 +102,6 @@ function computeGridLayout(gridWidth: number | null, isDesktop: boolean): { perR
   return { perRow: n, cardSize: (gridWidth - (n - 1) * GRID_GAP) / n };
 }
 
-// Every section on Home now has its own dedicated tab (see
-// app/(tabs)/products.tsx, families.tsx, etc.) — "View all" navigates
-// there instead of expanding in place. Only offers the action once
-// there's actually more than pageSize to show.
-function viewAllAction(count: number, pageSize: number, onPress: () => void) {
-  if (count <= pageSize) return {};
-  return { action: 'View all', onAction: onPress };
-}
-
 // Favorited families can fall outside the suggested pool (it's capped
 // server-side) — merge the two by uid instead of just re-sorting one list,
 // so a family you've already favorited never disappears from view.
@@ -123,7 +126,11 @@ export default function ForYou() {
   // cards sized for whatever width happened to be measured first.
   const [gridWidth, setGridWidth] = useState<number | null>(null);
   const isDesktop = useIsDesktop();
-  const { perRow, cardSize } = computeGridLayout(gridWidth, isDesktop);
+  // Only cardSize survives as a fallback below — every card size on this
+  // screen is now pinned to favoritesCardSize instead of picking its own
+  // comfortable column count, so computeGridLayout's perRow has nothing
+  // left to feed.
+  const { cardSize } = computeGridLayout(gridWidth, isDesktop);
 
   // Favorites sits in a narrower half-row on desktop (see the Upcoming
   // Events/Favorites split below), so it can't just reuse cardSize above —
@@ -136,11 +143,26 @@ export default function ForYou() {
     ? (((isDesktop ? (gridWidth - FAVORITES_ROW_GAP) / 2 : gridWidth) - SECTION_CARD_BORDER * 2 - FAVORITES_BODY_PADDING * 2 - FAVORITES_GRID_GAP) / 2)
     : cardSize;
 
+  // Families like you reuses that exact same card size — same tiles as
+  // Favorites, just more of them per row since this section spans the
+  // full content width instead of sitting in a half-row next to the
+  // calendar. Columns are however many favoritesCardSize-wide cards
+  // actually fit; any leftover width just sits blank (no stretching to
+  // fill it), same as every other fixed-size grid on this screen.
+  const familiesPerRow = gridWidth
+    ? Math.max(1, Math.floor((gridWidth + GRID_GAP) / (favoritesCardSize + GRID_GAP)))
+    : 4;
+
   // Families
   const [families, setFamilies] = useState<SuggestedFamily[] | null>(null);
   const [familiesError, setFamiliesError] = useState<string | null>(null);
   const [favoriteFamilies, setFavoriteFamilies] = useState<SuggestedFamily[] | null>(null);
   const [favoriteFamilyUids, setFavoriteFamilyUids] = useState<Set<string>>(new Set());
+  // Families like you is the last section on Home — infinite scroll (load
+  // more as the page nears its bottom) rather than a single capped row
+  // with a "View all" link elsewhere, since there's nothing below it
+  // competing for scroll space anyway.
+  const [visibleFamiliesCount, setVisibleFamiliesCount] = useState(FAMILIES_PAGE_BATCH);
 
   useEffect(() => {
     if (!user) return;
@@ -780,11 +802,22 @@ export default function ForYou() {
   const myUpcomingFamily = myUpcomingUid ? upcomingPlaydateFamilies[myUpcomingUid] : undefined;
   const otherUpcomingFamily = otherUpcomingUid ? upcomingPlaydateFamilies[otherUpcomingUid] : undefined;
 
+  // Families like you is the only section that grows with scroll — reveal
+  // more once the page nears its bottom, same distance-from-bottom check
+  // the old Products/Podcasts/Resources tabs used.
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    if (distanceFromBottom < 400) {
+      setVisibleFamiliesCount((prev) => Math.min(prev + FAMILIES_PAGE_BATCH, mergedFamilies.length));
+    }
+  };
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader eyebrow="Opened Circle" />
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} onScroll={handleScroll} scrollEventThrottle={200}>
         <View
           onLayout={(e) => {
             // Read the width synchronously, before passing it into the
@@ -1101,7 +1134,6 @@ export default function ForYou() {
 
         <SectionHeader
           title="Families like you"
-          {...viewAllAction(mergedFamilies.length, perRow, () => router.push('/(tabs)/families'))}
         />
         {familiesError ? (
           <EmptyState text={`Couldn’t load families (${familiesError}).`} />
@@ -1111,7 +1143,7 @@ export default function ForYou() {
           <EmptyState text="No other families onboarded yet — check back soon." />
         ) : (
           <View style={styles.grid}>
-            {mergedFamilies.slice(0, perRow).map((family) => {
+            {mergedFamilies.slice(0, visibleFamiliesCount).map((family) => {
               const photoUrl = familyPhoto(family);
               return (
                 <SquareCard
@@ -1126,13 +1158,16 @@ export default function ForYou() {
                   onToggleFavorite={favoriteFamilyUids.has(family.uid) ? () => toggleFamilyFavorite(family) : undefined}
                   matchScore={family.matchScore}
                   personFallback
-                  size={cardSize}
+                  size={favoritesCardSize}
                   onPress={() => router.push(`/family/${family.uid}`)}
                 />
               );
             })}
           </View>
         )}
+        {visibleFamiliesCount < mergedFamilies.length ? (
+          <ActivityIndicator color={colors.accent} style={styles.loadingMore} />
+        ) : null}
 
       </ScrollView>
     </SafeAreaView>
@@ -1150,12 +1185,13 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: GRID_GAP,
     // No extra inset — flush with SectionHeader's own edges (plain content
-    // padding, no extra padding of its own) so a section's title, its
-    // "View all" link, and its own card row all share the same left/right
-    // edges. computeGridLayout sizes each card to exactly fill this width,
-    // so the last card's right edge lands directly under "View all."
+    // padding, no extra padding of its own) so a section's title and its
+    // own card row share the same left/right edges.
+  },
+  loadingMore: {
+    marginTop: 16,
   },
   // A white, bordered card floating on the page's grey background — reads
   // as "its own module" through shape and elevation rather than a filled

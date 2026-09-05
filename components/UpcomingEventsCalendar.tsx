@@ -364,9 +364,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   dayDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   dayDotPlaydate: {
     backgroundColor: colors.accent,

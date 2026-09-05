@@ -3189,6 +3189,111 @@ exports.getNearbySchools = onCall(async (request) => {
   return { schools: schools.slice(0, 100) };
 });
 
+// --- Suggested playdate venue -------------------------------------------
+//
+// Powers the Home screen's Suggested Playdate card (app/(tabs)/index.tsx)
+// — rather than asking a family to think up a place to meet a family
+// they've never met, this suggests a real public park roughly midway
+// between the two families, the same kind of neutral, free, low-pressure
+// spot most families already default to for a first playdate.
+//
+// Both families' exact zip codes are private (see toPublicFamily's own
+// comment on why zipCode is never sent to a client) — this is one of the
+// few places two different families' zips are ever compared at all, and
+// it happens entirely server-side; neither zip is included in the
+// response, only the resulting park names/distances.
+//
+// Source is OpenStreetMap's Overpass API (overpass-api.de) — free, no API
+// key, the same "read a source we don't control" pattern already used for
+// TACA events, MedlinePlus, and getNearbySchools above — queried for
+// leisure=park elements within PARK_SEARCH_RADIUS_MILES of the midpoint.
+// That midpoint is a plain lat/lon average, not a true geodesic midpoint —
+// at the few-mile scale two families in the same metro area are apart,
+// the difference is negligible, the same tradeoff haversineMiles above
+// already makes by treating the Earth as a sphere.
+//
+// Caveat worth flagging plainly, same as getNearbySchools above: this
+// sandbox's network egress blocks overpass-api.de outright (confirmed via
+// curl — CONNECT tunnel failed, 403), so this was built against Overpass's
+// documented QL syntax and JSON response shape, not verified against a
+// live response. Field access is defensive and the whole call degrades to
+// an empty list rather than a hard error. Worth a real spot-check after
+// deploy.
+
+const PARK_SEARCH_RADIUS_MILES = 5;
+const PARK_SEARCH_RADIUS_METERS = Math.round(PARK_SEARCH_RADIUS_MILES * 1609.34);
+
+async function findNearbyParks(lat, lon) {
+  const query =
+    `[out:json][timeout:15];` +
+    `(node["leisure"="park"](around:${PARK_SEARCH_RADIUS_METERS},${lat},${lon});` +
+    `way["leisure"="park"](around:${PARK_SEARCH_RADIUS_METERS},${lat},${lon}););` +
+    `out center 30;`;
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; HavenlyApp/1.0; +https://haven-ly.com)',
+        'Content-Type': 'text/plain',
+      },
+      body: query,
+    });
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      console.error(`findNearbyParks: Overpass fetch failed (${res.status}) — body: ${bodyText.slice(0, 500)}`);
+      return [];
+    }
+    const data = await res.json();
+    const elements = Array.isArray(data?.elements) ? data.elements : [];
+    return elements
+      .map((el) => {
+        const elLat = typeof el?.lat === 'number' ? el.lat : el?.center?.lat;
+        const elLon = typeof el?.lon === 'number' ? el.lon : el?.center?.lon;
+        const name = typeof el?.tags?.name === 'string' ? el.tags.name : '';
+        if (!name || !Number.isFinite(elLat) || !Number.isFinite(elLon)) return null;
+        return { name, distanceMiles: haversineMiles({ lat, lon }, { lat: elLat, lon: elLon }) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distanceMiles - b.distanceMiles)
+      .slice(0, 5)
+      .map((p) => ({ name: p.name, distanceMiles: Math.round(p.distanceMiles * 10) / 10 }));
+  } catch (err) {
+    console.error('findNearbyParks: threw', err?.message ?? err);
+    return [];
+  }
+}
+
+exports.getSuggestedPlaydateVenues = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Sign in required.');
+  }
+  const familyUid = typeof request.data?.familyUid === 'string' ? request.data.familyUid : '';
+  if (!familyUid) {
+    throw new HttpsError('invalid-argument', 'familyUid is required.');
+  }
+
+  const myFamilyUid = await resolveFamilyUid(request.auth.uid);
+  const [meSnap, targetSnap] = await Promise.all([
+    admin.firestore().collection('users').doc(myFamilyUid).get(),
+    admin.firestore().collection('users').doc(familyUid).get(),
+  ]);
+  const myZip = typeof meSnap.data()?.zipCode === 'string' ? meSnap.data().zipCode : '';
+  const targetZip = typeof targetSnap.data()?.zipCode === 'string' ? targetSnap.data().zipCode : '';
+  if (!myZip || !targetZip) {
+    return { venues: [] };
+  }
+
+  const [myLocation, targetLocation] = await Promise.all([geocodeZip(myZip), geocodeZip(targetZip)]);
+  if (!myLocation || !targetLocation) {
+    return { venues: [] };
+  }
+
+  const midLat = (myLocation.lat + targetLocation.lat) / 2;
+  const midLon = (myLocation.lon + targetLocation.lon) / 2;
+  const venues = await findNearbyParks(midLat, midLon);
+  return { venues };
+});
+
 // App Store Review Guideline 5.1.1(v) requires any app that offers account
 // creation to also offer in-app account deletion — this is that. Scope:
 // removes this uid's own primary records (profile, sitter listing, push

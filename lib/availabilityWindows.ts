@@ -119,6 +119,15 @@ export type SuggestedSlot = {
   label: string;
 };
 
+// "Sat, Aug 22 · 10:00–11:30 AM" — shared by every screen that shows a
+// SuggestedSlot (propose-playdate's own picker, Home's Suggested Playdate
+// preview) so the same slot always reads the same way wherever it shows up.
+export function formatSlotLabel(slot: SuggestedSlot): string {
+  const dateLabel = slot.start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+  return `${dateLabel} · ${slot.start.toLocaleTimeString(undefined, timeOpts)}–${slot.end.toLocaleTimeString(undefined, timeOpts)}`;
+}
+
 // Finds concrete free slots sized to durationHours within the user's
 // selected preference windows over the next daysAhead days (starting
 // tomorrow, not today — same-day suggestions don't leave people enough time

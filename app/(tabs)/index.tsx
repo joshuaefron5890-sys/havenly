@@ -19,6 +19,8 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SectionHeader } from '../../components/SectionHeader';
 import { CARD_WIDTH, SquareCard } from '../../components/SquareCard';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOnboarding } from '../../contexts/OnboardingContext';
+import { formatSlotLabel, longestPlaydateLengthHours, suggestedPlaydateSlots } from '../../lib/availabilityWindows';
 import { eventSubtitle, fetchNearbyEvents, NearbyEvent } from '../../lib/events';
 import { fetchAcceptedProposals, fetchPendingProposals, PlaydateProposal, proposalStartLabel } from '../../lib/playdateProposals';
 import {
@@ -36,12 +38,22 @@ import {
   removeFavoriteProduct,
   removeFavoriteResource,
 } from '../../lib/favorites';
-import { familyDisplayName, familyPhoto, familySubtitle, fetchFamiliesByUids, fetchSuggestedFamilies, SuggestedFamily } from '../../lib/families';
+import {
+  familyDisplayName,
+  familyPhoto,
+  familySubtitle,
+  FamilyProfile,
+  fetchFamiliesByUids,
+  fetchFamilyProfile,
+  fetchSuggestedFamilies,
+  SuggestedFamily,
+} from '../../lib/families';
 import { fetchPodcastSuggestions, podcastSubtitle, PodcastSuggestion } from '../../lib/podcasts';
 import { fetchRecommendedProducts, productSubtitle, RecommendedProduct } from '../../lib/products';
 import { fetchHealthResources, HealthResource, resourceSubtitle } from '../../lib/resources';
 import { useIsDesktop } from '../../lib/responsive';
 import { fetchRecommendedSitters, RecommendedSitter, SITTERS_ENABLED } from '../../lib/sitters';
+import { fetchSuggestedPlaydateVenues, SuggestedVenue } from '../../lib/venues';
 import { colors } from '../../theme/colors';
 import { CalendarAgendaItem, dateKey, UpcomingEventsCalendar } from '../../components/UpcomingEventsCalendar';
 
@@ -550,6 +562,64 @@ export default function ForYou() {
     }, [user])
   );
 
+  // The suggested family's shared-availability profile, so the card can
+  // show an actual candidate date rather than just "someday" — same data
+  // propose-playdate.tsx fetches once the family taps through, just used
+  // here to preview it. No Google Calendar conflict check is done for this
+  // preview (that's what propose-playdate's own fetch does); this is
+  // "a time that could work," not a promise the slot is still open.
+  const [suggestedMatchProfile, setSuggestedMatchProfile] = useState<FamilyProfile | null>(null);
+
+  useEffect(() => {
+    if (!suggestedMatch) {
+      setSuggestedMatchProfile(null);
+      return;
+    }
+    let cancelled = false;
+    fetchFamilyProfile(suggestedMatch.uid)
+      .then((result) => {
+        if (!cancelled) setSuggestedMatchProfile(result);
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestedMatchProfile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [suggestedMatch]);
+
+  const { profile: myProfile } = useOnboarding();
+
+  const suggestedSlot = useMemo(() => {
+    if (!suggestedMatchProfile?.sharedAvailability.length) return null;
+    const durationHours = longestPlaydateLengthHours(myProfile.children.map((c) => c.idealPlaydateLength));
+    return suggestedPlaydateSlots(suggestedMatchProfile.sharedAvailability, [], durationHours, 21)[0] ?? null;
+  }, [suggestedMatchProfile, myProfile.children]);
+
+  // A real public park roughly midway between the two families (see
+  // functions/index.js's getSuggestedPlaydateVenues) — so "Confirm Playdate
+  // Details" hands off a genuinely usable suggestion, not a blank venue
+  // field the family has to fill in themselves from scratch.
+  const [suggestedVenue, setSuggestedVenue] = useState<SuggestedVenue | null>(null);
+
+  useEffect(() => {
+    if (!suggestedMatch) {
+      setSuggestedVenue(null);
+      return;
+    }
+    let cancelled = false;
+    fetchSuggestedPlaydateVenues(suggestedMatch.uid)
+      .then((result) => {
+        if (!cancelled) setSuggestedVenue(result[0] ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestedVenue(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [suggestedMatch]);
+
   const favorites = useMemo<FavoriteCard[]>(() => {
     const favoritedEvents: FavoriteCard[] = (events ?? [])
       .filter((e) => favoriteEventIds.has(e.id))
@@ -933,12 +1003,12 @@ export default function ForYou() {
         ) : (
           // No confirmed playdate in the next 7 days — rather than leave
           // this slot empty, suggest the best next match (see
-          // suggestedMatch above) plus a provider to chaperone, so there's
-          // always something actionable here. Same card shell/shape as the
-          // confirmed state above, but its content is a suggestion, not a
-          // real event yet — "Confirm details" hands off to the normal
-          // propose flow (pre-filled with this family) rather than
-          // pretending a date/venue/sitter are already locked in.
+          // suggestedMatch above) plus a real time and place to meet, so
+          // there's always something actionable here. Same card shell/shape
+          // as the confirmed state above, but its content is a suggestion,
+          // not a real event yet — "Confirm Playdate Details" hands off to
+          // the normal propose flow (pre-filled with this family, time, and
+          // venue) rather than pretending they're already locked in.
           <View style={[styles.playdateCallout, isDesktop && styles.playdateCalloutDesktop]}>
             <View style={styles.playdateCalloutMain}>
               <View style={styles.playdateCalloutHeader}>
@@ -949,7 +1019,11 @@ export default function ForYou() {
                   <Text style={styles.playdateCalloutEyebrow}>SUGGESTED PLAYDATE</Text>
                 </View>
                 <Text style={styles.playdateCalloutTitle}>
-                  {suggestedMatch ? familyDisplayName(suggestedMatch) : 'Finding a match…'}
+                  {suggestedSlot
+                    ? formatSlotLabel(suggestedSlot)
+                    : suggestedMatch
+                    ? familyDisplayName(suggestedMatch)
+                    : 'Finding a match…'}
                 </Text>
               </View>
 
@@ -984,16 +1058,26 @@ export default function ForYou() {
                       ) : null}
                     </View>
                     <View style={styles.playdateCalloutFamilyNames}>
+                      <Text style={styles.playdateCalloutFamilyName} numberOfLines={1}>
+                        {(myFamily ? familyDisplayName(myFamily) : 'Your family') + ' & ' + familyDisplayName(suggestedMatch)}
+                      </Text>
                       <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
                         {familySubtitle(suggestedMatch)}
                       </Text>
                       {SITTERS_ENABLED && suggestedSitter ? (
                         <Text style={styles.playdateCalloutFamilyKids} numberOfLines={1}>
-                          Suggested chaperone: {suggestedSitter.name}
+                          Suggested Provider: {suggestedSitter.name}
                         </Text>
                       ) : null}
                     </View>
                   </View>
+
+                  {suggestedVenue ? (
+                    <View style={styles.playdateCalloutInfoRow}>
+                      <Ionicons name="location" size={15} color={colors.accent} />
+                      <Text style={styles.playdateCalloutInfoText}>{suggestedVenue.name}</Text>
+                    </View>
+                  ) : null}
 
                   <View style={styles.pdMatchPill}>
                     <Ionicons name="sparkles" size={11} color={colors.accent} />
@@ -1015,9 +1099,14 @@ export default function ForYou() {
                 </View>
                 <Pressable
                   style={styles.playdateCalloutCta}
-                  onPress={() => router.push(`/propose-playdate?familyId=${suggestedMatch.uid}&source=suggested`)}
+                  onPress={() =>
+                    router.push(
+                      `/propose-playdate?familyId=${suggestedMatch.uid}&source=suggested` +
+                        (suggestedVenue ? `&suggestedVenue=${encodeURIComponent(suggestedVenue.name)}` : '')
+                    )
+                  }
                 >
-                  <Text style={styles.playdateCalloutCtaText}>Confirm details</Text>
+                  <Text style={styles.playdateCalloutCtaText}>Confirm Playdate Details</Text>
                   <Ionicons name="chevron-forward" size={16} color={colors.surface} />
                 </Pressable>
               </View>

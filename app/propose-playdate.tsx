@@ -18,29 +18,39 @@ import { EmptyState } from '../components/EmptyState';
 import { FieldInput } from '../components/FieldInput';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import { showAlert } from '../lib/alert';
-import { longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
+import { formatSlotLabel, longestPlaydateLengthHours, SuggestedSlot, suggestedPlaydateSlots } from '../lib/availabilityWindows';
 import { familyDisplayName, FamilyProfile, fetchFamilyProfile } from '../lib/families';
 import { getGoogleFreeBusy } from '../lib/googleCalendar';
 import { createPlaydateProposal } from '../lib/playdateProposals';
 import { colors } from '../theme/colors';
 
-function formatSlotLabel(slot: SuggestedSlot): string {
-  const dateLabel = slot.start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
-  return `${dateLabel} · ${slot.start.toLocaleTimeString(undefined, timeOpts)}–${slot.end.toLocaleTimeString(undefined, timeOpts)}`;
-}
-
 export default function ProposePlaydate() {
-  const { familyId, source } = useLocalSearchParams<{ familyId: string; source?: string }>();
+  const { familyId, source, suggestedVenue } = useLocalSearchParams<{
+    familyId: string;
+    source?: string;
+    suggestedVenue?: string;
+  }>();
   const { profile: myProfile } = useOnboarding();
   const [targetProfile, setTargetProfile] = useState<FamilyProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [slots, setSlots] = useState<SuggestedSlot[] | null>(null);
   const [slotsNote, setSlotsNote] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SuggestedSlot | null>(null);
-  const [venue, setVenue] = useState('');
+  const [venue, setVenue] = useState(suggestedVenue ?? '');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Arriving from Home's Suggested Playdate card already showed a
+  // suggested time — pre-selecting the same top candidate here means
+  // "Confirm Playdate Details" can genuinely be a one-tap confirmation
+  // rather than making the family re-pick a time they already saw.
+  // Still fully editable: this only fires once, and only if nothing else
+  // has been selected yet.
+  useEffect(() => {
+    if (source === 'suggested' && slots && slots.length && !selectedSlot) {
+      setSelectedSlot(slots[0]);
+    }
+  }, [source, slots]);
 
   useEffect(() => {
     if (!familyId) return;

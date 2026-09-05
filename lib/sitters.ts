@@ -56,6 +56,14 @@ export function docExtensionLabel(url: string): string {
 // "was checked and failed."
 export type BackgroundCheckStatus = 'pending' | 'clear' | 'flagged';
 
+// Whether hourlyRate below is a per-child rate (charged once for each kid
+// at the playdate) or a single flat rate regardless of headcount — asked
+// as its own question before "how much," rather than folding both into one
+// free-text field a sitter had to spell out themselves (e.g. "$15/hr per
+// kid"). null until a sitter has actually answered it (every sitter who
+// registered before this field existed).
+export type SitterChargeModel = 'per-child' | 'flat';
+
 export type SitterProfile = {
   name: string;
   email: string;
@@ -68,6 +76,7 @@ export type SitterProfile = {
   specialties: string[];
   certifications: string[];
   yearsExperience: string;
+  chargeModel: SitterChargeModel | null;
   hourlyRate: string;
   backgroundCheckStatus: BackgroundCheckStatus;
   // Photos of certification cards/credentials, uploaded to back up the
@@ -138,6 +147,7 @@ export const emptySitterProfile: SitterProfile = {
   specialties: [],
   certifications: [],
   yearsExperience: '',
+  chargeModel: null,
   hourlyRate: '',
   backgroundCheckStatus: 'pending',
   certificationDocUrls: [],
@@ -188,6 +198,7 @@ function parseSitterProfile(data: Record<string, unknown>): SitterProfile {
     specialties: Array.isArray(data.specialties) ? data.specialties.filter((s) => typeof s === 'string') : [],
     certifications: Array.isArray(data.certifications) ? data.certifications.filter((c) => typeof c === 'string') : [],
     yearsExperience: typeof data.yearsExperience === 'string' ? data.yearsExperience : '',
+    chargeModel: data.chargeModel === 'per-child' || data.chargeModel === 'flat' ? data.chargeModel : null,
     hourlyRate: typeof data.hourlyRate === 'string' ? data.hourlyRate : '',
     backgroundCheckStatus: status === 'clear' || status === 'flagged' ? status : 'pending',
     certificationDocUrls: Array.isArray(data.certificationDocUrls)
@@ -291,6 +302,7 @@ export type RecommendedSitter = {
   specialties: string[];
   certifications: string[];
   yearsExperience: string;
+  chargeModel: SitterChargeModel | null;
   hourlyRate: string;
   // How many of the sitter's specialties overlap with any of the caller's
   // kids' neurodivergence tags — not a percentage, just a sort key.
@@ -302,6 +314,15 @@ export type RecommendedSitter = {
   // yet — this is a "did they say yes," not a live calendar check.
   availableForSlot: boolean;
 };
+
+// Shared by the sitter's own profile view and every family-facing card —
+// appends "per child" only for the per-child charge model, so a plain flat
+// rate (or a legacy sitter with no chargeModel answered yet) reads exactly
+// as it always has.
+export function sitterRateLabel(sitter: { hourlyRate: string; chargeModel: SitterChargeModel | null }): string {
+  if (!sitter.hourlyRate) return '';
+  return sitter.chargeModel === 'per-child' ? `${sitter.hourlyRate} per child` : sitter.hourlyRate;
+}
 
 // Cluster + specialty-matched, vetted-only, and — when a slot is given —
 // sorted to put sitters who've actually marked themselves available for

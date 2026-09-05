@@ -10,7 +10,7 @@ import { showAlert } from '../lib/alert';
 import { addSitterToPlaydate, PlaydateProposal, subscribeToProposal } from '../lib/playdateProposals';
 import { useIsDesktop } from '../lib/responsive';
 import { AVAILABILITY_PERIODS, dateKey } from '../lib/sitterAvailability';
-import { fetchRecommendedSitters, RecommendedSitter } from '../lib/sitters';
+import { fetchRecommendedSitters, RecommendedSitter, sitterRateLabel } from '../lib/sitters';
 import { colors } from '../theme/colors';
 
 // Same photo used on the Providers splash page (app/providers.tsx) and the
@@ -200,7 +200,7 @@ export default function FindSitter() {
 
             <View style={styles.metaRow}>
               {sitter.yearsExperience ? <Field label="Experience" value={`${sitter.yearsExperience} yrs`} /> : null}
-              {sitter.hourlyRate ? <Field label="Rate" value={sitter.hourlyRate} /> : null}
+              {sitter.hourlyRate ? <Field label="Rate" value={sitterRateLabel(sitter)} /> : null}
             </View>
 
             {sitter.bio ? <Text style={styles.bio}>{sitter.bio}</Text> : null}

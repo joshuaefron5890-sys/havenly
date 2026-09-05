@@ -5,13 +5,18 @@ import { Text } from '../../components/AppText';
 import { FieldInput } from '../../components/FieldInput';
 import { WizardHeader } from '../../components/WizardHeader';
 import { ZipCodeField } from '../../components/ZipCodeField';
-import { emptySitterProfile, fetchMySitterProfile, saveMySitterProfile, SitterProfile } from '../../lib/sitters';
+import { emptySitterProfile, fetchMySitterProfile, saveMySitterProfile, SitterChargeModel, SitterProfile } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
 function friendlyError(err: any, fallback: string): string {
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }
+
+const CHARGE_MODEL_OPTIONS: { value: SitterChargeModel; label: string }[] = [
+  { value: 'per-child', label: 'Hourly, per child' },
+  { value: 'flat', label: 'Flat rate per hour' },
+];
 
 // Step 3 of 3 — about you, hourly rate, and ZIP code. The final step:
 // completing it flips signupComplete to true and sends them into the app.
@@ -41,8 +46,12 @@ export default function SitterSignupAbout() {
       setError('Tell families a bit about yourself to continue.');
       return;
     }
+    if (!profile.chargeModel) {
+      setError('Choose how you want to charge to continue.');
+      return;
+    }
     if (!profile.hourlyRate.trim()) {
-      setError('Add your hourly rate to continue.');
+      setError('Add your rate to continue.');
       return;
     }
     if (!profile.zipCode || !profile.city) {
@@ -55,6 +64,7 @@ export default function SitterSignupAbout() {
       await saveMySitterProfile(
         {
           bio: profile.bio.trim(),
+          chargeModel: profile.chargeModel,
           hourlyRate: profile.hourlyRate.trim(),
           zipCode: profile.zipCode,
           city: profile.city,
@@ -91,12 +101,27 @@ export default function SitterSignupAbout() {
           value={profile.bio}
           onChangeText={(bio) => patch({ bio })}
         />
-        <FieldInput
-          label="Hourly rate"
-          placeholder="$20/hr"
-          value={profile.hourlyRate}
-          onChangeText={(hourlyRate) => patch({ hourlyRate })}
-        />
+        <Text style={styles.label}>HOW DO YOU WANT TO CHARGE?</Text>
+        {CHARGE_MODEL_OPTIONS.map((option) => {
+          const isSelected = profile.chargeModel === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              style={[styles.option, isSelected && styles.optionSelected]}
+              onPress={() => patch({ chargeModel: option.value })}
+            >
+              <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+        {profile.chargeModel ? (
+          <FieldInput
+            label="Rate"
+            placeholder={profile.chargeModel === 'per-child' ? '$8/hr per child' : '$20/hr'}
+            value={profile.hourlyRate}
+            onChangeText={(hourlyRate) => patch({ hourlyRate })}
+          />
+        ) : null}
         <ZipCodeField
           zip={profile.zipCode}
           city={profile.city}
@@ -128,6 +153,35 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  option: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  optionSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentMuted,
+  },
+  optionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  optionTextSelected: {
+    color: colors.accent,
   },
   error: {
     fontSize: 13,

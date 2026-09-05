@@ -1470,6 +1470,7 @@ function toPublicSitter(uid, data) {
     specialties: Array.isArray(data.specialties) ? data.specialties.filter((s) => typeof s === 'string') : [],
     certifications: Array.isArray(data.certifications) ? data.certifications.filter((c) => typeof c === 'string') : [],
     yearsExperience: typeof data.yearsExperience === 'string' ? data.yearsExperience : '',
+    chargeModel: data.chargeModel === 'per-child' || data.chargeModel === 'flat' ? data.chargeModel : null,
     hourlyRate: typeof data.hourlyRate === 'string' ? data.hourlyRate : '',
   };
 }
@@ -3417,6 +3418,7 @@ function buildTestSitter(index) {
     specialties: pickSome(TEST_NEURODIVERGENCE, 1, 3),
     certifications: pickSome(TEST_SITTER_CERTIFICATIONS, 1, 3),
     yearsExperience: `${1 + Math.floor(Math.random() * 8)} years`,
+    chargeModel: Math.random() < 0.5 ? 'per-child' : 'flat',
     hourlyRate: pickRate(),
     backgroundCheckStatus: 'clear',
     certificationDocUrls: [],

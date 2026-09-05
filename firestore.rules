@@ -265,7 +265,7 @@ service cloud.firestore {
         // being pinned out above.
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'email', 'phone', 'bio', 'photoUrl', 'city', 'state', 'zipCode',
-          'clusterId', 'specialties', 'certifications', 'yearsExperience', 'hourlyRate',
+          'clusterId', 'specialties', 'certifications', 'yearsExperience', 'chargeModel', 'hourlyRate',
           'certificationDocUrls', 'availability', 'googleCalendarConnected',
           'googleCalendarSyncEnabled', 'availabilityConflictOverrides',
           'availabilityManualOverrides', 'updatedAt', 'payoutMethod', 'payoutHandle',

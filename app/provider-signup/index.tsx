@@ -20,6 +20,7 @@ import {
   fetchMySitterProfile,
   isImageDocUrl,
   saveMySitterProfile,
+  SitterChargeModel,
   SitterProfile,
   SITTER_CERTIFICATIONS,
 } from '../../lib/sitters';
@@ -29,6 +30,11 @@ import { colors } from '../../theme/colors';
 // used (app/onboarding/child.tsx) — sorted only here, for this screen's
 // "Experience with" list, rather than reordering the shared source array.
 const SORTED_NEURODIVERGENCE_OPTIONS = [...NEURODIVERGENCE_OPTIONS].sort((a, b) => a.localeCompare(b));
+
+const CHARGE_MODEL_OPTIONS: { value: SitterChargeModel; label: string }[] = [
+  { value: 'per-child', label: 'Hourly, per child' },
+  { value: 'flat', label: 'Flat rate per hour' },
+];
 
 const PANEL_IMAGE =
   'https://images.unsplash.com/photo-1607453998774-d533f65dac99?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
@@ -197,8 +203,12 @@ export default function SitterSignup() {
       setError('Add your years of experience to continue.');
       return;
     }
+    if (!profile.chargeModel) {
+      setError('Choose how you want to charge to continue.');
+      return;
+    }
     if (!profile.hourlyRate.trim()) {
-      setError('Add your hourly rate to continue.');
+      setError('Add your rate to continue.');
       return;
     }
 
@@ -280,25 +290,35 @@ export default function SitterSignup() {
           value={profile.bio}
           onChangeText={(bio) => patch({ bio })}
         />
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <FieldInput
-              label="Years of experience"
-              placeholder="3"
-              value={profile.yearsExperience}
-              onChangeText={(yearsExperience) => patch({ yearsExperience })}
-              keyboardType="number-pad"
-            />
-          </View>
-          <View style={styles.half}>
-            <FieldInput
-              label="Hourly rate"
-              placeholder="$20/hr"
-              value={profile.hourlyRate}
-              onChangeText={(hourlyRate) => patch({ hourlyRate })}
-            />
-          </View>
-        </View>
+        <FieldInput
+          label="Years of experience"
+          placeholder="3"
+          value={profile.yearsExperience}
+          onChangeText={(yearsExperience) => patch({ yearsExperience })}
+          keyboardType="number-pad"
+        />
+
+        <Text style={styles.label}>HOW DO YOU WANT TO CHARGE?</Text>
+        {CHARGE_MODEL_OPTIONS.map((option) => {
+          const isSelected = profile.chargeModel === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              style={[styles.chargeOption, isSelected && styles.chargeOptionSelected]}
+              onPress={() => patch({ chargeModel: option.value })}
+            >
+              <Text style={[styles.chargeOptionText, isSelected && styles.chargeOptionTextSelected]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+        {profile.chargeModel ? (
+          <FieldInput
+            label="Rate"
+            placeholder={profile.chargeModel === 'per-child' ? '$8/hr per child' : '$20/hr'}
+            value={profile.hourlyRate}
+            onChangeText={(hourlyRate) => patch({ hourlyRate })}
+          />
+        ) : null}
 
         <ZipCodeField
           zip={profile.zipCode}
@@ -521,19 +541,33 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  half: {
-    flex: 1,
-  },
   label: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     letterSpacing: 1.5,
     marginBottom: 8,
+  },
+  chargeOption: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  chargeOptionSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentMuted,
+  },
+  chargeOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  chargeOptionTextSelected: {
+    color: colors.accent,
   },
   chips: {
     flexDirection: 'row',

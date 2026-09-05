@@ -10,7 +10,7 @@ import { auth, signOutUser } from '../../lib/firebase';
 import { fetchSitterConfirmedPlaydates, fetchSitterPlaydateRequests } from '../../lib/playdateProposals';
 import { useIsDesktop } from '../../lib/responsive';
 import { totalPeriodsSelected } from '../../lib/sitterAvailability';
-import { docExtensionLabel, fetchMySitterProfile, isImageDocUrl, SitterProfile } from '../../lib/sitters';
+import { docExtensionLabel, fetchMySitterProfile, isImageDocUrl, sitterRateLabel, SitterProfile } from '../../lib/sitters';
 import { colors } from '../../theme/colors';
 
 const STATUS_LABEL: Record<SitterProfile['backgroundCheckStatus'], string> = {
@@ -161,7 +161,7 @@ export default function SitterHome() {
             <Field label="Location" value={profile.city ? `${profile.city}, ${profile.state}` : ''} />
             <Field label="Phone" value={profile.phone} />
             <Field label="Years of experience" value={profile.yearsExperience} />
-            <Field label="Hourly rate" value={profile.hourlyRate} />
+            <Field label="Rate" value={sitterRateLabel(profile)} />
             <Field label="About" value={profile.bio} />
           </View>
 

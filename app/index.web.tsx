@@ -89,7 +89,7 @@ html { scroll-behavior: smooth; }
 
   .hero-visual { position: relative; min-height: 520px; display: grid; place-items: center; }
   .sun-shape { position: absolute; width: 500px; height: 500px; border-radius: 50%; background: #e4ece1; }
-  .match-visual { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+  .match-visual { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 28px; margin-top: 48px; }
   .match-pair { position: relative; width: 370px; height: 248px; }
   .match-avatar { position: absolute; top: 0; width: 220px; height: 220px; border-radius: 50%; overflow: hidden; border: 5px solid #faf9f3; background: #e4ece1; box-shadow: 0 18px 40px #35504530; }
   .match-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
@@ -158,7 +158,7 @@ html { scroll-behavior: smooth; }
     .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; }
     .hero-visual { min-height: 380px; }
     .sun-shape { width: 360px; height: 360px; }
-    .match-visual { gap: 18px; }
+    .match-visual { gap: 18px; margin-top: 28px; }
     .match-pair { width: 252px; height: 169px; }
     .match-avatar { width: 150px; height: 150px; border-width: 4px; }
     .match-avatar-front { left: 102px; }

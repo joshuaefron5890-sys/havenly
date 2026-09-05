@@ -99,7 +99,7 @@ function sortFavoritedFirst<T>(items: T[], isFavorited: (item: T) => boolean): T
   return [...favorited, ...rest];
 }
 
-export default function Explore() {
+export default function Resources() {
   const { user, familyUid, clusterId } = useAuth();
   const isAdmin = isSuperAdminEmail(user?.email, clusterId);
   const isDesktop = useIsDesktop();
@@ -478,11 +478,28 @@ export default function Explore() {
     const communityRow = communityItems.length
       ? [{ key: 'community', eyebrow: 'FROM OTHER FAMILIES', title: 'Shared by families like yours', items: communityItems }]
       : [];
-    if (tagRows.length > 0) return [...tagRows, ...communityRow];
-    // No neurodivergence tags matched anything yet — fall back to one plain
-    // mixed row instead of an empty-looking screen.
-    return allItems.length ? [{ key: 'all', eyebrow: 'FOR YOUR FAMILY', title: 'Recommended for you', items: allItems }] : [];
+    // Health articles/blog posts routinely come back with no matched tag at
+    // all (MedlinePlus/a blog's RSS feed has no neurodivergence data to
+    // match against) — without this row, anything with an empty
+    // matchedTags AND not a community pick belonged to neither row above
+    // and silently vanished from the feed the moment even one tag row
+    // existed.
+    const leftoverItems = allItems.filter((item) => !item.community && item.matchedTags.length === 0);
+    const leftoverRow = leftoverItems.length
+      ? [{ key: 'more', eyebrow: 'MORE TO EXPLORE', title: tagRows.length > 0 ? 'More for your family' : 'Recommended for you', items: leftoverItems }]
+      : [];
+    return [...tagRows, ...communityRow, ...leftoverRow];
   }, [allItems]);
+
+  // Quick filter (always visible, not gated behind the search icon) — narrows
+  // the feed to just one kind while keeping its row/eyebrow grouping, rather
+  // than dropping into the flat search grid.
+  const visibleFeedRows = useMemo(() => {
+    if (typeFilter === 'all') return feedRows;
+    return feedRows
+      .map((row) => ({ ...row, items: row.items.filter((item) => item.kind === typeFilter) }))
+      .filter((row) => row.items.length > 0);
+  }, [feedRows, typeFilter]);
 
   // --- Search/filter view: a flat grid, only shown once opened ------------
 
@@ -536,8 +553,8 @@ export default function Explore() {
 
       <View style={styles.titleRow}>
         <View>
-          <Text style={styles.pageTitle}>Explore</Text>
-          <Text style={styles.pageSub}>Products, podcasts, and resources picked for your family.</Text>
+          <Text style={styles.pageTitle}>Resources</Text>
+          <Text style={styles.pageSub}>Explore products, podcasts, and articles picked for your family.</Text>
         </View>
         <Pressable
           style={[styles.searchToggle, searchOpen && styles.searchToggleActive]}
@@ -548,24 +565,25 @@ export default function Explore() {
         </Pressable>
       </View>
 
+      <View style={styles.typeRow}>
+        {TYPE_FILTERS.map((key) => {
+          const active = typeFilter === key;
+          const label = key === 'all' ? 'All' : KIND_META[key].label;
+          return (
+            <Pressable
+              key={key}
+              style={[styles.typeChip, active && styles.typeChipActive]}
+              onPress={() => setTypeFilter(key)}
+            >
+              <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {searchOpen ? (
         <View style={styles.searchPanel}>
           <SearchBar value={query} onChangeText={setQuery} placeholder="Search products, podcasts, resources" />
-          <View style={styles.typeRow}>
-            {TYPE_FILTERS.map((key) => {
-              const active = typeFilter === key;
-              const label = key === 'all' ? 'All' : KIND_META[key].label;
-              return (
-                <Pressable
-                  key={key}
-                  style={[styles.typeChip, active && styles.typeChipActive]}
-                  onPress={() => setTypeFilter(key)}
-                >
-                  <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>{label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
       ) : null}
 
@@ -575,7 +593,7 @@ export default function Explore() {
           <Text style={styles.contributeButtonText}>Contribute</Text>
         </Pressable>
 
-        {loadError ? <EmptyState text={`Couldn’t load Explore (${loadError}).`} /> : null}
+        {loadError ? <EmptyState text={`Couldn’t load Resources (${loadError}).`} /> : null}
         {!doneLoading ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
 
         {searchOpen ? (
@@ -589,8 +607,10 @@ export default function Explore() {
               <View style={styles.flatGrid}>{searchResults.map(renderCard)}</View>
             )}
           </>
+        ) : doneLoading && visibleFeedRows.length === 0 ? (
+          <EmptyState text={typeFilter === 'all' ? 'Nothing to show yet.' : `No ${KIND_META[typeFilter].label.toLowerCase()} to show yet.`} />
         ) : (
-          feedRows.map((row) => (
+          visibleFeedRows.map((row) => (
             <View key={row.key} style={styles.rowBlock}>
               <Text style={styles.rowEyebrow}>{row.eyebrow}</Text>
               <Text style={styles.rowTitle}>{row.title}</Text>
@@ -692,6 +712,8 @@ const styles = StyleSheet.create({
   typeRow: {
     flexDirection: 'row',
     gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   typeChip: {
     borderWidth: 1,

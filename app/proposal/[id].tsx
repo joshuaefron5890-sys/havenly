@@ -43,6 +43,24 @@ const STATUS_LABEL: Record<PlaydateProposal['status'], string> = {
   canceled: 'Canceled',
 };
 
+// A second, louder status readout shown right under the two family photos
+// (see statusBanner below) — the header's own statusPill answers the same
+// question but sits in the top corner in a pale, easy-to-miss color; this
+// answers "is this actually confirmed or still pending?" in plain words,
+// right where someone's eye lands after the photos and before the date.
+const STATUS_BANNER_LABEL: Record<PlaydateProposal['status'], string> = {
+  proposed: 'Waiting for a response',
+  accepted: 'Confirmed',
+  declined: 'Declined',
+  canceled: 'Canceled',
+};
+const STATUS_BANNER_ICON: Record<PlaydateProposal['status'], keyof typeof Ionicons.glyphMap> = {
+  proposed: 'time-outline',
+  accepted: 'checkmark-circle',
+  declined: 'close-circle',
+  canceled: 'close-circle-outline',
+};
+
 const SITTER_CONFIRM_LABEL: Record<NonNullable<PlaydateProposal['sitter']>['confirmationStatus'], string> = {
   pending: 'Pending confirmation',
   confirmed: 'Confirmed',
@@ -306,6 +324,11 @@ export default function ProposalDetail() {
             fallbackLabel="…"
             onPress={otherUid ? () => router.push(`/family/${otherUid}`) : undefined}
           />
+        </View>
+
+        <View style={[styles.statusBanner, styles[`statusBanner_${proposal.status}`]]}>
+          <Ionicons name={STATUS_BANNER_ICON[proposal.status]} size={18} color={colors.surface} />
+          <Text style={styles.statusBannerText}>{STATUS_BANNER_LABEL[proposal.status]}</Text>
         </View>
 
         {otherFamily && otherFamily.sharedNeurodivergence.length > 0 && (
@@ -787,6 +810,35 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 15,
     color: colors.text,
+  },
+  // Solid color, not a pale tint — this is the one thing on the page meant
+  // to answer "is this actually happening?" at a glance, so it needs to
+  // read as a real status the way the pale statusPill up in the header
+  // (kept as-is) doesn't quite manage to.
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  statusBanner_proposed: {
+    backgroundColor: colors.warning,
+  },
+  statusBanner_accepted: {
+    backgroundColor: colors.positive,
+  },
+  statusBanner_declined: {
+    backgroundColor: colors.error,
+  },
+  statusBanner_canceled: {
+    backgroundColor: colors.textMuted,
+  },
+  statusBannerText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.surface,
   },
   sharedExperienceRow: {
     flexDirection: 'row',
